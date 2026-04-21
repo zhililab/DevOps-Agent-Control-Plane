@@ -31,6 +31,31 @@ log() {
   echo "[deploy] $*"
 }
 
+ensure_kind_context() {
+  local expected_ctx="kind-${CLUSTER_NAME}"
+
+  if ! kubectl config get-contexts -o name | grep -qx "$expected_ctx"; then
+    echo "[deploy] expected kubectl context not found: $expected_ctx"
+    echo "[deploy] available contexts:"
+    kubectl config get-contexts -o name || true
+    exit 2
+  fi
+
+  kubectl config use-context "$expected_ctx" >/dev/null
+  log "using kubectl context: $expected_ctx"
+}
+
+assert_cluster_reachable() {
+  if ! kubectl cluster-info >/tmp/personal-agent-cluster-info.log 2>&1; then
+    echo "[deploy] kubectl cannot reach cluster with current context."
+    echo "[deploy] details:"
+    cat /tmp/personal-agent-cluster-info.log
+    echo "[deploy] if you see login HTML/auth redirect, your kubectl context is not kind."
+    echo "[deploy] run: kubectl config use-context kind-${CLUSTER_NAME}"
+    exit 2
+  fi
+}
+
 create_cluster_if_needed() {
   if kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; then
     log "kind cluster already exists: $CLUSTER_NAME"
@@ -127,6 +152,8 @@ main() {
   require_cmd kind
 
   create_cluster_if_needed
+  ensure_kind_context
+  assert_cluster_reachable
   install_ingress_nginx
   build_and_load_images
   apply_manifests

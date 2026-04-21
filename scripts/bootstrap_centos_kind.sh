@@ -50,8 +50,24 @@ install_kind() {
   fi
 
   log "installing kind"
-  curl -fsSL -o /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
-  chmod +x /usr/local/bin/kind
+  local tmp_bin
+  tmp_bin="$(mktemp /tmp/kind.XXXXXX)"
+
+  # Prefer official URL, then common mirror endpoint for unstable networks.
+  if ! curl -fL --retry 5 --retry-delay 2 --connect-timeout 10 \
+    -o "$tmp_bin" \
+    "https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64"; then
+    log "official kind URL failed, retrying with mirror"
+    curl -fL --retry 5 --retry-delay 2 --connect-timeout 10 \
+      -o "$tmp_bin" \
+      "https://ghproxy.com/https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64"
+  fi
+
+  install -m 0755 "$tmp_bin" /usr/local/bin/kind
+  rm -f "$tmp_bin"
+
+  # Repair a pre-existing broken file case.
+  chmod 0755 /usr/local/bin/kind || true
 }
 
 install_basic_tools() {
