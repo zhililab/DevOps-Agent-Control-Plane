@@ -1,0 +1,467 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`visual baseline > dashboard baseline snapshot 1`] = `
+<article
+  aria-label="Knowledge graph preview"
+  class="chart-card graph-card animate-enter"
+>
+  <header
+    class="graph-card-header"
+  >
+    <h3>
+      Knowledge Graph
+    </h3>
+    <p
+      class="muted"
+    >
+      Connections between your daily execution loops.
+    </p>
+    <p
+      class="graph-focus-hint"
+      id="graph-focus-hint"
+    >
+      Focus: 
+      All
+      . Use Left/Right arrows to switch.
+    </p>
+    <div
+      aria-describedby="graph-focus-hint"
+      aria-label="Graph focus filter"
+      class="graph-filter-row"
+      role="group"
+      tabindex="0"
+    >
+      <button
+        aria-label="Focus All"
+        aria-pressed="true"
+        class="graph-filter-active"
+        type="button"
+      >
+        All
+      </button>
+      <button
+        aria-label="Focus Plan"
+        aria-pressed="false"
+        class=""
+        type="button"
+      >
+        Plan
+      </button>
+      <button
+        aria-label="Focus Reflection"
+        aria-pressed="false"
+        class=""
+        type="button"
+      >
+        Reflection
+      </button>
+      <button
+        aria-label="Focus Analysis"
+        aria-pressed="false"
+        class=""
+        type="button"
+      >
+        Analysis
+      </button>
+    </div>
+  </header>
+  <svg
+    aria-label="Graph focused on All"
+    role="img"
+    viewBox="0 0 300 180"
+  >
+    <line
+      class="graph-link graph-link-active"
+      x1="140"
+      x2="66"
+      y1="95"
+      y2="58"
+    />
+    <line
+      class="graph-link graph-link-active"
+      x1="140"
+      x2="228"
+      y1="95"
+      y2="62"
+    />
+    <line
+      class="graph-link graph-link-active"
+      x1="140"
+      x2="250"
+      y1="95"
+      y2="132"
+    />
+    <line
+      class="graph-link graph-link-active"
+      x1="140"
+      x2="82"
+      y1="95"
+      y2="146"
+    />
+    <line
+      class="graph-link graph-link-active"
+      x1="140"
+      x2="168"
+      y1="95"
+      y2="32"
+    />
+    <line
+      class="graph-link graph-link-active"
+      x1="66"
+      x2="250"
+      y1="58"
+      y2="132"
+    />
+    <line
+      class="graph-link graph-link-active"
+      x1="228"
+      x2="82"
+      y1="62"
+      y2="146"
+    />
+    <g
+      aria-hidden="true"
+      class="graph-node graph-node-core graph-node-active"
+    >
+      <circle
+        cx="140"
+        cy="95"
+        r="14"
+      />
+      <text
+        text-anchor="middle"
+        x="140"
+        y="121"
+      >
+        Core Loop
+      </text>
+    </g>
+    <g
+      aria-hidden="true"
+      class="graph-node graph-node-work graph-node-active"
+    >
+      <circle
+        cx="66"
+        cy="58"
+        r="9"
+      />
+      <text
+        text-anchor="middle"
+        x="66"
+        y="79"
+      >
+        Today
+      </text>
+    </g>
+    <g
+      aria-hidden="true"
+      class="graph-node graph-node-growth graph-node-active"
+    >
+      <circle
+        cx="228"
+        cy="62"
+        r="10"
+      />
+      <text
+        text-anchor="middle"
+        x="228"
+        y="84"
+      >
+        Reflection
+      </text>
+    </g>
+    <g
+      aria-hidden="true"
+      class="graph-node graph-node-work graph-node-active"
+    >
+      <circle
+        cx="250"
+        cy="132"
+        r="9"
+      />
+      <text
+        text-anchor="middle"
+        x="250"
+        y="153"
+      >
+        Analysis
+      </text>
+    </g>
+    <g
+      aria-hidden="true"
+      class="graph-node graph-node-growth graph-node-active"
+    >
+      <circle
+        cx="82"
+        cy="146"
+        r="10"
+      />
+      <text
+        text-anchor="middle"
+        x="82"
+        y="168"
+      >
+        Knowledge
+      </text>
+    </g>
+    <g
+      aria-hidden="true"
+      class="graph-node graph-node-growth graph-node-active"
+    >
+      <circle
+        cx="168"
+        cy="32"
+        r="8"
+      />
+      <text
+        text-anchor="middle"
+        x="168"
+        y="52"
+      >
+        Templates
+      </text>
+    </g>
+  </svg>
+</article>
+`;
+
+exports[`visual baseline > knowledge baseline snapshot 1`] = `
+<section
+  aria-label="Knowledge"
+  class="card"
+>
+  <header
+    class="card-header"
+  >
+    <h2>
+      Knowledge
+    </h2>
+    <p
+      class="muted"
+    >
+      Capture durable notes and reusable knowledge entries.
+    </p>
+  </header>
+  <div
+    class="card-body"
+  >
+    <form>
+      <label>
+        Title
+        <input
+          value="Runner cache troubleshooting"
+        />
+      </label>
+      <label>
+        Content
+        <textarea
+          rows="5"
+        >
+          When CI cache misses increase, compare cache key changes and runner image.
+        </textarea>
+      </label>
+      <label>
+        Tags (comma-separated)
+        <input
+          value="devops,ci,cache"
+        />
+      </label>
+      <div
+        class="button-row"
+      >
+        <button
+          type="submit"
+        >
+          Save Entry
+        </button>
+        <button
+          disabled=""
+          type="button"
+        >
+          Update Selected
+        </button>
+      </div>
+    </form>
+    <form
+      class="reflection-section"
+    >
+      <h3>
+        Search
+      </h3>
+      <label>
+        Text Query
+        <input
+          value=""
+        />
+      </label>
+      <label>
+        Tag Filter
+        <input
+          value=""
+        />
+      </label>
+      <div
+        class="button-row"
+      >
+        <button
+          type="submit"
+        >
+          Apply Filter
+        </button>
+        <button
+          type="button"
+        >
+          Clear
+        </button>
+      </div>
+    </form>
+    <section
+      class="reflection-section"
+    >
+      <h3>
+        Entries
+      </h3>
+      <p
+        class="muted"
+      >
+        No entries found.
+      </p>
+    </section>
+  </div>
+</section>
+`;
+
+exports[`visual baseline > reflection result-state baseline snapshot 1`] = `
+<section
+  class="reflection-section"
+>
+  <h3>
+    Generated Daily Summary
+  </h3>
+  <div
+    class="result-grid"
+  >
+    <div
+      class="result-block"
+    >
+      <p>
+        Core incident closed, but release closure is partially blocked by external approval.
+      </p>
+    </div>
+    <div
+      class="result-block"
+    >
+      <h4>
+        Unfinished Items
+      </h4>
+      <ul>
+        <li>
+          Finalize release checklist
+        </li>
+      </ul>
+    </div>
+    <div
+      class="result-block"
+    >
+      <h4>
+        Pattern Hints
+      </h4>
+      <ul>
+        <li>
+          External dependency delays handoff completion.
+        </li>
+      </ul>
+    </div>
+    <div
+      class="result-block"
+    >
+      <h4>
+        Tomorrow Suggestions
+      </h4>
+      <ul>
+        <li>
+          Schedule security sync first thing tomorrow.
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+`;
+
+exports[`visual baseline > today result-state baseline snapshot 1`] = `
+<div
+  class="reflection-section"
+>
+  <h3>
+    Generated Plan
+  </h3>
+  <div
+    class="result-block"
+  >
+    <p>
+      Release plan prepared with clear first actions.
+    </p>
+  </div>
+  <div
+    class="result-grid"
+  >
+    <div
+      class="result-block"
+    >
+      <h4>
+        Top Priorities
+      </h4>
+      <ul>
+        <li>
+          Finalize release notes
+        </li>
+        <li>
+          Run smoke tests
+        </li>
+      </ul>
+    </div>
+    <div
+      class="result-block"
+    >
+      <h4>
+        Recommended Order
+      </h4>
+      <ol>
+        <li>
+          Run smoke tests
+        </li>
+        <li>
+          Publish release notes
+        </li>
+      </ol>
+    </div>
+    <div
+      class="result-block"
+    >
+      <h4>
+        Risks And Reminders
+      </h4>
+      <ul>
+        <li>
+          QA signoff pending
+        </li>
+      </ul>
+    </div>
+    <div
+      class="result-block"
+    >
+      <h4>
+        Next Actions
+      </h4>
+      <ul>
+        <li>
+          Confirm QA owner
+        </li>
+        <li>
+          Start smoke test checklist
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+`;

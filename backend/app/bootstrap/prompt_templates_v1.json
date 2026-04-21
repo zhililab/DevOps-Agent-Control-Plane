@@ -1,0 +1,134 @@
+[
+  {
+    "name": "Daily Planning Template",
+    "description": "Reusable template for generating a clear daily execution plan from tasks, meetings, blockers, and priorities.",
+    "body": "Role:\nYou are a personal execution assistant helping a senior DevOps/platform engineer turn scattered tasks into a focused day plan.\n\nInput:\n- Today's tasks:\n- Meetings:\n- Blockers:\n- Priorities:\n- Optional notes:\n\nRequirements:\n1. Identify the top 3 priorities for today\n2. Arrange tasks in a realistic execution order\n3. Highlight risks, dependencies, and blockers\n4. Suggest a concise check-in / status update\n5. Provide next actions for the first 2 hours\n6. Keep the plan practical, not abstract\n\nOutput format:\n## Today's Focus\n## Execution Order\n## Risks and Reminders\n## First 2 Hours\n## Suggested Status Update\n## End-of-Day Success Criteria",
+    "tags": ["daily", "planning", "execution", "focus"]
+  },
+  {
+    "name": "End of Day Reflection Template",
+    "description": "Reusable template for end-of-day summary, reflection, and next-step generation.",
+    "body": "Role:\nYou are a reflection assistant helping the user summarize the day and improve tomorrow's execution.\n\nInput:\n- Completed today:\n- Unfinished today:\n- Blockers / interruptions:\n- Mood / energy:\n- Notes:\n\nRequirements:\n1. Summarize what actually moved forward\n2. Separate unfinished work from hidden avoidance\n3. Identify one pattern worth improving\n4. Suggest tomorrow's top priorities\n5. Keep the tone constructive and honest\n6. Turn reflection into action, not only emotion\n\nOutput format:\n## What Progressed\n## What Didn't Move\n## Key Friction\n## Pattern Observed\n## Tomorrow Focus\n## One Improvement Action",
+    "tags": ["reflection", "daily", "summary", "improvement"]
+  },
+  {
+    "name": "Weekly Review Template",
+    "description": "Reusable template for weekly review, pattern analysis, and next-week focus.",
+    "body": "Role:\nYou are a weekly review coach helping the user extract patterns from work and life.\n\nInput:\n- This week's wins:\n- This week's unfinished items:\n- Repeated blockers:\n- Important conversations:\n- Learning notes:\n- Energy / emotional state:\n- Anything else:\n\nRequirements:\n1. Summarize what genuinely progressed\n2. Identify recurring issues and bottlenecks\n3. Distinguish signal from noise\n4. Suggest next week's 3 main focuses\n5. Provide one workflow improvement and one personal improvement\n6. Include a short summary of the user's current state\n\nOutput format:\n## Weekly Progress\n## What Stalled\n## Recurring Patterns\n## Next Week Focus\n## Workflow Improvement\n## Personal Improvement\n## Current State Summary",
+    "tags": ["weekly", "review", "retrospective", "growth"]
+  },
+  {
+    "name": "Technical Problem Analysis Template",
+    "description": "Reusable template for structured debugging and DevOps issue analysis.",
+    "body": "Role:\nYou are a senior technical analysis assistant helping analyze DevOps, CI/CD, infrastructure, build, or system issues.\n\nInput:\n- Problem description:\n- Error logs:\n- Related code or config:\n- Environment:\n- What has already been tried:\n- Expected behavior:\n- Actual behavior:\n\nRequirements:\n1. Rewrite the problem clearly\n2. List the most likely root causes\n3. Rank causes by probability\n4. Propose validation steps\n5. Suggest fix options with trade-offs\n6. Identify risks and follow-up actions\n7. Prefer practical engineering reasoning over generic advice\n\nOutput format:\n## Problem Statement\n## Likely Root Causes\n## Validation Plan\n## Fix Options\n## Risks\n## Recommended Next Step\n## Follow-up Tasks",
+    "tags": ["technical", "analysis", "debugging", "devops", "incident"]
+  },
+  {
+    "name": "Root Cause Analysis Template",
+    "description": "Reusable template for post-incident root cause analysis and follow-up actions.",
+    "body": "Role:\nYou are a reliability and postmortem assistant.\n\nInput:\n- Incident summary:\n- Timeline:\n- Symptoms:\n- Impact:\n- Immediate mitigation:\n- Suspected root cause:\n- Contributing factors:\n- Open questions:\n\nRequirements:\n1. Separate symptoms from root causes\n2. Identify direct cause and contributing factors\n3. Highlight process or workflow gaps\n4. Suggest preventive actions\n5. Keep the analysis blameless and practical\n6. Produce content suitable for team review\n\nOutput format:\n## Incident Summary\n## User / System Impact\n## Timeline\n## Root Cause\n## Contributing Factors\n## What Worked\n## What Failed\n## Preventive Actions\n## Owner / Follow-up Suggestions",
+    "tags": ["rca", "incident", "postmortem", "reliability"]
+  },
+  {
+    "name": "Technical Task Breakdown Template",
+    "description": "Reusable template for turning a technical goal into phased deliverables and actionable subtasks.",
+    "body": "Role:\nYou are a software engineering planning assistant.\n\nInput:\n- Goal / feature / project:\n- Background:\n- Constraints:\n- Known dependencies:\n- Deadline or milestone:\n- Risks already known:\n\nRequirements:\n1. Break the goal into phases\n2. Split each phase into actionable subtasks\n3. Include technical considerations\n4. Include testing and documentation tasks\n5. Suggest weekly execution order\n6. Prioritize testability, readability, consistency, then simplicity\n\nOutput format:\n## Goal Clarification\n## Phase Breakdown\n## Subtasks by Phase\n## Technical Considerations\n## Risks and Dependencies\n## Suggested Weekly Plan\n## Definition of Done",
+    "tags": ["planning", "technical", "breakdown", "project"]
+  },
+  {
+    "name": "Morning Standup Update Template",
+    "description": "Reusable template for concise daily standup or sync updates.",
+    "body": "Role:\nYou are an assistant helping write concise and professional standup updates.\n\nInput:\n- Yesterday progress:\n- Today plan:\n- Risks / blockers:\n- Optional support needed:\n\nRequirements:\n1. Keep the update concise\n2. Emphasize progress and outcome\n3. Mention blockers clearly\n4. Make it suitable for meeting or chat posting\n5. Use a professional and confident tone\n\nOutput format:\nYesterday:\nToday:\nBlockers:\nNeed support:",
+    "tags": ["standup", "meeting", "update", "work"]
+  },
+  {
+    "name": "Manager Update Template",
+    "description": "Reusable template for upward communication, progress reporting, and management-facing summaries.",
+    "body": "Role:\nYou are an assistant helping prepare a clear management-facing progress update.\n\nInput:\n- Topic:\n- Current progress:\n- Business value:\n- Risks:\n- Decisions needed:\n- Next steps:\n\nRequirements:\n1. Focus on outcome and business value\n2. Keep technical detail concise but credible\n3. Highlight risk and decision points\n4. Show ownership and forward progress\n5. Make the summary suitable for 1:1 or status report\n\nOutput format:\n## Topic\n## Current Progress\n## Value / Impact\n## Risks / Challenges\n## Decision or Support Needed\n## Next Step",
+    "tags": ["manager", "reporting", "1on1", "progress"]
+  },
+  {
+    "name": "Learning Notes Extraction Template",
+    "description": "Reusable template for turning technical reading into understanding and action.",
+    "body": "Role:\nYou are a learning assistant helping extract practical value from articles, docs, and technical materials.\n\nInput:\n- Topic / article / doc:\n- Main content:\n- What seems important:\n- What is still unclear:\n\nRequirements:\n1. Explain the topic in simple language\n2. Emphasize why it matters\n3. Extract transferable principles\n4. Suggest practical next actions\n5. Include one guiding question for deeper thinking\n6. Help move from information to method\n\nOutput format:\n## What It Means\n## Why It Matters\n## Key Principles\n## Practical Actions\n## One Guiding Question\n## How to Apply Elsewhere",
+    "tags": ["learning", "notes", "thinking", "knowledge"]
+  },
+  {
+    "name": "Communication Draft Template",
+    "description": "Reusable template for drafting sensitive communication with emotional awareness.",
+    "body": "Role:\nYou are a communication assistant helping the user express clearly, warmly, and with boundaries.\n\nInput:\n- Situation:\n- What happened:\n- What the user feels:\n- What the user needs:\n- What the user wants to say:\n- Desired tone:\n- Relationship context:\n\nRequirements:\n1. Do not stay only at the information level\n2. Help express feeling, need, and boundary clearly\n3. Avoid blame and over-explaining\n4. Generate a version that is natural and emotionally aware\n5. Optionally provide alternative tones\n\nOutput format:\n## Core Message\n## Gentle Version\n## Direct Version\n## Boundary Version\n## Communication Advice",
+    "tags": ["communication", "relationship", "expression", "boundary"]
+  },
+  {
+    "name": "Difficult Conversation Reflection Template",
+    "description": "Reusable template for analyzing emotionally difficult interactions and finding better responses.",
+    "body": "Role:\nYou are a reflection assistant for emotionally important conversations.\n\nInput:\n- What happened:\n- What was said:\n- What the user felt:\n- What the user wanted but did not express:\n- What seems confusing:\n- Relationship context:\n\nRequirements:\n1. Separate facts from interpretation\n2. Identify possible hidden feelings and needs\n3. Point out where the conversation stayed at information level\n4. Suggest a more connected and mature response\n5. Do not rush into fixing; first understand emotional dynamics\n\nOutput format:\n## Facts\n## Likely Feelings\n## Hidden Needs\n## What Was Not Said\n## Where Communication Missed\n## Better Response Option\n## Reflection for the User",
+    "tags": ["reflection", "conversation", "relationship", "emotion"]
+  },
+  {
+    "name": "Personal Growth Planning Template",
+    "description": "Reusable template for turning a broad growth goal into structured action.",
+    "body": "Role:\nYou are a personal growth strategist.\n\nInput:\n- Growth goal:\n- Why this matters:\n- Current state:\n- Obstacles:\n- Strengths:\n- Time horizon:\n- Optional context:\n\nRequirements:\n1. Clarify the real goal behind the goal\n2. Break the path into stages\n3. Suggest concrete actions for the next 30 days\n4. Include one mindset shift and one behavior shift\n5. Keep it practical and grounded\n6. Emphasize steady progress and repeatable actions\n\nOutput format:\n## Goal Clarification\n## Current State\n## Main Obstacles\n## 30-Day Action Plan\n## Mindset Shift\n## Behavior Shift\n## Progress Signals",
+    "tags": ["growth", "planning", "self", "development"]
+  },
+  {
+    "name": "Central Build Design Template",
+    "description": "Reusable template for designing phased technical solutions for Central Build or queue-based systems.",
+    "body": "Context:\nProject background:\nCurrent pain points:\nTarget workflow:\nConstraints:\nExisting components:\nMilestones:\n\nPlease produce:\n1. problem framing\n2. architecture proposal\n3. phased implementation plan\n4. data structure suggestions\n5. API / module breakdown\n6. testing strategy\n7. rollout and risk control",
+    "tags": ["central-build", "architecture", "design", "project"]
+  },
+  {
+    "name": "CI/CD Optimization Template",
+    "description": "Reusable template for pipeline optimization proposals.",
+    "body": "Current workflow:\nPain points:\nObserved metrics:\nEnvironment:\nConstraints:\nGoal:\n\nPlease produce:\n1. optimization opportunities\n2. prioritized actions\n3. expected impact\n4. risks / trade-offs\n5. rollout plan\n6. validation metrics",
+    "tags": ["cicd", "optimization", "jenkins", "pipeline"]
+  },
+  {
+    "name": "Incident Update Template",
+    "description": "Reusable format for concise incident progress updates.",
+    "body": "Context:\nImpact:\nCurrent status:\nMitigation:\nRoot cause hypothesis:\nNext step:\nETA / uncertainty:\n\nPlease rewrite this into a concise, professional incident update.",
+    "tags": ["incident", "update", "status", "sre"]
+  },
+  {
+    "name": "DevOps Weekly Sync Template",
+    "description": "Reusable template for weekly technical sync preparation.",
+    "body": "This week completed:\nIn progress:\nRisks:\nCross-team dependencies:\nTopics needing discussion:\nNext week's plan:\n\nPlease turn this into:\n1. a meeting-ready summary\n2. a concise spoken version\n3. a written follow-up version",
+    "tags": ["weekly-sync", "devops", "meeting"]
+  },
+  {
+    "name": "Travel Plan Template",
+    "description": "Reusable template for concise travel planning with practical execution details.",
+    "body": "Destination:\nDates:\nDeparture city:\nTravel style:\nConfirmed items:\nMust-see items:\nBudget level:\nSpecial constraints:\n\nPlease generate:\n1. trip overview\n2. daily itinerary\n3. transport suggestions\n4. booking checklist\n5. packing checklist\n6. risk reminders",
+    "tags": ["travel", "itinerary", "planning", "checklist"]
+  },
+  {
+    "name": "Packing Checklist Template",
+    "description": "Reusable template for generating simple, scenario-based packing lists.",
+    "body": "Trip type:\nDestination:\nDates:\nWeather:\nTransport mode:\nSpecial activities:\nUser profile / style preference:\n\nPlease produce a practical packing checklist that is simple, not overly complicated, and grouped by category.",
+    "tags": ["travel", "packing", "checklist"]
+  },
+  {
+    "name": "Prompt Engineering Template",
+    "description": "Reusable template for converting rough ideas into strong prompts.",
+    "body": "Goal:\nContext:\nInput data:\nDesired output:\nConstraints:\nTone / style:\nWhat should be avoided:\n\nPlease rewrite this into a high-quality prompt with:\n1. role\n2. context\n3. task\n4. constraints\n5. output format\n6. definition of done",
+    "tags": ["prompt", "template", "ai", "workflow"]
+  },
+  {
+    "name": "Method Extraction Template",
+    "description": "Reusable template for extracting reusable methods from a specific case.",
+    "body": "Case:\nWhat happened:\nWhat worked:\nWhat failed:\nWhat was learned:\n\nPlease extract:\n1. the underlying method\n2. reusable steps\n3. mistakes to avoid\n4. where else this can be applied",
+    "tags": ["method", "learning", "retrospective", "transfer"]
+  },
+  {
+    "name": "Emotional Clarity Template",
+    "description": "Reusable template for understanding internal emotional confusion before speaking.",
+    "body": "Situation:\nWhat happened:\nWhat I felt:\nWhat I wanted:\nWhat I feared:\nWhat I am confused about:\n\nHelp me clarify:\n1. facts\n2. feelings\n3. needs\n4. expectations\n5. what I really want to express",
+    "tags": ["emotion", "clarity", "self-awareness"]
+  },
+  {
+    "name": "Monthly Growth Review Template",
+    "description": "Reusable template for monthly review across work, life, and growth.",
+    "body": "This month in work:\nThis month in life:\nThis month in relationships:\nThis month in learning:\nMain wins:\nMain frustrations:\nMain patterns:\n\nPlease generate:\n1. monthly summary\n2. current state summary\n3. growth pattern analysis\n4. next month focus",
+    "tags": ["monthly", "review", "growth", "life"]
+  }
+]

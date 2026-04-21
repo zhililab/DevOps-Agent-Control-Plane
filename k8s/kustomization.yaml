@@ -1,0 +1,8 @@
+namespace: personal-agent
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml
