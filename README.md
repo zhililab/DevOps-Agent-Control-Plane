@@ -161,6 +161,12 @@ If backend keeps restarting after password/env changes, reset old Postgres data 
 DB_PASSWORD='replace-with-strong-password' RESET_DB=1 make server-deploy
 ```
 
+If your DB password contains special URL characters (for example `@`, `#`, `:`), either keep using `make server-deploy` (it now auto-encodes for backend DSN), or set explicitly:
+
+```bash
+DB_PASSWORD='raw-password' DB_PASSWORD_URLENC='url-encoded-password' make server-deploy
+```
+
 This starts:
 - `postgres`
 - `backend`
