@@ -155,6 +155,12 @@ For quickest always-on access on a server (without Kubernetes), use Docker Compo
 DB_PASSWORD='replace-with-strong-password' make server-deploy
 ```
 
+If backend keeps restarting after password/env changes, reset old Postgres data volume once:
+
+```bash
+DB_PASSWORD='replace-with-strong-password' RESET_DB=1 make server-deploy
+```
+
 This starts:
 - `postgres`
 - `backend`
