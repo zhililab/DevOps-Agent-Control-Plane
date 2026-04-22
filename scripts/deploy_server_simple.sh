@@ -89,7 +89,11 @@ if ! wait_http "http://127.0.0.1/health" "backend"; then
 fi
 
 log "running smoke-check against gateway/backend"
-FRONTEND_BASE="http://127.0.0.1" BACKEND_BASE="http://127.0.0.1" ./scripts/smoke_check.sh
+if ! FRONTEND_BASE="http://127.0.0.1" BACKEND_BASE="http://127.0.0.1" ./scripts/smoke_check.sh; then
+  log "smoke-check failed; collecting diagnostics"
+  print_diag
+  exit 1
+fi
 
 log "deployment completed"
 log "open: http://${PUBLIC_HOST}"
