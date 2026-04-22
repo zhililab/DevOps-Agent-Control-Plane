@@ -10,7 +10,9 @@ from app.database import Base
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    # Keep UTC semantics but return a naive datetime so it is compatible with
+    # DateTime(timezone=False) columns across SQLite and PostgreSQL.
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class TaskStatus(str, Enum):
