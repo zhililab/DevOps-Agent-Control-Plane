@@ -13,7 +13,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Alembic uses ConfigParser interpolation for ini options; percent signs in
+# URL-encoded passwords (e.g. "%40") must be escaped to "%%" first.
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
