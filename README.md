@@ -147,6 +147,31 @@ make dev-down     # stop both services
 make dev-restart  # restart both services
 ```
 
+## Simplified Server Deployment (Recommended)
+
+For quickest always-on access on a server (without Kubernetes), use Docker Compose:
+
+```bash
+DB_PASSWORD='replace-with-strong-password' make server-deploy
+```
+
+This starts:
+- `postgres`
+- `backend`
+- `frontend`
+- `gateway` (Nginx on port `80`, routing `/api` to backend)
+
+Useful operations:
+
+```bash
+make server-status
+make server-logs
+make server-restart
+make server-down
+```
+
+Detailed guide: `docs/deploy-simple-server.md`.
+
 ## Migration Commands
 
 ```bash
@@ -214,6 +239,16 @@ make release-check
 
 This runs `qa-all` and `k8s-dry-run` as a single pre-release check.
 
+Containerized K8s deployment options:
+
+```bash
+# Kind-based online deployment
+make kind-deploy
+
+# K3d-based online deployment (recommended fallback for older kernels)
+make k3d-deploy
+```
+
 Continuous iteration modes (repo root):
 
 ```bash
@@ -234,6 +269,7 @@ CI is configured in `.github/workflows/ci.yml` with parallel jobs:
 
 Design/motion reuse guidance is documented in `docs/visual-guidelines.md`.
 Release gate checklist is documented in `docs/release-checklist.md`.
+K3d online deployment guide is documented in `docs/deploy-k3d-online.md`.
 
 ## Template Initialization Import
 

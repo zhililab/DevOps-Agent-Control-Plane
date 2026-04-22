@@ -35,15 +35,19 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 - added visual style and token documentation: `docs/visual-guidelines.md`
 - added release checklist and command gate: `docs/release-checklist.md` + `make release-check`
 - added automated smoke gate: `make smoke-check` for key routes + core workflow APIs
+- extended smoke checks with response-shape assertions for knowledge/templates listing APIs
+- added k3d online deployment path for older kernels: `scripts/deploy_k3d_online.sh` + `make k3d-deploy`
+- added simplified always-on server deployment path: `docker-compose.server.yml` + `make server-deploy`
 - recorded local timing proxy for CI split:
   - `make test` real time: `~2.21s`
   - `make qa-fast` real time: `~7.59s` (includes frontend production build)
 
 ## Next Tasks
-- run full k8s gate on a reachable cluster context (`make k8s-dry-run` currently blocked by cluster connection refused)
+- run full k8s gate on a reachable cluster context (`make k8s-dry-run` currently blocked by cluster connectivity on local env)
 - add pixel-level screenshot baseline (Playwright) on top of current DOM snapshot baseline
 - add automated smoke checks for `/today`, `/reflection`, `/technical-analysis` after `make dev-up`
-- extend smoke checks with response-shape assertions for knowledge/templates listing APIs
+- verify k3d deployment path on target server and capture rollout evidence in docs
+- verify simplified server deployment (`make server-deploy`) on target host and capture access URL
 
 ---
 

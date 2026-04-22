@@ -50,6 +50,20 @@ assert_api_json_contains() {
   log "api ok: ${url} contains '${must_contain}'"
 }
 
+assert_api_get_is_array() {
+  local url="$1"
+  local body
+  body="$(curl -sS "$url")"
+
+  if ! printf "%s" "$body" | grep -Eq '^[[:space:]]*\['; then
+    log "api assertion failed: ${url} is not a JSON array response"
+    echo "$body"
+    return 1
+  fi
+
+  log "api ok: ${url} returns JSON array"
+}
+
 main() {
   : > /tmp/personal-agent-smoke-body.txt
   log "checking frontend routes"
@@ -85,6 +99,10 @@ main() {
     "${API_BASE}/analysis/technical" \
     '{"issue_description":"Smoke issue","logs":"error line","errors":["timeout"],"code_snippets":["kubectl get pods"]}' \
     '"problem_statement"'
+
+  log "checking knowledge/template list response shape"
+  assert_api_get_is_array "${API_BASE}/knowledge"
+  assert_api_get_is_array "${API_BASE}/templates"
 
   log "all smoke checks passed"
 }

@@ -1,4 +1,4 @@
-.PHONY: test test-watch test-until-pass qa-fast qa-visual qa-all smoke-check release-check server-bootstrap kind-deploy dev-up dev-down dev-restart dev-status dev-logs templates-import-json templates-import-sql k8s-render k8s-dry-run k8s-apply k8s-verify
+.PHONY: test test-watch test-until-pass qa-fast qa-visual qa-all smoke-check release-check server-bootstrap server-deploy server-down server-restart server-status server-logs kind-deploy k3d-deploy dev-up dev-down dev-restart dev-status dev-logs templates-import-json templates-import-sql k8s-render k8s-dry-run k8s-apply k8s-verify
 
 test:
 	./scripts/test_cycle.sh
@@ -37,8 +37,27 @@ release-check: qa-all k8s-dry-run
 server-bootstrap:
 	./scripts/bootstrap_centos_kind.sh
 
+server-deploy:
+	./scripts/deploy_server_simple.sh
+
+server-down:
+	docker compose -f docker-compose.server.yml down
+
+server-restart:
+	docker compose -f docker-compose.server.yml down
+	DB_PASSWORD=$${DB_PASSWORD:-change-me} docker compose -f docker-compose.server.yml up -d --build
+
+server-status:
+	docker compose -f docker-compose.server.yml ps
+
+server-logs:
+	docker compose -f docker-compose.server.yml logs -f --tail=120
+
 kind-deploy:
 	./scripts/deploy_kind_online.sh
+
+k3d-deploy:
+	./scripts/deploy_k3d_online.sh
 
 dev-up:
 	./scripts/dev_stack.sh start
