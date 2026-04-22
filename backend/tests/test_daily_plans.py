@@ -1,3 +1,6 @@
+from sqlalchemy import create_engine, text
+
+
 def test_daily_plan_workflow_persists_and_lists_history(client) -> None:
     create_response = client.post(
         "/api/plans/daily",
@@ -26,6 +29,26 @@ def test_daily_plan_workflow_persists_and_lists_history(client) -> None:
     assert len(history) == 1
     assert history[0]["id"] == created["id"]
     assert history[0]["context"]["tasks"][0] == "Fix CI flake"
+
+
+def test_daily_plan_still_succeeds_when_agent_log_table_missing(client) -> None:
+    engine = create_engine("sqlite:///./test_personal_agent.db", connect_args={"check_same_thread": False})
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS agent_run_logs"))
+
+    response = client.post(
+        "/api/plans/daily",
+        json={
+            "tasks": ["Smoke task"],
+            "meetings": ["Smoke meeting"],
+            "blockers": ["None"],
+            "priorities": ["Smoke task"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "status_summary" in payload["plan"]
 
 
 def test_daily_plan_empty_context_has_deterministic_defaults(client) -> None:
