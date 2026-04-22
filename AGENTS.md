@@ -29,6 +29,12 @@ Build a personal AI agent assistant focused on execution, reflection, and reusab
 - Keep functions focused, single responsibility
 - Avoid hidden side effects
 
+## Security Baseline
+- Keep sensitive input (tokens, passwords, secrets) out of plain logs.
+- Add guardrails for oversized payloads and abusive request patterns.
+- Prefer deterministic validation errors over silent truncation in user-facing APIs.
+- Keep externally exposed deployment paths minimal and easy to audit.
+
 ## Task Expectations
 When given a task:
 1. understand the goal

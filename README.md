@@ -172,6 +172,25 @@ make server-down
 
 Detailed guide: `docs/deploy-simple-server.md`.
 
+### Public Access Paths
+
+After `make server-deploy`, public routes are:
+
+- Home: `http://1.117.63.81/`
+- Dashboard: `http://1.117.63.81/dashboard`
+- Today Plan: `http://1.117.63.81/today`
+- Reflection: `http://1.117.63.81/reflection`
+- Technical Analysis: `http://1.117.63.81/technical-analysis`
+- Knowledge: `http://1.117.63.81/knowledge`
+- Templates: `http://1.117.63.81/templates`
+- API health: `http://1.117.63.81/api/health`
+
+If you deploy with `DOMAIN=1.117.63.81.nip.io`, equivalent paths are:
+
+- `http://1.117.63.81.nip.io/`
+- `http://1.117.63.81.nip.io/dashboard`
+- `http://1.117.63.81.nip.io/api/health`
+
 ## Migration Commands
 
 ```bash
@@ -305,6 +324,13 @@ This MVP intentionally keeps scope small. Current constraints:
 - Technical analysis output is deterministic rules-based (inspectable), not model-generated ranking.
 - Kubernetes manifests are baseline production-ready for a single environment, but remain non-HA.
 - This release still avoids external integrations and async orchestration.
+
+## Security Hardening (Current)
+
+- API basic rate limiting is enabled by default for `/api/*` requests.
+  - Env knobs: `APP_RATE_LIMIT_ENABLED`, `APP_RATE_LIMIT_MAX_REQUESTS`, `APP_RATE_LIMIT_WINDOW_SECONDS`.
+- Agent run logs are sanitized for sensitive values (`password`, `token`, `secret`, bearer tokens) before persistence.
+- Core workflow inputs enforce maximum payload size/line-item bounds to reduce abuse risk and storage pressure.
 
 ## Kubernetes Deployment (First Version)
 

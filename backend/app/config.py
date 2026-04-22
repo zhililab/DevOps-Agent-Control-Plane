@@ -20,6 +20,9 @@ class Settings(BaseSettings):
         default="sqlite:///./personal_agent.db",
         validation_alias="DATABASE_URL",
     )
+    rate_limit_enabled: bool = Field(default=True, validation_alias="APP_RATE_LIMIT_ENABLED")
+    rate_limit_max_requests: int = Field(default=120, validation_alias="APP_RATE_LIMIT_MAX_REQUESTS")
+    rate_limit_window_seconds: int = Field(default=60, validation_alias="APP_RATE_LIMIT_WINDOW_SECONDS")
 
 
 @lru_cache

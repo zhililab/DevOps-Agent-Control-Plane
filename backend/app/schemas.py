@@ -114,10 +114,18 @@ class PlanGenerateResponse(BaseModel):
 
 
 class DailyContextInput(BaseModel):
-    tasks: list[str] = Field(default_factory=list)
-    meetings: list[str] = Field(default_factory=list)
-    blockers: list[str] = Field(default_factory=list)
-    priorities: list[str] = Field(default_factory=list)
+    tasks: list[str] = Field(default_factory=list, max_length=50)
+    meetings: list[str] = Field(default_factory=list, max_length=50)
+    blockers: list[str] = Field(default_factory=list, max_length=50)
+    priorities: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("tasks", "meetings", "blockers", "priorities")
+    @classmethod
+    def validate_daily_context_items(cls, values: list[str]) -> list[str]:
+        for value in values:
+            if len(value.strip()) > 300:
+                raise ValueError("Each item must be 300 characters or fewer.")
+        return values
 
 
 class DailyPlanStructured(BaseModel):
@@ -141,10 +149,18 @@ class DailyPlanHistoryResponse(BaseModel):
 
 
 class DailyReflectionInput(BaseModel):
-    completed: list[str] = Field(default_factory=list)
-    unfinished: list[str] = Field(default_factory=list)
-    blockers: list[str] = Field(default_factory=list)
-    mood_or_notes: str = ""
+    completed: list[str] = Field(default_factory=list, max_length=50)
+    unfinished: list[str] = Field(default_factory=list, max_length=50)
+    blockers: list[str] = Field(default_factory=list, max_length=50)
+    mood_or_notes: str = Field(default="", max_length=2000)
+
+    @field_validator("completed", "unfinished", "blockers")
+    @classmethod
+    def validate_reflection_items(cls, values: list[str]) -> list[str]:
+        for value in values:
+            if len(value.strip()) > 300:
+                raise ValueError("Each item must be 300 characters or fewer.")
+        return values
 
 
 class DailyReflectionSummary(BaseModel):
@@ -167,10 +183,18 @@ class DailyReflectionHistoryResponse(BaseModel):
 
 
 class TechnicalAnalysisInput(BaseModel):
-    logs: str = ""
-    errors: list[str] = Field(default_factory=list)
-    code_snippets: list[str] = Field(default_factory=list)
-    issue_description: str = ""
+    logs: str = Field(default="", max_length=10000)
+    errors: list[str] = Field(default_factory=list, max_length=60)
+    code_snippets: list[str] = Field(default_factory=list, max_length=60)
+    issue_description: str = Field(default="", max_length=2000)
+
+    @field_validator("errors", "code_snippets")
+    @classmethod
+    def validate_analysis_items(cls, values: list[str]) -> list[str]:
+        for value in values:
+            if len(value.strip()) > 500:
+                raise ValueError("Each item must be 500 characters or fewer.")
+        return values
 
     @model_validator(mode="after")
     def ensure_at_least_one_signal(self) -> "TechnicalAnalysisInput":

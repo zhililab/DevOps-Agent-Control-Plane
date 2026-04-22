@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models import AgentRunLog
+from app.services.security_utils import sanitize_for_log
 
 
 def log_agent_action(
@@ -12,10 +13,10 @@ def log_agent_action(
     status: str = "success",
 ) -> AgentRunLog:
     log = AgentRunLog(
-        task_type=task_type,
-        input_summary=input_summary,
-        output_summary=output_summary,
-        status=status,
+        task_type=sanitize_for_log(task_type, max_chars=64),
+        input_summary=sanitize_for_log(input_summary),
+        output_summary=sanitize_for_log(output_summary),
+        status=sanitize_for_log(status, max_chars=32) or "success",
     )
     db.add(log)
     db.commit()
