@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import DashboardPage from "@/app/dashboard/page";
 import HistoryPage from "@/app/history/page";
 import KnowledgePage from "@/app/knowledge/page";
+import OrchestratePage from "@/app/orchestrate/page";
+import OrchestrationsPage from "@/app/orchestrations/page";
 import ProfilePage from "@/app/profile/page";
 import ReflectionPage from "@/app/reflection/page";
 import TechnicalAnalysisPage from "@/app/technical-analysis/page";
@@ -43,6 +45,16 @@ describe("core pages", () => {
   test("renders knowledge", () => {
     render(<KnowledgePage />);
     expect(screen.getByRole("heading", { name: "Knowledge" })).toBeInTheDocument();
+  });
+
+  test("renders orchestrate", () => {
+    render(<OrchestratePage />);
+    expect(screen.getByRole("heading", { name: "Workflow Orchestrator" })).toBeInTheDocument();
+  });
+
+  test("renders orchestrations", () => {
+    render(<OrchestrationsPage />);
+    expect(screen.getByRole("heading", { name: "Orchestration History" })).toBeInTheDocument();
   });
 
   test("renders templates", () => {

@@ -13,6 +13,11 @@ import type {
   TechnicalAnalysisHistoryResponse,
   TechnicalAnalysisInput,
   TechnicalAnalysisRecord,
+  WorkflowOrchestrationHistoryResponse,
+  WorkflowOrchestrationRecord,
+  WorkflowStepDefinition,
+  WorkflowTemplate,
+  WorkflowTemplateImportResponse,
   UserProfile,
 } from "@/lib/types";
 
@@ -222,6 +227,69 @@ export const apiClient = {
         use_builtin: true,
         reset_existing: options?.reset_existing ?? false,
       }),
+    });
+  },
+
+  runWorkflowOrchestration(
+    payload: {
+      entry_source: string;
+      steps: WorkflowStepDefinition[];
+      daily_context?: DailyContextInput;
+      technical_input?: TechnicalAnalysisInput;
+      reflection_input?: DailyReflectionInput;
+      persist_knowledge?: boolean;
+      persist_template?: boolean;
+    },
+    options?: { subscription_tier?: "free" | "pro" | "power" }
+  ) {
+    return request<WorkflowOrchestrationRecord>("/orchestrations/run", {
+      method: "POST",
+      headers: options?.subscription_tier ? { "X-Subscription-Tier": options.subscription_tier } : {},
+      body: JSON.stringify(payload),
+    });
+  },
+
+  listWorkflowOrchestrations(params?: { status?: string; subscription_tier?: string; limit?: number }) {
+    const search = new URLSearchParams();
+    if (params?.status) search.set("status", params.status);
+    if (params?.subscription_tier) search.set("subscription_tier", params.subscription_tier);
+    if (params?.limit) search.set("limit", String(params.limit));
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return request<WorkflowOrchestrationHistoryResponse>(`/orchestrations/history${suffix}`);
+  },
+
+  getWorkflowOrchestration(orchestrationId: number) {
+    return request<WorkflowOrchestrationRecord>(`/orchestrations/${orchestrationId}`);
+  },
+
+  createWorkflowTemplate(payload: {
+    name: string;
+    description: string;
+    steps: WorkflowStepDefinition[];
+    tags: string[];
+    enabled?: boolean;
+  }) {
+    return request<WorkflowTemplate>("/orchestrations/templates", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  listWorkflowTemplates(params?: { enabled?: boolean }) {
+    const search = new URLSearchParams();
+    if (params?.enabled !== undefined) search.set("enabled", String(params.enabled));
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return request<WorkflowTemplate[]>(`/orchestrations/templates${suffix}`);
+  },
+
+  exportWorkflowTemplates() {
+    return request<WorkflowTemplate[]>("/orchestrations/templates/export");
+  },
+
+  importWorkflowTemplates(payload: { items: Omit<WorkflowTemplate, "id" | "created_at" | "updated_at">[] }) {
+    return request<WorkflowTemplateImportResponse>("/orchestrations/templates/import", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   },
 };

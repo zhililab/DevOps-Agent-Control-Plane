@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -322,3 +322,136 @@ class PromptTemplateImportResponse(BaseModel):
     updated: int
     skipped: int
     total: int
+
+
+SubscriptionTier = Literal["free", "pro", "power"]
+OrchestrationStatus = Literal["success", "partial_success", "failed"]
+StepStatus = Literal["success", "failed", "skipped"]
+AgentType = Literal["planner", "analyzer", "reviewer"]
+
+
+class WorkflowStepDefinition(BaseModel):
+    step_name: str
+    agent_type: AgentType
+    enabled: bool = True
+
+
+class WorkflowTemplateBase(BaseModel):
+    name: str
+    description: str = ""
+    steps: list[WorkflowStepDefinition] = Field(default_factory=list, max_length=20)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+    enabled: bool = True
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Must not be empty.")
+        return value
+
+    @model_validator(mode="after")
+    def ensure_steps_not_empty(self) -> "WorkflowTemplateBase":
+        active_steps = [step for step in self.steps if step.enabled]
+        if not active_steps:
+            raise ValueError("At least one enabled step is required.")
+        return self
+
+
+class WorkflowTemplateCreate(WorkflowTemplateBase):
+    pass
+
+
+class WorkflowTemplateUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    steps: list[WorkflowStepDefinition] | None = None
+    tags: list[str] | None = None
+    enabled: bool | None = None
+
+
+class WorkflowTemplateRead(WorkflowTemplateBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class WorkflowTemplateImportRequest(BaseModel):
+    items: list[WorkflowTemplateCreate] = Field(default_factory=list)
+    upsert_by_name: bool = True
+
+
+class WorkflowTemplateImportResponse(BaseModel):
+    imported: int
+    updated: int
+    skipped: int
+    total: int
+
+
+class WorkflowAuditBlock(BaseModel):
+    conclusion: str
+    evidence: str
+    risk: str
+    next_action: str
+
+    @field_validator("conclusion", "evidence", "risk", "next_action")
+    @classmethod
+    def reject_blank_text_block(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Must not be empty.")
+        return value
+
+
+class WorkflowStepRunRead(BaseModel):
+    id: int
+    step_name: str
+    agent_type: AgentType
+    status: StepStatus
+    input_summary: str
+    output_summary: str
+    audit: WorkflowAuditBlock
+    fallback_action: str
+    started_at: datetime
+    finished_at: datetime
+    duration_ms: int
+
+
+class WorkflowOrchestrationSummary(BaseModel):
+    conclusion: str
+    risks: list[str]
+    next_actions: list[str]
+
+
+class WorkflowOrchestrationRunRequest(BaseModel):
+    entry_source: str = "manual"
+    template_id: int | None = None
+    steps: list[WorkflowStepDefinition] | None = None
+    daily_context: DailyContextInput | None = None
+    technical_input: TechnicalAnalysisInput | None = None
+    reflection_input: DailyReflectionInput | None = None
+    persist_knowledge: bool = True
+    persist_template: bool = False
+
+    @model_validator(mode="after")
+    def ensure_template_or_steps(self) -> "WorkflowOrchestrationRunRequest":
+        if self.template_id is not None:
+            return self
+        if self.steps and any(step.enabled for step in self.steps):
+            return self
+        raise ValueError("Provide template_id or at least one enabled step.")
+
+
+class WorkflowOrchestrationRead(BaseModel):
+    id: int
+    status: OrchestrationStatus
+    duration_ms: int
+    entry_source: str
+    subscription_tier: SubscriptionTier
+    summary: WorkflowOrchestrationSummary
+    steps: list[WorkflowStepRunRead]
+    created_at: datetime
+    updated_at: datetime
+
+
+class WorkflowOrchestrationHistoryResponse(BaseModel):
+    items: list[WorkflowOrchestrationRead]

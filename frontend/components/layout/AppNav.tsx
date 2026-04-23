@@ -9,6 +9,8 @@ const links = [
   { href: "/today", label: "Today" },
   { href: "/reflection", label: "Reflection" },
   { href: "/technical-analysis", label: "Technical Analysis" },
+  { href: "/orchestrate", label: "Orchestrate" },
+  { href: "/orchestrations", label: "Orchestrations" },
   { href: "/knowledge", label: "Knowledge" },
   { href: "/templates", label: "Templates" },
   { href: "/history", label: "History" },

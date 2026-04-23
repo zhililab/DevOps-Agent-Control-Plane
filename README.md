@@ -45,6 +45,9 @@ Documentation map: `docs/README.md`.
 - `TechnicalAnalysis`
 - `NoteEntry`
 - `PromptTemplate`
+- `WorkflowOrchestration`
+- `WorkflowStepRun`
+- `WorkflowTemplate`
 
 ### APIs
 - `POST /api/profile`: create profile
@@ -70,6 +73,14 @@ Documentation map: `docs/README.md`.
 - `GET /api/templates/{id}`: get template
 - `PUT /api/templates/{id}`: update template
 - `DELETE /api/templates/{id}`: delete template
+- `POST /api/orchestrations/run`: run deterministic multi-agent orchestration (Planner/Analyzer/Reviewer)
+- `GET /api/orchestrations/history`: list orchestration runs with status/tier filters
+- `GET /api/orchestrations/{id}`: get orchestration run detail with step replay
+- `POST /api/orchestrations/templates`: create orchestration workflow template
+- `PUT /api/orchestrations/templates/{id}`: update orchestration workflow template
+- `GET /api/orchestrations/templates`: list orchestration workflow templates
+- `GET /api/orchestrations/templates/export`: export orchestration workflow templates
+- `POST /api/orchestrations/templates/import`: import orchestration workflow templates
 - `POST /api/tasks`: create task
 - `GET /api/tasks`: list tasks
 - `PUT /api/tasks/{id}`: update task
@@ -83,6 +94,8 @@ Documentation map: `docs/README.md`.
 - `/today`
 - `/reflection`
 - `/technical-analysis`
+- `/orchestrate`
+- `/orchestrations`
 - `/knowledge`
 - `/templates`
 - `/history`
@@ -245,6 +258,9 @@ Current test coverage includes:
 - daily planning generation + persistence + history retrieval
 - daily reflection summary generation + persistence + history retrieval
 - technical analysis generation + request validation + persistence + history retrieval
+- orchestration workflow run + step replay + partial failure fallback + history retrieval
+- free/pro/power tier boundary for orchestration (free single-step restriction)
+- orchestration template CRUD + import/export round-trip
 - knowledge entry CRUD + filtering + ordering/validation edge cases
 - prompt template CRUD + filtering
 - prompt template batch import (JSON/SQL) and built-in starter library

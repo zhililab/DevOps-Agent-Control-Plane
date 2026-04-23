@@ -124,3 +124,48 @@ class PromptTemplate(Base):
     tags_json: Mapped[str] = mapped_column(Text, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class WorkflowOrchestration(Base):
+    __tablename__ = "workflow_orchestrations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="success", index=True)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    entry_source: Mapped[str] = mapped_column(String(64), default="manual")
+    subscription_tier: Mapped[str] = mapped_column(String(16), default="pro", index=True)
+    request_json: Mapped[str] = mapped_column(Text, default="{}")
+    result_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class WorkflowStepRun(Base):
+    __tablename__ = "workflow_step_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    orchestration_id: Mapped[int] = mapped_column(Integer, index=True)
+    step_name: Mapped[str] = mapped_column(String(120))
+    agent_type: Mapped[str] = mapped_column(String(32), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="success")
+    input_summary: Mapped[str] = mapped_column(Text, default="")
+    output_summary: Mapped[str] = mapped_column(Text, default="")
+    audit_json: Mapped[str] = mapped_column(Text, default="{}")
+    fallback_action: Mapped[str] = mapped_column(Text, default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    finished_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class WorkflowTemplate(Base):
+    __tablename__ = "workflow_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(160), index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    steps_json: Mapped[str] = mapped_column(Text, default="[]")
+    tags_json: Mapped[str] = mapped_column(Text, default="[]")
+    enabled: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

@@ -141,3 +141,75 @@ export type PromptTemplateImportResponse = {
   skipped: number;
   total: number;
 };
+
+export type WorkflowAgentType = "planner" | "analyzer" | "reviewer";
+export type WorkflowStepStatus = "success" | "failed" | "skipped";
+export type WorkflowOrchestrationStatus = "success" | "partial_success" | "failed";
+export type SubscriptionTier = "free" | "pro" | "power";
+
+export type WorkflowStepDefinition = {
+  step_name: string;
+  agent_type: WorkflowAgentType;
+  enabled: boolean;
+};
+
+export type WorkflowTemplate = {
+  id: number;
+  name: string;
+  description: string;
+  steps: WorkflowStepDefinition[];
+  tags: string[];
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WorkflowAuditBlock = {
+  conclusion: string;
+  evidence: string;
+  risk: string;
+  next_action: string;
+};
+
+export type WorkflowStepRun = {
+  id: number;
+  step_name: string;
+  agent_type: WorkflowAgentType;
+  status: WorkflowStepStatus;
+  input_summary: string;
+  output_summary: string;
+  audit: WorkflowAuditBlock;
+  fallback_action: string;
+  started_at: string;
+  finished_at: string;
+  duration_ms: number;
+};
+
+export type WorkflowOrchestrationSummary = {
+  conclusion: string;
+  risks: string[];
+  next_actions: string[];
+};
+
+export type WorkflowOrchestrationRecord = {
+  id: number;
+  status: WorkflowOrchestrationStatus;
+  duration_ms: number;
+  entry_source: string;
+  subscription_tier: SubscriptionTier;
+  summary: WorkflowOrchestrationSummary;
+  steps: WorkflowStepRun[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type WorkflowOrchestrationHistoryResponse = {
+  items: WorkflowOrchestrationRecord[];
+};
+
+export type WorkflowTemplateImportResponse = {
+  imported: number;
+  updated: number;
+  skipped: number;
+  total: number;
+};

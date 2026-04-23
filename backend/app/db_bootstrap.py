@@ -16,6 +16,9 @@ CORE_TABLES = (
     "technical_analyses",
     "note_entries",
     "prompt_templates",
+    "workflow_orchestrations",
+    "workflow_step_runs",
+    "workflow_templates",
 )
 
 

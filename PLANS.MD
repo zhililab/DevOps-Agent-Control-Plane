@@ -10,7 +10,7 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 
 ---
 
-# 0. Current Iteration Snapshot (2026-04-21)
+# 0. Current Iteration Snapshot (2026-04-23)
 
 ## Theme Upgrade (In Progress)
 - target style: Obsidian-like visual language (dark canvas, violet accent, layered cards, knowledge graph feeling)
@@ -38,14 +38,36 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 - extended smoke checks with response-shape assertions for knowledge/templates listing APIs
 - added k3d online deployment path for older kernels: `scripts/deploy_k3d_online.sh` + `make k3d-deploy`
 - added simplified always-on server deployment path: `docker-compose.server.yml` + `make server-deploy`
+- added deterministic multi-agent orchestration workflow (Planner/Analyzer/Reviewer)
+- added orchestration persistence entities: `WorkflowOrchestration`, `WorkflowStepRun`, `WorkflowTemplate`
+- added orchestration APIs:
+  - `POST /api/orchestrations/run`
+  - `GET /api/orchestrations/history`
+  - `GET /api/orchestrations/{id}`
+  - template CRUD/import/export under `/api/orchestrations/templates*`
+- added orchestration UI pages:
+  - `/orchestrate` (run + replay + template operations)
+  - `/orchestrations` (history + filter)
+- added free/pro/power tier gate (free single-step restriction for orchestration runs)
+- added partial-success fallback strategy (step failure does not abort full workflow)
+- added reusable output persistence bridge from orchestration to knowledge/templates
+- added orchestration backend and frontend test coverage
 - recorded local timing proxy for CI split:
   - `make test` real time: `~2.21s`
   - `make qa-fast` real time: `~7.59s` (includes frontend production build)
 
 ## Next Tasks
+- add billing-grade entitlement service (replace header/config tier gate with signed user entitlement)
+- add async queue execution for long orchestration runs (job status + retry + cancellation)
+- add orchestration KPI metrics endpoint and dashboard cards:
+  - weekly active orchestrations (north-star)
+  - partial-success rate
+  - average run duration
+- add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)
+- add E2E tests for `/orchestrate -> /orchestrations` full browser flow
 - run full k8s gate on a reachable cluster context (`make k8s-dry-run` currently blocked by cluster connectivity on local env)
 - add pixel-level screenshot baseline (Playwright) on top of current DOM snapshot baseline
-- add automated smoke checks for `/today`, `/reflection`, `/technical-analysis` after `make dev-up`
+- extend automated smoke checks to orchestration APIs/pages after `make dev-up`
 - verify k3d deployment path on target server and capture rollout evidence in docs
 - verify simplified server deployment (`make server-deploy`) on target host and capture access URL
 
@@ -111,10 +133,14 @@ A user can:
 - technical analysis workflow
 - communication draft workflow
 - basic history and knowledge storage
+- deterministic multi-agent orchestration workflow
+- orchestration step replay and history retrieval
+- orchestration template CRUD/import/export
+- lightweight SaaS tier boundary (free/pro/power gate for orchestration)
 
 ## Out of Scope for MVP
 - autonomous external actions
-- heavy multi-agent orchestration
+- autonomous multi-agent self-planning without user-provided context
 - advanced vector retrieval
 - full calendar/email/Jira sync
 - mobile app

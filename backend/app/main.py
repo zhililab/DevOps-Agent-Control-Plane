@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import knowledge, plans, profile, reflections, tasks, technical_analysis, templates
+from app.api import knowledge, orchestrations, plans, profile, reflections, tasks, technical_analysis, templates
 from app.config import get_settings
 
 
@@ -62,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(technical_analysis.router, prefix=settings.api_prefix)
     app.include_router(knowledge.router, prefix=settings.api_prefix)
     app.include_router(templates.router, prefix=settings.api_prefix)
+    app.include_router(orchestrations.router, prefix=settings.api_prefix)
 
     @app.get("/health", tags=["health"])
     def health_check() -> dict[str, str]:
