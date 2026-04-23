@@ -215,10 +215,16 @@ Orchestration APIs now support signed entitlement token:
 
 - header: `X-Entitlement: <signed_token>`
 - env:
+  - `APP_ENVIRONMENT=local|staging|production`
   - `APP_ENTITLEMENT_REQUIRED=true|false`
   - `APP_ENTITLEMENT_SECRET=<strong-secret>`
+  - `APP_ALLOW_LEGACY_SUBSCRIPTION_TIER_FALLBACK=true|false` (non-production only)
 
-When `APP_ENTITLEMENT_REQUIRED=true`, `X-Subscription-Tier` header fallback is disabled.
+Effective auth behavior:
+
+- In `production`, signed `X-Entitlement` is always required and `X-Subscription-Tier` fallback is disabled.
+- In non-production, `X-Subscription-Tier` fallback is only honored when `APP_ALLOW_LEGACY_SUBSCRIPTION_TIER_FALLBACK=true`.
+- `APP_ENTITLEMENT_REQUIRED=true` enforces signed `X-Entitlement` in every environment.
 
 Generate a local token for testing:
 

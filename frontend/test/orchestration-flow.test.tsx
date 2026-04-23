@@ -111,6 +111,42 @@ describe("orchestration workflow", () => {
           { status: 200 }
         );
       }
+      if (url.includes("/orchestrations/queue/history")) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 401,
+                status: "failed",
+                attempts: 2,
+                max_attempts: 3,
+                cancel_requested: true,
+                orchestration_id: 202,
+                error_message: "Analyzer timeout",
+                created_at: "2026-04-23T00:00:00Z",
+                updated_at: "2026-04-23T00:00:10Z",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/queue/401")) {
+        return new Response(
+          JSON.stringify({
+            id: 401,
+            status: "failed",
+            attempts: 2,
+            max_attempts: 3,
+            cancel_requested: true,
+            orchestration_id: 202,
+            error_message: "Analyzer timeout",
+            created_at: "2026-04-23T00:00:00Z",
+            updated_at: "2026-04-23T00:00:10Z",
+          }),
+          { status: 200 }
+        );
+      }
       return new Response(JSON.stringify([]), { status: 200 });
     });
 
@@ -121,6 +157,17 @@ describe("orchestration workflow", () => {
     });
     expect(screen.getByText("Analyzer requested more technical evidence.")).toBeInTheDocument();
     expect(screen.getByText(/Fallback: Gather one concrete error signal/i)).toBeInTheDocument();
+    expect(screen.getByText(/Queue Job List/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/cancel_requested=true/i).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(
+        screen.getByText((content) => content.replace(/\s+/g, " ").trim() === "Job #401 · latest status=failed")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Inferred from queue snapshot fields \(event log not currently available\)/i)
+      ).toBeInTheDocument();
+      expect(screen.getByText("Inferred latest status=failed.")).toBeInTheDocument();
+    });
   });
 
   test("enqueues orchestration and displays queue status", async () => {

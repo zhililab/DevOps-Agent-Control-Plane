@@ -26,6 +26,24 @@ class Settings(BaseSettings):
     default_subscription_tier: str = Field(default="pro", validation_alias="APP_DEFAULT_SUBSCRIPTION_TIER")
     entitlement_secret: str = Field(default="", validation_alias="APP_ENTITLEMENT_SECRET")
     entitlement_required: bool = Field(default=False, validation_alias="APP_ENTITLEMENT_REQUIRED")
+    allow_legacy_subscription_tier_fallback: bool = Field(
+        default=False,
+        validation_alias="APP_ALLOW_LEGACY_SUBSCRIPTION_TIER_FALLBACK",
+    )
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.strip().lower() == "production"
+
+    @property
+    def effective_entitlement_required(self) -> bool:
+        return self.entitlement_required or self.is_production
+
+    @property
+    def effective_allow_legacy_subscription_tier_fallback(self) -> bool:
+        if self.is_production:
+            return False
+        return self.allow_legacy_subscription_tier_fallback
 
 
 @lru_cache

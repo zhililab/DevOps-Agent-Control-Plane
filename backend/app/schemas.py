@@ -485,3 +485,7 @@ class WorkflowQueueJobRead(BaseModel):
     error_message: str
     created_at: datetime
     updated_at: datetime
+
+
+class WorkflowQueueHistoryResponse(BaseModel):
+    items: list[WorkflowQueueJobRead]

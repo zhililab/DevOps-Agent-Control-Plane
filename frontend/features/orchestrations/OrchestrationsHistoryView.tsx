@@ -3,8 +3,15 @@
 import { useEffect, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
+import { buildQueueTimelineReplay } from "@/features/orchestrations/queueTimeline";
 import { apiClient } from "@/lib/api";
-import type { WorkflowOrchestrationRecord } from "@/lib/types";
+import type { WorkflowOrchestrationRecord, WorkflowQueueJob, WorkflowQueueJobStatus } from "@/lib/types";
+
+function formatTimestamp(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString();
+}
 
 export function OrchestrationsHistoryView() {
   const [items, setItems] = useState<WorkflowOrchestrationRecord[]>([]);
@@ -12,6 +19,13 @@ export function OrchestrationsHistoryView() {
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "pro" | "power">("all");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [queueJobs, setQueueJobs] = useState<WorkflowQueueJob[]>([]);
+  const [queueStatusFilter, setQueueStatusFilter] = useState<"all" | WorkflowQueueJobStatus>("all");
+  const [selectedQueueJobId, setSelectedQueueJobId] = useState<number | null>(null);
+  const [selectedQueueJob, setSelectedQueueJob] = useState<WorkflowQueueJob | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
+  const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+  const [isLoadingQueueDetail, setIsLoadingQueueDetail] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -21,7 +35,7 @@ export function OrchestrationsHistoryView() {
           subscription_tier: tierFilter === "all" ? undefined : tierFilter,
           limit: 50,
         });
-        setItems(response.items);
+        setItems(Array.isArray(response.items) ? response.items : []);
         setError(null);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to load orchestration history.");
@@ -33,6 +47,61 @@ export function OrchestrationsHistoryView() {
     setIsLoading(true);
     void load();
   }, [statusFilter, tierFilter]);
+
+  useEffect(() => {
+    async function loadQueueJobs() {
+      try {
+        const response = await apiClient.listWorkflowQueueJobs({
+          status: queueStatusFilter === "all" ? undefined : queueStatusFilter,
+          limit: 50,
+        });
+        const nextJobs = Array.isArray(response.items) ? response.items : [];
+        setQueueJobs(nextJobs);
+        setQueueError(null);
+
+        if (nextJobs.length === 0) {
+          setSelectedQueueJobId(null);
+          setSelectedQueueJob(null);
+          return;
+        }
+
+        setSelectedQueueJobId((current) => {
+          if (current && nextJobs.some((job) => job.id === current)) return current;
+          return nextJobs[0].id;
+        });
+      } catch (loadError) {
+        setQueueError(loadError instanceof Error ? loadError.message : "Failed to load queue jobs.");
+      } finally {
+        setIsLoadingQueue(false);
+      }
+    }
+
+    setIsLoadingQueue(true);
+    void loadQueueJobs();
+  }, [queueStatusFilter]);
+
+  useEffect(() => {
+    const jobId = selectedQueueJobId;
+    if (jobId === null) return;
+    const resolvedJobId: number = jobId;
+
+    async function loadQueueJobDetail() {
+      try {
+        setIsLoadingQueueDetail(true);
+        const detail = await apiClient.getWorkflowQueueJob(resolvedJobId);
+        setSelectedQueueJob(detail);
+        setQueueError(null);
+      } catch (loadError) {
+        setQueueError(loadError instanceof Error ? loadError.message : "Failed to load queue job detail.");
+      } finally {
+        setIsLoadingQueueDetail(false);
+      }
+    }
+
+    void loadQueueJobDetail();
+  }, [selectedQueueJobId]);
+
+  const timeline = selectedQueueJob ? buildQueueTimelineReplay(selectedQueueJob) : null;
 
   return (
     <PageCard title="Orchestration History" description="Filter, review, and audit multi-agent orchestration runs.">
@@ -65,7 +134,7 @@ export function OrchestrationsHistoryView() {
       {!isLoading && items.length === 0 ? <p className="muted">No orchestration runs found.</p> : null}
 
       {items.map((item) => (
-        <section key={item.id} className="history-plan">
+        <section key={item.id} id={`orchestration-run-${item.id}`} className="history-plan">
           <h3>
             Run #{item.id} · {item.status} · {item.subscription_tier}
           </h3>
@@ -88,6 +157,74 @@ export function OrchestrationsHistoryView() {
           </div>
         </section>
       ))}
+
+      <section className="result-block">
+        <h3>Queue Job List</h3>
+        <label>
+          Queue Status
+          <select
+            value={queueStatusFilter}
+            onChange={(event) => setQueueStatusFilter(event.target.value as typeof queueStatusFilter)}
+          >
+            <option value="all">All</option>
+            <option value="queued">Queued</option>
+            <option value="running">Running</option>
+            <option value="succeeded">Succeeded</option>
+            <option value="failed">Failed</option>
+            <option value="canceled">Canceled</option>
+          </select>
+        </label>
+        {queueError ? <p className="status status-error">{queueError}</p> : null}
+        {isLoadingQueue ? <p className="muted">Loading queue jobs...</p> : null}
+        {!isLoadingQueue && queueJobs.length === 0 ? <p className="muted">No queue jobs found.</p> : null}
+
+        {queueJobs.map((job) => (
+          <article key={job.id} className="result-block">
+            <p>
+              <strong>Job #{job.id}</strong> · status={job.status} · attempts={job.attempts}/{job.max_attempts}
+            </p>
+            <p className="muted">cancel_requested={String(job.cancel_requested)}</p>
+            <p className="muted">
+              orchestration=
+              {job.orchestration_id ? <a href={`#orchestration-run-${job.orchestration_id}`}>Run #{job.orchestration_id}</a> : "none"}
+            </p>
+            <p className="muted">updated={formatTimestamp(job.updated_at)}</p>
+            <button type="button" onClick={() => setSelectedQueueJobId(job.id)} disabled={selectedQueueJobId === job.id}>
+              {selectedQueueJobId === job.id ? "Selected" : "View Timeline Replay"}
+            </button>
+          </article>
+        ))}
+      </section>
+
+      <section className="result-block">
+        <h3>Timeline Replay</h3>
+        {!selectedQueueJob ? <p className="muted">Select a queue job to inspect timeline replay.</p> : null}
+        {isLoadingQueueDetail ? <p className="muted">Loading selected queue job...</p> : null}
+        {selectedQueueJob && timeline ? (
+          <>
+            <p>
+              Job #{selectedQueueJob.id} · latest status={selectedQueueJob.status}
+            </p>
+            <p className="muted">
+              Timeline source:{" "}
+              {timeline.mode === "event_log"
+                ? "Observed queue events."
+                : "Inferred from queue snapshot fields (event log not currently available)."}
+            </p>
+            <div className="result-grid">
+              {timeline.events.map((event) => (
+                <article key={event.id} className="result-block">
+                  <h4>{event.title}</h4>
+                  <p className="muted">
+                    {formatTimestamp(event.at)} · {event.source}
+                  </p>
+                  <p>{event.detail}</p>
+                </article>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </section>
     </PageCard>
   );
 }

@@ -10,6 +10,7 @@ from app.schemas import (
     WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
     WorkflowOrchestrationRunRequest,
+    WorkflowQueueHistoryResponse,
     WorkflowQueueJobRead,
     WorkflowQueueRunResponse,
     WorkflowTemplateCreate,
@@ -19,7 +20,13 @@ from app.schemas import (
     WorkflowTemplateUpdate,
 )
 from app.services.entitlement_service import resolve_tier_from_entitlement
-from app.services.orchestration_queue_service import cancel_queue_job, enqueue_orchestration_run, get_queue_job, retry_queue_job
+from app.services.orchestration_queue_service import (
+    cancel_queue_job,
+    enqueue_orchestration_run,
+    get_queue_job,
+    list_queue_jobs,
+    retry_queue_job,
+)
 from app.services.orchestration_service import (
     create_workflow_template,
     export_workflow_templates,
@@ -43,14 +50,18 @@ def run_orchestration_endpoint(
     legacy_tier: Annotated[str | None, Header(alias="X-Subscription-Tier")] = None,
 ) -> WorkflowOrchestrationRead:
     settings = get_settings()
-    if entitlement_token is None and legacy_tier and not settings.entitlement_required:
+    if (
+        entitlement_token is None
+        and legacy_tier
+        and settings.effective_allow_legacy_subscription_tier_fallback
+    ):
         tier = legacy_tier
     else:
         tier = resolve_tier_from_entitlement(
             entitlement_token,
             secret=settings.entitlement_secret,
             default_tier=settings.default_subscription_tier,
-            required=settings.entitlement_required,
+            required=settings.effective_entitlement_required,
         )
     return run_orchestration(db, payload, subscription_tier=tier)
 
@@ -82,14 +93,18 @@ def enqueue_orchestration_endpoint(
     legacy_tier: Annotated[str | None, Header(alias="X-Subscription-Tier")] = None,
 ) -> WorkflowQueueRunResponse:
     settings = get_settings()
-    if entitlement_token is None and legacy_tier and not settings.entitlement_required:
+    if (
+        entitlement_token is None
+        and legacy_tier
+        and settings.effective_allow_legacy_subscription_tier_fallback
+    ):
         tier = legacy_tier
     else:
         tier = resolve_tier_from_entitlement(
             entitlement_token,
             secret=settings.entitlement_secret,
             default_tier=settings.default_subscription_tier,
-            required=settings.entitlement_required,
+            required=settings.effective_entitlement_required,
         )
     return enqueue_orchestration_run(
         db,
@@ -97,6 +112,15 @@ def enqueue_orchestration_endpoint(
         subscription_tier=tier,
         background_tasks=background_tasks,
     )
+
+
+@router.get("/queue/history", response_model=WorkflowQueueHistoryResponse)
+def list_queue_jobs_endpoint(
+    db: Session = Depends(get_db),
+    status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> WorkflowQueueHistoryResponse:
+    return list_queue_jobs(db, status=status, limit=limit)
 
 
 @router.get("/queue/{job_id}", response_model=WorkflowQueueJobRead)

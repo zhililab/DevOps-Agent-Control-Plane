@@ -495,6 +495,24 @@ button:focus-visible {
   color: #e7eaff;
 }
 
+.kpi-delta {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.kpi-delta-positive {
+  color: #71e2b7;
+}
+
+.kpi-delta-negative {
+  color: #ff8a92;
+}
+
+.kpi-delta-neutral {
+  color: #b8c3e7;
+}
+
 .chart-grid {
   display: grid;
   gap: 10px;
@@ -545,6 +563,62 @@ button:focus-visible {
 .mini-bar-label {
   font-size: 0.69rem;
   color: #adb8df;
+}
+
+.mini-line-wrap {
+  margin-top: 8px;
+  height: 122px;
+  border: 1px solid #3a4268;
+  border-radius: 10px;
+  padding: 8px;
+  background: linear-gradient(180deg, #1a1f35, #151a2d);
+}
+
+.mini-line-wrap svg {
+  width: 100%;
+  height: 100%;
+}
+
+.mini-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: riseIn 560ms ease both;
+}
+
+.mini-line-brand {
+  stroke: #8b72ff;
+}
+
+.mini-line-success {
+  stroke: #5ed0a8;
+}
+
+.mini-line-axis {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  font-size: 0.68rem;
+  color: #adb8df;
+}
+
+.mini-line-axis span:nth-child(2) {
+  text-align: center;
+}
+
+.mini-line-axis span:nth-child(3) {
+  text-align: right;
+}
+
+.mini-line-summary {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #b8c4ea;
+}
+
+.anomaly-hints {
+  margin: 0 0 12px;
 }
 
 .result-block {

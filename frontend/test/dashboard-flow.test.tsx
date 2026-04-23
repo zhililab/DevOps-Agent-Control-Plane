@@ -3,6 +3,13 @@ import { vi } from "vitest";
 
 import DashboardPage from "@/app/dashboard/page";
 
+function toIsoDay(daysAgo: number, hour = 8): string {
+  const current = new Date();
+  current.setDate(current.getDate() - daysAgo);
+  const day = current.toISOString().slice(0, 10);
+  return `${day}T${String(hour).padStart(2, "0")}:00:00Z`;
+}
+
 describe("dashboard flow", () => {
   test("shows partial data and friendly error when one endpoint fails", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
@@ -82,9 +89,9 @@ describe("dashboard flow", () => {
         return new Response(
           JSON.stringify({
             period_days: 7,
-            total_runs: 12,
-            weekly_active_orchestrations: 9,
-            partial_success_rate: 0.25,
+            total_runs: 4,
+            weekly_active_orchestrations: 3,
+            partial_success_rate: 0.75,
             average_duration_ms: 1850,
           }),
           { status: 200 }
@@ -97,6 +104,96 @@ describe("dashboard flow", () => {
             items: [
               {
                 id: 11,
+                status: "partial_success",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(6),
+                updated_at: toIsoDay(6),
+              },
+              {
+                id: 12,
+                status: "partial_success",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(5),
+                updated_at: toIsoDay(5),
+              },
+              {
+                id: 13,
+                status: "failed",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(3),
+                updated_at: toIsoDay(3),
+              },
+              {
+                id: 14,
+                status: "partial_success",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(1),
+                updated_at: toIsoDay(1),
+              },
+              {
+                id: 15,
+                status: "failed",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(13),
+                updated_at: toIsoDay(13),
+              },
+              {
+                id: 16,
+                status: "failed",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(12),
+                updated_at: toIsoDay(12),
+              },
+              {
+                id: 17,
                 status: "success",
                 duration_ms: 1200,
                 entry_source: "manual",
@@ -107,8 +204,83 @@ describe("dashboard flow", () => {
                   next_actions: [],
                 },
                 steps: [],
-                created_at: "2026-04-20T00:00:00Z",
-                updated_at: "2026-04-20T00:00:00Z",
+                created_at: toIsoDay(11),
+                updated_at: toIsoDay(11),
+              },
+              {
+                id: 18,
+                status: "failed",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(10),
+                updated_at: toIsoDay(10),
+              },
+              {
+                id: 19,
+                status: "partial_success",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(9),
+                updated_at: toIsoDay(9),
+              },
+              {
+                id: 20,
+                status: "success",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(8),
+                updated_at: toIsoDay(8),
+              },
+              {
+                id: 21,
+                status: "failed",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(7),
+                updated_at: toIsoDay(7),
+              },
+              {
+                id: 22,
+                status: "success",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: toIsoDay(7, 10),
+                updated_at: toIsoDay(7, 10),
               },
             ],
           }),
@@ -141,21 +313,32 @@ describe("dashboard flow", () => {
     expect(within(analysisCard!).getByText("1")).toBeInTheDocument();
 
     const waoCard = screen.getByText("Weekly Active Orchestrations").closest("article");
+    const runCard = screen.getByText("Orchestration Runs").closest("article");
     const partialSuccessCard = screen.getByText("Partial Success Rate").closest("article");
     const avgDurationCard = screen.getByText("Avg Orchestration Duration").closest("article");
 
+    expect(runCard).not.toBeNull();
     expect(waoCard).not.toBeNull();
     expect(partialSuccessCard).not.toBeNull();
     expect(avgDurationCard).not.toBeNull();
 
-    expect(within(waoCard!).getByText("9")).toBeInTheDocument();
-    expect(within(partialSuccessCard!).getByText("25.0%")).toBeInTheDocument();
+    expect(within(runCard!).getByText("4")).toBeInTheDocument();
+    expect(within(runCard!).getByText("-4 vs previous 7D")).toBeInTheDocument();
+    expect(within(waoCard!).getByText("3")).toBeInTheDocument();
+    expect(within(partialSuccessCard!).getByText("75.0%")).toBeInTheDocument();
+    expect(within(partialSuccessCard!).getByText("+62.5pp vs previous 7D")).toBeInTheDocument();
     expect(within(avgDurationCard!).getByText("1.9s")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Anomaly hint: Sharp run drop: 4 runs vs 8 in the previous 7-day window\./)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Anomaly hint: Partial-success\/fail ratio spiked from 0.40 to 2.00\./)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Orchestration Activity trend chart" })).toBeInTheDocument();
 
     const switchTo30Days = screen.getByRole("button", { name: "30D Window" });
     fireEvent.click(switchTo30Days);
 
     await waitFor(() => {
+      expect(within(runCard!).getByText("22")).toBeInTheDocument();
       expect(within(waoCard!).getByText("15")).toBeInTheDocument();
     });
     expect(within(partialSuccessCard!).getByText("10.0%")).toBeInTheDocument();
@@ -191,11 +374,16 @@ describe("dashboard flow", () => {
     });
 
     const waoCard = screen.getByText("Weekly Active Orchestrations").closest("article");
+    const runCard = screen.getByText("Orchestration Runs").closest("article");
     const partialSuccessCard = screen.getByText("Partial Success Rate").closest("article");
     const avgDurationCard = screen.getByText("Avg Orchestration Duration").closest("article");
 
+    expect(within(runCard!).getByText("0")).toBeInTheDocument();
+    expect(within(runCard!).getByText("0 vs previous 7D")).toBeInTheDocument();
     expect(within(waoCard!).getByText("0")).toBeInTheDocument();
     expect(within(partialSuccessCard!).getByText("0.0%")).toBeInTheDocument();
+    expect(within(partialSuccessCard!).getByText("0.0pp vs previous 7D")).toBeInTheDocument();
     expect(within(avgDurationCard!).getByText("0ms")).toBeInTheDocument();
+    expect(screen.getByText("No orchestration anomalies detected for the selected window.")).toBeInTheDocument();
   });
 });
