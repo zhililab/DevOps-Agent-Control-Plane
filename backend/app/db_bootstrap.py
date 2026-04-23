@@ -20,6 +20,7 @@ CORE_TABLES = (
     "workflow_step_runs",
     "workflow_templates",
     "workflow_queue_jobs",
+    "workflow_queue_events",
 )
 
 

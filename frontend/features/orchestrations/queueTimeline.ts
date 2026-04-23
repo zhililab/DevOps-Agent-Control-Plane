@@ -1,4 +1,4 @@
-import type { WorkflowQueueJob, WorkflowQueueJobStatus } from "@/lib/types";
+import type { WorkflowQueueJob, WorkflowQueueJobEvent, WorkflowQueueJobStatus } from "@/lib/types";
 
 export type QueueTimelineEvent = {
   id: string;
@@ -11,10 +11,6 @@ export type QueueTimelineEvent = {
 export type QueueTimelineReplay = {
   mode: "event_log" | "inferred";
   events: QueueTimelineEvent[];
-};
-
-type QueueJobWithOptionalEvents = WorkflowQueueJob & {
-  events?: Array<{ event?: string; status?: WorkflowQueueJobStatus; at?: string; detail?: string }>;
 };
 
 function normalizeTimestamp(value: string | undefined, fallback: string): string {
@@ -95,18 +91,17 @@ function inferTimeline(job: WorkflowQueueJob): QueueTimelineReplay {
 }
 
 export function buildQueueTimelineReplay(job: WorkflowQueueJob): QueueTimelineReplay {
-  const maybeWithEvents = job as QueueJobWithOptionalEvents;
-  if (!maybeWithEvents.events || maybeWithEvents.events.length === 0) {
+  if (!job.events || job.events.length === 0) {
     return inferTimeline(job);
   }
 
-  const observedEvents = maybeWithEvents.events.map((event, index) => {
-    const at = normalizeTimestamp(event.at, job.updated_at);
+  const observedEvents = job.events.map((event: WorkflowQueueJobEvent, index) => {
+    const at = normalizeTimestamp(event.created_at, job.updated_at);
     return {
-      id: `observed-${job.id}-${index}`,
+      id: `observed-${job.id}-${event.id}-${index}`,
       at,
-      title: event.event?.trim() || inferredStatusTitle(event.status ?? job.status),
-      detail: event.detail?.trim() || `Observed status=${event.status ?? job.status}.`,
+      title: event.event_type.trim() || inferredStatusTitle(event.status ?? job.status),
+      detail: event.detail.trim() || `Observed status=${event.status ?? job.status}.`,
       source: "observed" as const,
     };
   });
@@ -116,4 +111,3 @@ export function buildQueueTimelineReplay(job: WorkflowQueueJob): QueueTimelineRe
     events: observedEvents.sort((a, b) => a.at.localeCompare(b.at)),
   };
 }
-

@@ -475,6 +475,15 @@ class WorkflowQueueRunResponse(BaseModel):
     max_attempts: int
 
 
+class WorkflowQueueEventRead(BaseModel):
+    id: int
+    queue_job_id: int
+    event_type: str
+    status: QueueJobStatus
+    detail: str
+    created_at: datetime
+
+
 class WorkflowQueueJobRead(BaseModel):
     id: int
     status: QueueJobStatus
@@ -485,6 +494,7 @@ class WorkflowQueueJobRead(BaseModel):
     error_message: str
     created_at: datetime
     updated_at: datetime
+    events: list[WorkflowQueueEventRead] = Field(default_factory=list)
 
 
 class WorkflowQueueHistoryResponse(BaseModel):

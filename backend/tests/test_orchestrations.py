@@ -332,6 +332,9 @@ def test_queue_run_status_retry_and_cancel(client) -> None:
         assert status_response.status_code == 200
         current = status_response.json()
         assert current["status"] in {"running", "succeeded", "queued"}
+        assert isinstance(current.get("events"), list)
+        assert len(current["events"]) >= 1
+        assert any(item["event_type"] == "queued" for item in current["events"])
 
         cancel_response = client.post(f"/api/orchestrations/queue/{job_id}/cancel")
         # Cancel may race with completion; if completed, API returns 409 by design.

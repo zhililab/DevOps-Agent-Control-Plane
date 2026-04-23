@@ -6,8 +6,15 @@ from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import WorkflowQueueJob
-from app.schemas import WorkflowOrchestrationRunRequest, WorkflowQueueHistoryResponse, WorkflowQueueJobRead, WorkflowQueueRunResponse
+from app.models import WorkflowQueueEvent, WorkflowQueueJob
+from app.schemas import (
+    QueueJobStatus,
+    WorkflowOrchestrationRunRequest,
+    WorkflowQueueEventRead,
+    WorkflowQueueHistoryResponse,
+    WorkflowQueueJobRead,
+    WorkflowQueueRunResponse,
+)
 from app.services.orchestration_service import run_orchestration
 
 logger = logging.getLogger(__name__)
@@ -33,6 +40,14 @@ def enqueue_orchestration_run(
         ),
     )
     db.add(job)
+    db.flush()
+    _append_queue_event(
+        db,
+        job_id=job.id,
+        event_type="queued",
+        status="queued",
+        detail="Job accepted and queued for background processing.",
+    )
     db.commit()
     db.refresh(job)
 
@@ -44,7 +59,8 @@ def get_queue_job(db: Session, job_id: int) -> WorkflowQueueJobRead:
     job = db.query(WorkflowQueueJob).filter(WorkflowQueueJob.id == job_id).first()
     if job is None:
         raise HTTPException(status_code=404, detail="Queue job not found.")
-    return _to_queue_read(job)
+    events = _get_queue_events(db, job.id)
+    return _to_queue_read(job, events=events)
 
 
 def list_queue_jobs(
@@ -77,6 +93,13 @@ def retry_queue_job(db: Session, job_id: int, background_tasks: BackgroundTasks)
     job.cancel_requested = False
     job.error_message = ""
     db.add(job)
+    _append_queue_event(
+        db,
+        job_id=job.id,
+        event_type="retry_requested",
+        status="queued",
+        detail=f"Job queued for retry attempt {job.attempts + 1}/{job.max_attempts}.",
+    )
     db.commit()
     db.refresh(job)
     background_tasks.add_task(_process_queue_job, job.id)
@@ -90,14 +113,29 @@ def cancel_queue_job(db: Session, job_id: int) -> WorkflowQueueJobRead:
     if job.status == "queued":
         job.status = "canceled"
         job.cancel_requested = True
+        _append_queue_event(
+            db,
+            job_id=job.id,
+            event_type="cancel_requested",
+            status="canceled",
+            detail="Cancel requested before execution started.",
+        )
     elif job.status == "running":
         job.cancel_requested = True
+        _append_queue_event(
+            db,
+            job_id=job.id,
+            event_type="cancel_requested",
+            status="running",
+            detail="Cancel requested while job is running.",
+        )
     elif job.status in {"succeeded", "failed", "canceled"}:
         raise HTTPException(status_code=409, detail="Queue job already finished.")
     db.add(job)
     db.commit()
     db.refresh(job)
-    return _to_queue_read(job)
+    events = _get_queue_events(db, job.id)
+    return _to_queue_read(job, events=events)
 
 
 def _process_queue_job(job_id: int) -> None:
@@ -111,12 +149,26 @@ def _process_queue_job(job_id: int) -> None:
         if job.cancel_requested:
             job.status = "canceled"
             db.add(job)
+            _append_queue_event(
+                db,
+                job_id=job.id,
+                event_type="canceled",
+                status="canceled",
+                detail="Canceled before execution start due to existing cancel request.",
+            )
             db.commit()
             return
 
         job.status = "running"
         job.attempts += 1
         db.add(job)
+        _append_queue_event(
+            db,
+            job_id=job.id,
+            event_type="started",
+            status="running",
+            detail=f"Execution started (attempt {job.attempts}/{job.max_attempts}).",
+        )
         db.commit()
         db.refresh(job)
 
@@ -141,12 +193,26 @@ def _process_queue_job(job_id: int) -> None:
             refreshed.status = "canceled"
             refreshed.error_message = "Cancel requested."
             db.add(refreshed)
+            _append_queue_event(
+                db,
+                job_id=refreshed.id,
+                event_type="canceled",
+                status="canceled",
+                detail="Canceled during execution after cancel request was observed.",
+            )
             db.commit()
             return
         refreshed.status = "succeeded"
         refreshed.orchestration_id = result.id
         refreshed.error_message = ""
         db.add(refreshed)
+        _append_queue_event(
+            db,
+            job_id=refreshed.id,
+            event_type="succeeded",
+            status="succeeded",
+            detail=f"Execution completed and linked to orchestration #{result.id}.",
+        )
         db.commit()
     except Exception as exc:  # noqa: BLE001
         logger.exception("queue_job.failed job_id=%s", job_id)
@@ -155,12 +221,19 @@ def _process_queue_job(job_id: int) -> None:
             failed.status = "failed"
             failed.error_message = str(exc)[:1000]
             db.add(failed)
+            _append_queue_event(
+                db,
+                job_id=failed.id,
+                event_type="failed",
+                status="failed",
+                detail=f"Execution failed: {failed.error_message}",
+            )
             db.commit()
     finally:
         db.close()
 
 
-def _to_queue_read(job: WorkflowQueueJob) -> WorkflowQueueJobRead:
+def _to_queue_read(job: WorkflowQueueJob, *, events: list[WorkflowQueueEventRead] | None = None) -> WorkflowQueueJobRead:
     return WorkflowQueueJobRead(
         id=job.id,
         status=job.status,  # type: ignore[arg-type]
@@ -171,4 +244,43 @@ def _to_queue_read(job: WorkflowQueueJob) -> WorkflowQueueJobRead:
         error_message=job.error_message,
         created_at=job.created_at,
         updated_at=job.updated_at,
+        events=events or [],
     )
+
+
+def _append_queue_event(
+    db: Session,
+    *,
+    job_id: int,
+    event_type: str,
+    status: QueueJobStatus,
+    detail: str,
+) -> None:
+    db.add(
+        WorkflowQueueEvent(
+            queue_job_id=job_id,
+            event_type=event_type,
+            status=status,
+            detail=detail,
+        )
+    )
+
+
+def _get_queue_events(db: Session, job_id: int) -> list[WorkflowQueueEventRead]:
+    rows = (
+        db.query(WorkflowQueueEvent)
+        .filter(WorkflowQueueEvent.queue_job_id == job_id)
+        .order_by(WorkflowQueueEvent.created_at.asc(), WorkflowQueueEvent.id.asc())
+        .all()
+    )
+    return [
+        WorkflowQueueEventRead(
+            id=row.id,
+            queue_job_id=row.queue_job_id,
+            event_type=row.event_type,
+            status=row.status,  # type: ignore[arg-type]
+            detail=row.detail,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]

@@ -143,6 +143,32 @@ describe("orchestration workflow", () => {
             error_message: "Analyzer timeout",
             created_at: "2026-04-23T00:00:00Z",
             updated_at: "2026-04-23T00:00:10Z",
+            events: [
+              {
+                id: 1,
+                queue_job_id: 401,
+                event_type: "queued",
+                status: "queued",
+                detail: "Job accepted and queued.",
+                created_at: "2026-04-23T00:00:00Z",
+              },
+              {
+                id: 2,
+                queue_job_id: 401,
+                event_type: "started",
+                status: "running",
+                detail: "Execution started (attempt 1/3).",
+                created_at: "2026-04-23T00:00:02Z",
+              },
+              {
+                id: 3,
+                queue_job_id: 401,
+                event_type: "failed",
+                status: "failed",
+                detail: "Execution failed: Analyzer timeout",
+                created_at: "2026-04-23T00:00:10Z",
+              },
+            ],
           }),
           { status: 200 }
         );
@@ -163,10 +189,8 @@ describe("orchestration workflow", () => {
       expect(
         screen.getByText((content) => content.replace(/\s+/g, " ").trim() === "Job #401 · latest status=failed")
       ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Inferred from queue snapshot fields \(event log not currently available\)/i)
-      ).toBeInTheDocument();
-      expect(screen.getByText("Inferred latest status=failed.")).toBeInTheDocument();
+      expect(screen.getByText(/Observed queue events/i)).toBeInTheDocument();
+      expect(screen.getByText("Execution failed: Analyzer timeout")).toBeInTheDocument();
     });
   });
 
