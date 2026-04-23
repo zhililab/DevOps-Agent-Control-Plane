@@ -18,6 +18,7 @@ ENV PORT=3000
 COPY --from=builder /app/frontend/.next ./.next
 COPY --from=builder /app/frontend/package*.json ./
 COPY --from=builder /app/frontend/node_modules ./node_modules
+COPY --from=builder /app/frontend/public ./public
 
 EXPOSE 3000
 
