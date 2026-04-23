@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from datetime import timedelta
+from collections.abc import Callable
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -54,6 +55,7 @@ def run_orchestration(
     payload: WorkflowOrchestrationRunRequest,
     *,
     subscription_tier: str,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> WorkflowOrchestrationRead:
     tier = normalize_tier(subscription_tier)
     steps = _resolve_steps(db, payload)
@@ -89,6 +91,36 @@ def run_orchestration(
     has_failure = False
 
     for step in active_steps:
+        if should_cancel and should_cancel():
+            has_failure = True
+            step_started = _utcnow()
+            step_finished = _utcnow()
+            canceled_audit = WorkflowAuditBlock(
+                conclusion=f"Step '{step.step_name}' canceled before execution.",
+                evidence="Queue cancel_requested flag was true before step execution.",
+                risk="Workflow output may be incomplete due to cancellation.",
+                next_action="Retry the workflow run when ready.",
+            )
+            step_record = WorkflowStepRun(
+                orchestration_id=record.id,
+                step_name=step.step_name,
+                agent_type=step.agent_type,
+                status="skipped",
+                input_summary="{}",
+                output_summary=canceled_audit.conclusion,
+                audit_json=json.dumps(canceled_audit.model_dump(mode="json")),
+                fallback_action="Run queue retry when cancellation is no longer required.",
+                started_at=step_started,
+                finished_at=step_finished,
+                duration_ms=0,
+            )
+            db.add(step_record)
+            db.commit()
+            db.refresh(step_record)
+            step_records.append(step_record)
+            previous_audits.append(canceled_audit)
+            break
+
         step_started = _utcnow()
         step_input = _build_step_input(step.agent_type, payload, previous_audits)
         audit, step_status, fallback = _execute_step(step.agent_type, payload, previous_audits)

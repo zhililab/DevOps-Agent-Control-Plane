@@ -11,6 +11,7 @@ import type {
   DailyPlanRecord,
   DailyReflectionRecord,
   TechnicalAnalysisRecord,
+  WorkflowOrchestrationRecord,
   WorkflowOrchestrationMetrics,
 } from "@/lib/types";
 
@@ -18,6 +19,7 @@ type DashboardState = {
   plans: DailyPlanRecord[];
   reflections: DailyReflectionRecord[];
   analyses: TechnicalAnalysisRecord[];
+  orchestrations: WorkflowOrchestrationRecord[];
   orchestrationMetrics: WorkflowOrchestrationMetrics;
 };
 
@@ -28,6 +30,8 @@ const DEFAULT_ORCHESTRATION_METRICS: WorkflowOrchestrationMetrics = {
   partial_success_rate: 0,
   average_duration_ms: 0,
 };
+
+const DASHBOARD_WINDOW_OPTIONS = [7, 30] as const;
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
@@ -86,22 +90,22 @@ export function DashboardView() {
     plans: [],
     reflections: [],
     analyses: [],
+    orchestrations: [],
     orchestrationMetrics: DEFAULT_ORCHESTRATION_METRICS,
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [recentDateKeys, setRecentDateKeys] = useState<string[]>([]);
+  const [orchestrationWindowDays, setOrchestrationWindowDays] = useState<7 | 30>(7);
+  const [orchestrationLoading, setOrchestrationLoading] = useState(false);
+  const [orchestrationError, setOrchestrationError] = useState<string | null>(null);
   const storyRefs = useRef<Array<HTMLElement | null>>([]);
 
   useEffect(() => {
-    setRecentDateKeys(buildRecentDateKeys(7));
-
     async function load() {
-      const [plansResult, reflectionsResult, analysesResult, orchestrationMetricsResult] = await Promise.allSettled([
+      const [plansResult, reflectionsResult, analysesResult] = await Promise.allSettled([
         apiClient.listDailyPlans(),
         apiClient.listDailyReflections(),
         apiClient.listTechnicalAnalyses(),
-        apiClient.getWorkflowOrchestrationMetrics(7),
       ]);
 
       const plans =
@@ -114,17 +118,12 @@ export function DashboardView() {
         analysesResult.status === "fulfilled" && hasItemsPayload(analysesResult.value)
           ? analysesResult.value.items
           : [];
-      const orchestrationMetrics =
-        orchestrationMetricsResult.status === "fulfilled" &&
-        hasOrchestrationMetricsPayload(orchestrationMetricsResult.value)
-          ? orchestrationMetricsResult.value
-          : DEFAULT_ORCHESTRATION_METRICS;
-
       const nextState: DashboardState = {
         plans,
         reflections,
         analyses,
-        orchestrationMetrics,
+        orchestrations: [],
+        orchestrationMetrics: { ...DEFAULT_ORCHESTRATION_METRICS },
       };
       setState(nextState);
 
@@ -144,14 +143,6 @@ export function DashboardView() {
       ) {
         failedEndpoints.push("analysis");
       }
-      if (
-        orchestrationMetricsResult.status === "rejected" ||
-        (orchestrationMetricsResult.status === "fulfilled" &&
-          !hasOrchestrationMetricsPayload(orchestrationMetricsResult.value))
-      ) {
-        failedEndpoints.push("orchestration metrics");
-      }
-
       if (failedEndpoints.length > 0) {
         setError(`Some dashboard data is unavailable: ${failedEndpoints.join(", ")}.`);
       } else {
@@ -162,6 +153,47 @@ export function DashboardView() {
 
     void load();
   }, []);
+
+  useEffect(() => {
+    async function loadOrchestrationWindow() {
+      setOrchestrationLoading(true);
+
+      const [metricsResult, historyResult] = await Promise.allSettled([
+        apiClient.getWorkflowOrchestrationMetrics(orchestrationWindowDays),
+        apiClient.listWorkflowOrchestrations({ limit: 200 }),
+      ]);
+
+      const metrics =
+        metricsResult.status === "fulfilled" && hasOrchestrationMetricsPayload(metricsResult.value)
+          ? metricsResult.value
+          : { ...DEFAULT_ORCHESTRATION_METRICS, period_days: orchestrationWindowDays };
+      const orchestrations =
+        historyResult.status === "fulfilled" && hasItemsPayload(historyResult.value) ? historyResult.value.items : [];
+
+      setState((prev) => ({
+        ...prev,
+        orchestrationMetrics: metrics,
+        orchestrations,
+      }));
+
+      const failedEndpoints: string[] = [];
+      if (metricsResult.status === "rejected" || (metricsResult.status === "fulfilled" && !hasOrchestrationMetricsPayload(metricsResult.value))) {
+        failedEndpoints.push("orchestration metrics");
+      }
+      if (historyResult.status === "rejected" || (historyResult.status === "fulfilled" && !hasItemsPayload(historyResult.value))) {
+        failedEndpoints.push("orchestration history");
+      }
+
+      if (failedEndpoints.length > 0) {
+        setOrchestrationError(`Some dashboard data is unavailable: ${failedEndpoints.join(", ")}.`);
+      } else {
+        setOrchestrationError(null);
+      }
+      setOrchestrationLoading(false);
+    }
+
+    void loadOrchestrationWindow();
+  }, [orchestrationWindowDays]);
 
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") {
@@ -191,6 +223,9 @@ export function DashboardView() {
     };
   }, []);
 
+  const recentDateKeys = useMemo(() => buildRecentDateKeys(7), []);
+  const orchestrationDateKeys = useMemo(() => buildRecentDateKeys(orchestrationWindowDays), [orchestrationWindowDays]);
+
   const planTrend = useMemo(
     () => toTrendData(recentDateKeys, state.plans.map((item) => item.plan_date)),
     [recentDateKeys, state.plans]
@@ -203,6 +238,18 @@ export function DashboardView() {
     () => toTrendData(recentDateKeys, state.analyses.map((item) => item.analysis_date)),
     [recentDateKeys, state.analyses]
   );
+  const orchestrationTrend = useMemo(
+    () =>
+      toTrendData(
+        orchestrationDateKeys,
+        state.orchestrations
+          .map((item) => item.created_at?.slice(0, 10))
+          .filter((value): value is string => Boolean(value))
+      ),
+    [orchestrationDateKeys, state.orchestrations]
+  );
+
+  const mergedError = [error, orchestrationError].filter(Boolean).join(" ") || null;
 
   return (
     <PageCard title="Dashboard" description="Personal execution loop at a glance.">
@@ -229,7 +276,7 @@ export function DashboardView() {
         </div>
       </section>
 
-      {error ? <p className="status status-error">{error}</p> : null}
+      {mergedError ? <p className="status status-error">{mergedError}</p> : null}
       {isLoading ? <p className="muted">Loading dashboard data...</p> : null}
 
       <section className="kpi-grid">
@@ -247,17 +294,40 @@ export function DashboardView() {
         </article>
         <article className="kpi-card animate-enter">
           <p className="kpi-label">Weekly Active Orchestrations</p>
+          <p className="muted">Last {orchestrationWindowDays} days</p>
           <p className="kpi-value">{state.orchestrationMetrics.weekly_active_orchestrations}</p>
         </article>
         <article className="kpi-card animate-enter">
           <p className="kpi-label">Partial Success Rate</p>
+          <p className="muted">Last {orchestrationWindowDays} days</p>
           <p className="kpi-value">{formatPercent(state.orchestrationMetrics.partial_success_rate)}</p>
         </article>
         <article className="kpi-card animate-enter">
           <p className="kpi-label">Avg Orchestration Duration</p>
+          <p className="muted">Last {orchestrationWindowDays} days</p>
           <p className="kpi-value">{formatDurationMs(state.orchestrationMetrics.average_duration_ms)}</p>
         </article>
       </section>
+
+      <section className="graph-filter-row" aria-label="orchestration-window-switcher">
+        {DASHBOARD_WINDOW_OPTIONS.map((days) => {
+          const active = orchestrationWindowDays === days;
+          return (
+            <button
+              key={days}
+              type="button"
+              className={active ? "graph-filter-active" : undefined}
+              onClick={() => {
+                setOrchestrationWindowDays(days);
+              }}
+              aria-pressed={active}
+            >
+              {days}D Window
+            </button>
+          );
+        })}
+      </section>
+      {orchestrationLoading ? <p className="muted">Updating orchestration window...</p> : null}
 
       <section className="chart-grid">
         <MiniBarTrend title="Planning Activity" subtitle="Daily plans in last 7 days" data={planTrend} />
@@ -271,6 +341,12 @@ export function DashboardView() {
           title="Analysis Activity"
           subtitle="Technical analyses in last 7 days"
           data={analysisTrend}
+        />
+        <MiniBarTrend
+          title="Orchestration Activity"
+          subtitle={`Workflow orchestrations in last ${orchestrationWindowDays} days`}
+          data={orchestrationTrend}
+          tone="success"
         />
       </section>
 

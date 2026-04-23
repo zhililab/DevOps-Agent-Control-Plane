@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -10,12 +10,16 @@ from app.schemas import (
     WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
     WorkflowOrchestrationRunRequest,
+    WorkflowQueueJobRead,
+    WorkflowQueueRunResponse,
     WorkflowTemplateCreate,
     WorkflowTemplateImportRequest,
     WorkflowTemplateImportResponse,
     WorkflowTemplateRead,
     WorkflowTemplateUpdate,
 )
+from app.services.entitlement_service import resolve_tier_from_entitlement
+from app.services.orchestration_queue_service import cancel_queue_job, enqueue_orchestration_run, get_queue_job, retry_queue_job
 from app.services.orchestration_service import (
     create_workflow_template,
     export_workflow_templates,
@@ -35,10 +39,19 @@ router = APIRouter(prefix="/orchestrations", tags=["orchestrations"])
 def run_orchestration_endpoint(
     payload: WorkflowOrchestrationRunRequest,
     db: Session = Depends(get_db),
-    subscription_tier: Annotated[str | None, Header(alias="X-Subscription-Tier")] = None,
+    entitlement_token: Annotated[str | None, Header(alias="X-Entitlement")] = None,
+    legacy_tier: Annotated[str | None, Header(alias="X-Subscription-Tier")] = None,
 ) -> WorkflowOrchestrationRead:
     settings = get_settings()
-    tier = subscription_tier or settings.default_subscription_tier
+    if entitlement_token is None and legacy_tier and not settings.entitlement_required:
+        tier = legacy_tier
+    else:
+        tier = resolve_tier_from_entitlement(
+            entitlement_token,
+            secret=settings.entitlement_secret,
+            default_tier=settings.default_subscription_tier,
+            required=settings.entitlement_required,
+        )
     return run_orchestration(db, payload, subscription_tier=tier)
 
 
@@ -58,6 +71,57 @@ def get_orchestration_metrics_endpoint(
     days: int = Query(default=7, ge=1, le=90),
 ) -> WorkflowOrchestrationMetricsResponse:
     return get_orchestration_metrics(db, days=days)
+
+
+@router.post("/queue/run", response_model=WorkflowQueueRunResponse)
+def enqueue_orchestration_endpoint(
+    payload: WorkflowOrchestrationRunRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    entitlement_token: Annotated[str | None, Header(alias="X-Entitlement")] = None,
+    legacy_tier: Annotated[str | None, Header(alias="X-Subscription-Tier")] = None,
+) -> WorkflowQueueRunResponse:
+    settings = get_settings()
+    if entitlement_token is None and legacy_tier and not settings.entitlement_required:
+        tier = legacy_tier
+    else:
+        tier = resolve_tier_from_entitlement(
+            entitlement_token,
+            secret=settings.entitlement_secret,
+            default_tier=settings.default_subscription_tier,
+            required=settings.entitlement_required,
+        )
+    return enqueue_orchestration_run(
+        db,
+        payload,
+        subscription_tier=tier,
+        background_tasks=background_tasks,
+    )
+
+
+@router.get("/queue/{job_id}", response_model=WorkflowQueueJobRead)
+def get_queue_job_endpoint(
+    job_id: int,
+    db: Session = Depends(get_db),
+) -> WorkflowQueueJobRead:
+    return get_queue_job(db, job_id)
+
+
+@router.post("/queue/{job_id}/retry", response_model=WorkflowQueueRunResponse)
+def retry_queue_job_endpoint(
+    job_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> WorkflowQueueRunResponse:
+    return retry_queue_job(db, job_id, background_tasks)
+
+
+@router.post("/queue/{job_id}/cancel", response_model=WorkflowQueueJobRead)
+def cancel_queue_job_endpoint(
+    job_id: int,
+    db: Session = Depends(get_db),
+) -> WorkflowQueueJobRead:
+    return cancel_queue_job(db, job_id)
 
 
 @router.post("/templates", response_model=WorkflowTemplateRead)

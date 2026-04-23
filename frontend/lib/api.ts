@@ -16,6 +16,8 @@ import type {
   WorkflowOrchestrationHistoryResponse,
   WorkflowOrchestrationMetrics,
   WorkflowOrchestrationRecord,
+  WorkflowQueueJob,
+  WorkflowQueueRunResponse,
   WorkflowStepDefinition,
   WorkflowTemplate,
   WorkflowTemplateImportResponse,
@@ -241,12 +243,53 @@ export const apiClient = {
       persist_knowledge?: boolean;
       persist_template?: boolean;
     },
-    options?: { subscription_tier?: "free" | "pro" | "power" }
+    options?: { subscription_tier?: "free" | "pro" | "power"; entitlement_token?: string }
   ) {
+    const headers: Record<string, string> = {};
+    if (options?.subscription_tier) headers["X-Subscription-Tier"] = options.subscription_tier;
+    if (options?.entitlement_token) headers["X-Entitlement"] = options.entitlement_token;
     return request<WorkflowOrchestrationRecord>("/orchestrations/run", {
       method: "POST",
-      headers: options?.subscription_tier ? { "X-Subscription-Tier": options.subscription_tier } : {},
+      headers,
       body: JSON.stringify(payload),
+    });
+  },
+
+  enqueueWorkflowOrchestration(
+    payload: {
+      entry_source: string;
+      steps: WorkflowStepDefinition[];
+      daily_context?: DailyContextInput;
+      technical_input?: TechnicalAnalysisInput;
+      reflection_input?: DailyReflectionInput;
+      persist_knowledge?: boolean;
+      persist_template?: boolean;
+    },
+    options?: { subscription_tier?: "free" | "pro" | "power"; entitlement_token?: string }
+  ) {
+    const headers: Record<string, string> = {};
+    if (options?.subscription_tier) headers["X-Subscription-Tier"] = options.subscription_tier;
+    if (options?.entitlement_token) headers["X-Entitlement"] = options.entitlement_token;
+    return request<WorkflowQueueRunResponse>("/orchestrations/queue/run", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getWorkflowQueueJob(jobId: number) {
+    return request<WorkflowQueueJob>(`/orchestrations/queue/${jobId}`);
+  },
+
+  retryWorkflowQueueJob(jobId: number) {
+    return request<WorkflowQueueRunResponse>(`/orchestrations/queue/${jobId}/retry`, {
+      method: "POST",
+    });
+  },
+
+  cancelWorkflowQueueJob(jobId: number) {
+    return request<WorkflowQueueJob>(`/orchestrations/queue/${jobId}/cancel`, {
+      method: "POST",
     });
   },
 

@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     rate_limit_max_requests: int = Field(default=120, validation_alias="APP_RATE_LIMIT_MAX_REQUESTS")
     rate_limit_window_seconds: int = Field(default=60, validation_alias="APP_RATE_LIMIT_WINDOW_SECONDS")
     default_subscription_tier: str = Field(default="pro", validation_alias="APP_DEFAULT_SUBSCRIPTION_TIER")
+    entitlement_secret: str = Field(default="", validation_alias="APP_ENTITLEMENT_SECRET")
+    entitlement_required: bool = Field(default=False, validation_alias="APP_ENTITLEMENT_REQUIRED")
 
 
 @lru_cache

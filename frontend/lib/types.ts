@@ -144,7 +144,7 @@ export type PromptTemplateImportResponse = {
 
 export type WorkflowAgentType = "planner" | "analyzer" | "reviewer";
 export type WorkflowStepStatus = "success" | "failed" | "skipped";
-export type WorkflowOrchestrationStatus = "success" | "partial_success" | "failed";
+export type WorkflowOrchestrationStatus = "running" | "success" | "partial_success" | "failed" | "canceled";
 export type SubscriptionTier = "free" | "pro" | "power";
 
 export type WorkflowStepDefinition = {
@@ -213,6 +213,27 @@ export type WorkflowOrchestrationMetrics = {
   weekly_active_orchestrations: number;
   partial_success_rate: number;
   average_duration_ms: number;
+};
+
+export type WorkflowQueueJobStatus = "queued" | "running" | "succeeded" | "failed" | "canceled";
+
+export type WorkflowQueueRunResponse = {
+  job_id: number;
+  status: WorkflowQueueJobStatus;
+  attempts: number;
+  max_attempts: number;
+};
+
+export type WorkflowQueueJob = {
+  id: number;
+  status: WorkflowQueueJobStatus;
+  attempts: number;
+  max_attempts: number;
+  cancel_requested: boolean;
+  orchestration_id: number | null;
+  error_message: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type WorkflowTemplateImportResponse = {

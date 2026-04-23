@@ -17,6 +17,7 @@ Current stage extends this into a deterministic multi-agent orchestration produc
 - Database: PostgreSQL
 - Optional: vector store for semantic retrieval
 - Current orchestration entities: `WorkflowOrchestration`, `WorkflowStepRun`, `WorkflowTemplate`
+- Current orchestration queue entity: `WorkflowQueueJob`
 - Current orchestration routes: `/api/orchestrations/*`
 
 ## Repository Structure
@@ -39,6 +40,7 @@ Current stage extends this into a deterministic multi-agent orchestration produc
 - Prefer deterministic validation errors over silent truncation in user-facing APIs.
 - Keep externally exposed deployment paths minimal and easy to audit.
 - For orchestration/audit payloads, preserve explainability (`conclusion/evidence/risk/next_action`) while sanitizing sensitive strings.
+- Prefer signed entitlement (`X-Entitlement`) over plain tier headers for subscription-bound orchestration actions.
 
 ## Task Expectations
 When given a task:
@@ -53,6 +55,7 @@ When given a task:
    - step replay integrity
    - partial-success behavior
    - tier boundary behavior (`free` vs `pro/power`)
+   - queue lifecycle behavior (`queued/running/succeeded/failed/canceled`) and retry/cancel idempotency
 
 ## Do Not
 - do not introduce unrelated refactors

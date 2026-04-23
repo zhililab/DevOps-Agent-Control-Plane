@@ -8,7 +8,7 @@ import type { WorkflowOrchestrationRecord } from "@/lib/types";
 
 export function OrchestrationsHistoryView() {
   const [items, setItems] = useState<WorkflowOrchestrationRecord[]>([]);
-  const [statusFilter, setStatusFilter] = useState<"all" | "success" | "partial_success" | "failed">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "running" | "success" | "partial_success" | "failed" | "canceled">("all");
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "pro" | "power">("all");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,9 +42,11 @@ export function OrchestrationsHistoryView() {
           Status
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
             <option value="all">All</option>
+            <option value="running">Running</option>
             <option value="success">Success</option>
             <option value="partial_success">Partial Success</option>
             <option value="failed">Failed</option>
+            <option value="canceled">Canceled</option>
           </select>
         </label>
         <label>
