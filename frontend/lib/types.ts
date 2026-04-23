@@ -207,6 +207,14 @@ export type WorkflowOrchestrationHistoryResponse = {
   items: WorkflowOrchestrationRecord[];
 };
 
+export type WorkflowOrchestrationMetrics = {
+  period_days: number;
+  total_runs: number;
+  weekly_active_orchestrations: number;
+  partial_success_rate: number;
+  average_duration_ms: number;
+};
+
 export type WorkflowTemplateImportResponse = {
   imported: number;
   updated: number;

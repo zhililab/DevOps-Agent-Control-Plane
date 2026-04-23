@@ -138,3 +138,18 @@ def test_workflow_template_import_export_round_trip(client) -> None:
     )
     assert run_from_template.status_code == 200
     assert run_from_template.json()["status"] == "success"
+
+
+def test_orchestration_metrics_reports_weekly_activity(client) -> None:
+    run_response = client.post("/api/orchestrations/run", json=_default_run_payload())
+    assert run_response.status_code == 200
+
+    metrics_response = client.get("/api/orchestrations/metrics?days=7")
+    assert metrics_response.status_code == 200
+    metrics = metrics_response.json()
+
+    assert metrics["period_days"] == 7
+    assert metrics["total_runs"] >= 1
+    assert metrics["weekly_active_orchestrations"] >= 1
+    assert "partial_success_rate" in metrics
+    assert "average_duration_ms" in metrics

@@ -14,6 +14,7 @@ import type {
   TechnicalAnalysisInput,
   TechnicalAnalysisRecord,
   WorkflowOrchestrationHistoryResponse,
+  WorkflowOrchestrationMetrics,
   WorkflowOrchestrationRecord,
   WorkflowStepDefinition,
   WorkflowTemplate,
@@ -260,6 +261,10 @@ export const apiClient = {
 
   getWorkflowOrchestration(orchestrationId: number) {
     return request<WorkflowOrchestrationRecord>(`/orchestrations/${orchestrationId}`);
+  },
+
+  getWorkflowOrchestrationMetrics(days = 7) {
+    return request<WorkflowOrchestrationMetrics>(`/orchestrations/metrics?days=${days}`);
   },
 
   createWorkflowTemplate(payload: {

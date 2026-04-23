@@ -17,59 +17,79 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "workflow_orchestrations",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="success"),
-        sa.Column("duration_ms", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("entry_source", sa.String(length=64), nullable=False, server_default="manual"),
-        sa.Column("subscription_tier", sa.String(length=16), nullable=False, server_default="pro"),
-        sa.Column("request_json", sa.Text(), nullable=False, server_default="{}"),
-        sa.Column("result_json", sa.Text(), nullable=False, server_default="{}"),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
-    )
-    op.create_index("ix_workflow_orchestrations_id", "workflow_orchestrations", ["id"])
-    op.create_index("ix_workflow_orchestrations_status", "workflow_orchestrations", ["status"])
-    op.create_index(
-        "ix_workflow_orchestrations_subscription_tier",
-        "workflow_orchestrations",
-        ["subscription_tier"],
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
 
-    op.create_table(
-        "workflow_step_runs",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("orchestration_id", sa.Integer(), nullable=False),
-        sa.Column("step_name", sa.String(length=120), nullable=False),
-        sa.Column("agent_type", sa.String(length=32), nullable=False),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="success"),
-        sa.Column("input_summary", sa.Text(), nullable=False, server_default=""),
-        sa.Column("output_summary", sa.Text(), nullable=False, server_default=""),
-        sa.Column("audit_json", sa.Text(), nullable=False, server_default="{}"),
-        sa.Column("fallback_action", sa.Text(), nullable=False, server_default=""),
-        sa.Column("started_at", sa.DateTime(), nullable=False),
-        sa.Column("finished_at", sa.DateTime(), nullable=False),
-        sa.Column("duration_ms", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-    )
-    op.create_index("ix_workflow_step_runs_id", "workflow_step_runs", ["id"])
-    op.create_index("ix_workflow_step_runs_orchestration_id", "workflow_step_runs", ["orchestration_id"])
-    op.create_index("ix_workflow_step_runs_agent_type", "workflow_step_runs", ["agent_type"])
+    if not inspector.has_table("workflow_orchestrations"):
+        op.create_table(
+            "workflow_orchestrations",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("status", sa.String(length=32), nullable=False, server_default="success"),
+            sa.Column("duration_ms", sa.Integer(), nullable=False, server_default="0"),
+            sa.Column("entry_source", sa.String(length=64), nullable=False, server_default="manual"),
+            sa.Column("subscription_tier", sa.String(length=16), nullable=False, server_default="pro"),
+            sa.Column("request_json", sa.Text(), nullable=False, server_default="{}"),
+            sa.Column("result_json", sa.Text(), nullable=False, server_default="{}"),
+            sa.Column("created_at", sa.DateTime(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), nullable=False),
+        )
 
-    op.create_table(
-        "workflow_templates",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("name", sa.String(length=160), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False, server_default=""),
-        sa.Column("steps_json", sa.Text(), nullable=False, server_default="[]"),
-        sa.Column("tags_json", sa.Text(), nullable=False, server_default="[]"),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
-    )
-    op.create_index("ix_workflow_templates_id", "workflow_templates", ["id"])
-    op.create_index("ix_workflow_templates_name", "workflow_templates", ["name"])
+    existing_orchestration_indexes = {item["name"] for item in inspector.get_indexes("workflow_orchestrations")}
+    if "ix_workflow_orchestrations_id" not in existing_orchestration_indexes:
+        op.create_index("ix_workflow_orchestrations_id", "workflow_orchestrations", ["id"])
+    if "ix_workflow_orchestrations_status" not in existing_orchestration_indexes:
+        op.create_index("ix_workflow_orchestrations_status", "workflow_orchestrations", ["status"])
+    if "ix_workflow_orchestrations_subscription_tier" not in existing_orchestration_indexes:
+        op.create_index(
+            "ix_workflow_orchestrations_subscription_tier",
+            "workflow_orchestrations",
+            ["subscription_tier"],
+        )
+
+    if not inspector.has_table("workflow_step_runs"):
+        op.create_table(
+            "workflow_step_runs",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("orchestration_id", sa.Integer(), nullable=False),
+            sa.Column("step_name", sa.String(length=120), nullable=False),
+            sa.Column("agent_type", sa.String(length=32), nullable=False),
+            sa.Column("status", sa.String(length=32), nullable=False, server_default="success"),
+            sa.Column("input_summary", sa.Text(), nullable=False, server_default=""),
+            sa.Column("output_summary", sa.Text(), nullable=False, server_default=""),
+            sa.Column("audit_json", sa.Text(), nullable=False, server_default="{}"),
+            sa.Column("fallback_action", sa.Text(), nullable=False, server_default=""),
+            sa.Column("started_at", sa.DateTime(), nullable=False),
+            sa.Column("finished_at", sa.DateTime(), nullable=False),
+            sa.Column("duration_ms", sa.Integer(), nullable=False, server_default="0"),
+            sa.Column("created_at", sa.DateTime(), nullable=False),
+        )
+
+    existing_step_indexes = {item["name"] for item in inspector.get_indexes("workflow_step_runs")}
+    if "ix_workflow_step_runs_id" not in existing_step_indexes:
+        op.create_index("ix_workflow_step_runs_id", "workflow_step_runs", ["id"])
+    if "ix_workflow_step_runs_orchestration_id" not in existing_step_indexes:
+        op.create_index("ix_workflow_step_runs_orchestration_id", "workflow_step_runs", ["orchestration_id"])
+    if "ix_workflow_step_runs_agent_type" not in existing_step_indexes:
+        op.create_index("ix_workflow_step_runs_agent_type", "workflow_step_runs", ["agent_type"])
+
+    if not inspector.has_table("workflow_templates"):
+        op.create_table(
+            "workflow_templates",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("name", sa.String(length=160), nullable=False),
+            sa.Column("description", sa.Text(), nullable=False, server_default=""),
+            sa.Column("steps_json", sa.Text(), nullable=False, server_default="[]"),
+            sa.Column("tags_json", sa.Text(), nullable=False, server_default="[]"),
+            sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+            sa.Column("created_at", sa.DateTime(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), nullable=False),
+        )
+
+    existing_template_indexes = {item["name"] for item in inspector.get_indexes("workflow_templates")}
+    if "ix_workflow_templates_id" not in existing_template_indexes:
+        op.create_index("ix_workflow_templates_id", "workflow_templates", ["id"])
+    if "ix_workflow_templates_name" not in existing_template_indexes:
+        op.create_index("ix_workflow_templates_name", "workflow_templates", ["name"])
 
 
 def downgrade() -> None:

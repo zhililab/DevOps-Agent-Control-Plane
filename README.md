@@ -258,6 +258,7 @@ Current test coverage includes:
 - daily planning generation + persistence + history retrieval
 - daily reflection summary generation + persistence + history retrieval
 - technical analysis generation + request validation + persistence + history retrieval
+- smoke-check script coverage for UI routes and core APIs, including orchestration run/history
 - orchestration workflow run + step replay + partial failure fallback + history retrieval
 - free/pro/power tier boundary for orchestration (free single-step restriction)
 - orchestration template CRUD + import/export round-trip

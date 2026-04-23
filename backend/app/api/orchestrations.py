@@ -7,6 +7,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.schemas import (
     WorkflowOrchestrationHistoryResponse,
+    WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
     WorkflowOrchestrationRunRequest,
     WorkflowTemplateCreate,
@@ -19,6 +20,7 @@ from app.services.orchestration_service import (
     create_workflow_template,
     export_workflow_templates,
     get_orchestration,
+    get_orchestration_metrics,
     import_workflow_templates,
     list_orchestrations,
     list_workflow_templates,
@@ -48,6 +50,14 @@ def list_orchestrations_endpoint(
     limit: int = Query(default=50, ge=1, le=200),
 ) -> WorkflowOrchestrationHistoryResponse:
     return list_orchestrations(db, status=status, subscription_tier=subscription_tier, limit=limit)
+
+
+@router.get("/metrics", response_model=WorkflowOrchestrationMetricsResponse)
+def get_orchestration_metrics_endpoint(
+    db: Session = Depends(get_db),
+    days: int = Query(default=7, ge=1, le=90),
+) -> WorkflowOrchestrationMetricsResponse:
+    return get_orchestration_metrics(db, days=days)
 
 
 @router.post("/templates", response_model=WorkflowTemplateRead)

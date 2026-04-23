@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime, timezone
+from datetime import timedelta
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -14,6 +15,7 @@ from app.schemas import (
     TechnicalAnalysisInput,
     WorkflowAuditBlock,
     WorkflowOrchestrationHistoryResponse,
+    WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
     WorkflowOrchestrationRunRequest,
     WorkflowOrchestrationSummary,
@@ -161,6 +163,30 @@ def list_orchestrations(
         summary = WorkflowOrchestrationSummary.model_validate(json.loads(record.result_json or "{}"))
         items.append(_to_orchestration_read(record, steps, summary))
     return WorkflowOrchestrationHistoryResponse(items=items)
+
+
+def get_orchestration_metrics(db: Session, *, days: int = 7) -> WorkflowOrchestrationMetricsResponse:
+    period_days = max(1, min(days, 90))
+    window_start = _utcnow() - timedelta(days=period_days)
+    records = (
+        db.query(WorkflowOrchestration)
+        .filter(WorkflowOrchestration.created_at >= window_start)
+        .order_by(WorkflowOrchestration.created_at.desc())
+        .all()
+    )
+    total_runs = len(records)
+    partial_count = len([record for record in records if record.status == "partial_success"])
+    duration_total = sum(max(0, record.duration_ms) for record in records)
+    average_duration_ms = int(duration_total / total_runs) if total_runs > 0 else 0
+    partial_success_rate = round((partial_count / total_runs), 4) if total_runs > 0 else 0.0
+
+    return WorkflowOrchestrationMetricsResponse(
+        period_days=period_days,
+        total_runs=total_runs,
+        weekly_active_orchestrations=total_runs,
+        partial_success_rate=partial_success_rate,
+        average_duration_ms=average_duration_ms,
+    )
 
 
 def get_orchestration(db: Session, orchestration_id: int) -> WorkflowOrchestrationRead:

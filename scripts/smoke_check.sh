@@ -64,6 +64,21 @@ assert_api_get_is_array() {
   log "api ok: ${url} returns JSON array"
 }
 
+assert_api_get_json_contains() {
+  local url="$1"
+  local must_contain="$2"
+  local body
+  body="$(curl -sS "$url")"
+
+  if [[ "$body" != *"$must_contain"* ]]; then
+    log "api assertion failed: ${url} missing '${must_contain}'"
+    echo "$body"
+    return 1
+  fi
+
+  log "api ok: ${url} contains '${must_contain}'"
+}
+
 main() {
   : > /tmp/personal-agent-smoke-body.txt
   log "checking frontend routes"
@@ -71,6 +86,8 @@ main() {
   assert_route_ok "/today"
   assert_route_ok "/reflection"
   assert_route_ok "/technical-analysis"
+  assert_route_ok "/orchestrate"
+  assert_route_ok "/orchestrations"
   assert_route_ok "/knowledge"
   assert_route_ok "/templates"
 
@@ -99,6 +116,19 @@ main() {
     "${API_BASE}/analysis/technical" \
     '{"issue_description":"Smoke issue","logs":"error line","errors":["timeout"],"code_snippets":["kubectl get pods"]}' \
     '"problem_statement"'
+
+  assert_api_json_contains \
+    "${API_BASE}/orchestrations/run" \
+    '{"entry_source":"smoke_check","steps":[{"step_name":"Smoke planner","agent_type":"planner","enabled":true}],"daily_context":{"tasks":["Smoke task"],"meetings":["Smoke meeting"],"blockers":["None"],"priorities":["Smoke task"]},"persist_knowledge":false,"persist_template":false}' \
+    '"summary":{"conclusion"'
+
+  assert_api_get_json_contains \
+    "${API_BASE}/orchestrations/history?limit=1" \
+    '"items":['
+
+  assert_api_get_json_contains \
+    "${API_BASE}/orchestrations/history?limit=1" \
+    '"summary":{"conclusion"'
 
   log "checking knowledge/template list response shape"
   assert_api_get_is_array "${API_BASE}/knowledge"

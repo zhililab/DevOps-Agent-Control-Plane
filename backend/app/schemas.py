@@ -455,3 +455,11 @@ class WorkflowOrchestrationRead(BaseModel):
 
 class WorkflowOrchestrationHistoryResponse(BaseModel):
     items: list[WorkflowOrchestrationRead]
+
+
+class WorkflowOrchestrationMetricsResponse(BaseModel):
+    period_days: int
+    total_runs: int
+    weekly_active_orchestrations: int
+    partial_success_rate: float
+    average_duration_ms: int

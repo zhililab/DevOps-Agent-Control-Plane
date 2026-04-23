@@ -7,13 +7,38 @@ import { KnowledgeGraphPreview } from "@/components/charts/KnowledgeGraphPreview
 import { MiniBarTrend } from "@/components/charts/MiniBarTrend";
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
-import type { DailyPlanRecord, DailyReflectionRecord, TechnicalAnalysisRecord } from "@/lib/types";
+import type {
+  DailyPlanRecord,
+  DailyReflectionRecord,
+  TechnicalAnalysisRecord,
+  WorkflowOrchestrationMetrics,
+} from "@/lib/types";
 
 type DashboardState = {
   plans: DailyPlanRecord[];
   reflections: DailyReflectionRecord[];
   analyses: TechnicalAnalysisRecord[];
+  orchestrationMetrics: WorkflowOrchestrationMetrics;
 };
+
+const DEFAULT_ORCHESTRATION_METRICS: WorkflowOrchestrationMetrics = {
+  period_days: 7,
+  total_runs: 0,
+  weekly_active_orchestrations: 0,
+  partial_success_rate: 0,
+  average_duration_ms: 0,
+};
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatDurationMs(value: number): string {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}s`;
+  }
+  return `${Math.round(value)}ms`;
+}
 
 function buildRecentDateKeys(days: number): string[] {
   const result: string[] = [];
@@ -38,11 +63,30 @@ function toTrendData(keys: string[], records: string[]) {
   }));
 }
 
+function hasItemsPayload(value: unknown): value is { items: unknown[] } {
+  if (!value || typeof value !== "object") return false;
+  const items = (value as { items?: unknown }).items;
+  return Array.isArray(items);
+}
+
+function hasOrchestrationMetricsPayload(value: unknown): value is WorkflowOrchestrationMetrics {
+  if (!value || typeof value !== "object") return false;
+  const metrics = value as Partial<WorkflowOrchestrationMetrics>;
+  return (
+    typeof metrics.period_days === "number" &&
+    typeof metrics.total_runs === "number" &&
+    typeof metrics.weekly_active_orchestrations === "number" &&
+    typeof metrics.partial_success_rate === "number" &&
+    typeof metrics.average_duration_ms === "number"
+  );
+}
+
 export function DashboardView() {
   const [state, setState] = useState<DashboardState>({
     plans: [],
     reflections: [],
     analyses: [],
+    orchestrationMetrics: DEFAULT_ORCHESTRATION_METRICS,
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,23 +97,60 @@ export function DashboardView() {
     setRecentDateKeys(buildRecentDateKeys(7));
 
     async function load() {
-      const [plansResult, reflectionsResult, analysesResult] = await Promise.allSettled([
+      const [plansResult, reflectionsResult, analysesResult, orchestrationMetricsResult] = await Promise.allSettled([
         apiClient.listDailyPlans(),
         apiClient.listDailyReflections(),
         apiClient.listTechnicalAnalyses(),
+        apiClient.getWorkflowOrchestrationMetrics(7),
       ]);
 
+      const plans =
+        plansResult.status === "fulfilled" && hasItemsPayload(plansResult.value) ? plansResult.value.items : [];
+      const reflections =
+        reflectionsResult.status === "fulfilled" && hasItemsPayload(reflectionsResult.value)
+          ? reflectionsResult.value.items
+          : [];
+      const analyses =
+        analysesResult.status === "fulfilled" && hasItemsPayload(analysesResult.value)
+          ? analysesResult.value.items
+          : [];
+      const orchestrationMetrics =
+        orchestrationMetricsResult.status === "fulfilled" &&
+        hasOrchestrationMetricsPayload(orchestrationMetricsResult.value)
+          ? orchestrationMetricsResult.value
+          : DEFAULT_ORCHESTRATION_METRICS;
+
       const nextState: DashboardState = {
-        plans: plansResult.status === "fulfilled" ? plansResult.value.items : [],
-        reflections: reflectionsResult.status === "fulfilled" ? reflectionsResult.value.items : [],
-        analyses: analysesResult.status === "fulfilled" ? analysesResult.value.items : [],
+        plans,
+        reflections,
+        analyses,
+        orchestrationMetrics,
       };
       setState(nextState);
 
       const failedEndpoints: string[] = [];
-      if (plansResult.status === "rejected") failedEndpoints.push("plans");
-      if (reflectionsResult.status === "rejected") failedEndpoints.push("reflections");
-      if (analysesResult.status === "rejected") failedEndpoints.push("analysis");
+      if (plansResult.status === "rejected" || (plansResult.status === "fulfilled" && !hasItemsPayload(plansResult.value))) {
+        failedEndpoints.push("plans");
+      }
+      if (
+        reflectionsResult.status === "rejected" ||
+        (reflectionsResult.status === "fulfilled" && !hasItemsPayload(reflectionsResult.value))
+      ) {
+        failedEndpoints.push("reflections");
+      }
+      if (
+        analysesResult.status === "rejected" ||
+        (analysesResult.status === "fulfilled" && !hasItemsPayload(analysesResult.value))
+      ) {
+        failedEndpoints.push("analysis");
+      }
+      if (
+        orchestrationMetricsResult.status === "rejected" ||
+        (orchestrationMetricsResult.status === "fulfilled" &&
+          !hasOrchestrationMetricsPayload(orchestrationMetricsResult.value))
+      ) {
+        failedEndpoints.push("orchestration metrics");
+      }
 
       if (failedEndpoints.length > 0) {
         setError(`Some dashboard data is unavailable: ${failedEndpoints.join(", ")}.`);
@@ -163,6 +244,18 @@ export function DashboardView() {
         <article className="kpi-card animate-enter">
           <p className="kpi-label">Technical Analyses</p>
           <p className="kpi-value">{state.analyses.length}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Weekly Active Orchestrations</p>
+          <p className="kpi-value">{state.orchestrationMetrics.weekly_active_orchestrations}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Partial Success Rate</p>
+          <p className="kpi-value">{formatPercent(state.orchestrationMetrics.partial_success_rate)}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Avg Orchestration Duration</p>
+          <p className="kpi-value">{formatDurationMs(state.orchestrationMetrics.average_duration_ms)}</p>
         </article>
       </section>
 
