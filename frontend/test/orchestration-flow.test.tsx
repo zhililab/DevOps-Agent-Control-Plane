@@ -122,4 +122,53 @@ describe("orchestration workflow", () => {
     expect(screen.getByText("Analyzer requested more technical evidence.")).toBeInTheDocument();
     expect(screen.getByText(/Fallback: Gather one concrete error signal/i)).toBeInTheDocument();
   });
+
+  test("enqueues orchestration and displays queue status", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("/orchestrations/templates")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (url.endsWith("/orchestrations/queue/run")) {
+        return new Response(
+          JSON.stringify({
+            job_id: 301,
+            status: "queued",
+            attempts: 0,
+            max_attempts: 3,
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/queue/301")) {
+        return new Response(
+          JSON.stringify({
+            id: 301,
+            status: "running",
+            attempts: 1,
+            max_attempts: 3,
+            cancel_requested: false,
+            orchestration_id: null,
+            error_message: "",
+            created_at: "2026-04-23T00:00:00Z",
+            updated_at: "2026-04-23T00:00:01Z",
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestratePage />);
+
+    fireEvent.change(screen.getByLabelText("Run Mode"), { target: { value: "async" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enqueue Orchestration" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Queue job #301 submitted\./i)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Job #301/)).toBeInTheDocument();
+    expect(screen.getByText(/status=running/)).toBeInTheDocument();
+  });
 });

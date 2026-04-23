@@ -1,3 +1,7 @@
+from app.config import get_settings
+from app.services.entitlement_service import sign_entitlement_token
+
+
 def _default_run_payload() -> dict:
     return {
         "entry_source": "test-suite",
@@ -70,13 +74,23 @@ def test_orchestration_partial_success_when_analyzer_missing_signal(client) -> N
 
 
 def test_orchestration_free_tier_blocks_cross_workflow(client) -> None:
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    settings.entitlement_secret = "free-tier-secret"
+    settings.entitlement_required = True
+    free_token = sign_entitlement_token(secret="free-tier-secret", tier="free", ttl_seconds=600)
     response = client.post(
         "/api/orchestrations/run",
         json=_default_run_payload(),
-        headers={"X-Subscription-Tier": "free"},
+        headers={"X-Entitlement": free_token},
     )
-    assert response.status_code == 403
-    assert "single-step workflow" in response.json()["detail"]
+    try:
+        assert response.status_code == 403
+        assert "single-step workflow" in response.json()["detail"]
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
 
 
 def test_workflow_template_import_export_round_trip(client) -> None:
@@ -153,3 +167,63 @@ def test_orchestration_metrics_reports_weekly_activity(client) -> None:
     assert metrics["weekly_active_orchestrations"] >= 1
     assert "partial_success_rate" in metrics
     assert "average_duration_ms" in metrics
+
+
+def test_signed_entitlement_enforced_when_required(client) -> None:
+    settings = get_settings()
+    old_required = settings.entitlement_required
+    old_secret = settings.entitlement_secret
+    try:
+        settings.entitlement_required = True
+        settings.entitlement_secret = "test-secret"
+        no_token = client.post("/api/orchestrations/run", json=_default_run_payload())
+        assert no_token.status_code == 401
+
+        token = sign_entitlement_token(secret="test-secret", tier="power", ttl_seconds=600)
+        ok_response = client.post(
+            "/api/orchestrations/run",
+            json=_default_run_payload(),
+            headers={"X-Entitlement": token},
+        )
+        assert ok_response.status_code == 200
+        assert ok_response.json()["subscription_tier"] == "power"
+    finally:
+        settings.entitlement_required = old_required
+        settings.entitlement_secret = old_secret
+
+
+def test_queue_run_status_retry_and_cancel(client) -> None:
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "queue-secret"
+        settings.entitlement_required = True
+        token = sign_entitlement_token(secret="queue-secret", tier="pro", ttl_seconds=600)
+
+        run_response = client.post(
+            "/api/orchestrations/queue/run",
+            json=_default_run_payload(),
+            headers={"X-Entitlement": token},
+        )
+        assert run_response.status_code == 200
+        job = run_response.json()
+        assert job["status"] in {"queued", "running", "succeeded"}
+        job_id = job["job_id"]
+
+        status_response = client.get(f"/api/orchestrations/queue/{job_id}")
+        assert status_response.status_code == 200
+        current = status_response.json()
+        assert current["status"] in {"running", "succeeded", "queued"}
+
+        cancel_response = client.post(f"/api/orchestrations/queue/{job_id}/cancel")
+        # Cancel may race with completion; if completed, API returns 409 by design.
+        assert cancel_response.status_code in {200, 409}
+
+        if cancel_response.status_code == 200:
+            retry_response = client.post(f"/api/orchestrations/queue/{job_id}/retry")
+            assert retry_response.status_code == 200
+            assert retry_response.json()["job_id"] == job_id
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required

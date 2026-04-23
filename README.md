@@ -48,6 +48,7 @@ Documentation map: `docs/README.md`.
 - `WorkflowOrchestration`
 - `WorkflowStepRun`
 - `WorkflowTemplate`
+- `WorkflowQueueJob`
 
 ### APIs
 - `POST /api/profile`: create profile
@@ -76,6 +77,11 @@ Documentation map: `docs/README.md`.
 - `POST /api/orchestrations/run`: run deterministic multi-agent orchestration (Planner/Analyzer/Reviewer)
 - `GET /api/orchestrations/history`: list orchestration runs with status/tier filters
 - `GET /api/orchestrations/{id}`: get orchestration run detail with step replay
+- `GET /api/orchestrations/metrics`: orchestration KPI metrics (`days=7|30|...`)
+- `POST /api/orchestrations/queue/run`: enqueue orchestration run (async)
+- `GET /api/orchestrations/queue/{job_id}`: get queue job status
+- `POST /api/orchestrations/queue/{job_id}/retry`: retry failed/canceled queue job
+- `POST /api/orchestrations/queue/{job_id}/cancel`: request queue job cancellation
 - `POST /api/orchestrations/templates`: create orchestration workflow template
 - `PUT /api/orchestrations/templates/{id}`: update orchestration workflow template
 - `GET /api/orchestrations/templates`: list orchestration workflow templates
@@ -202,6 +208,25 @@ This starts:
 
 Server startup now runs: `alembic upgrade head -> core table bootstrap check -> uvicorn`.
 This protects against partial migration states that can cause missing-table runtime errors.
+
+## Entitlement Gate (Billing-ready tier check)
+
+Orchestration APIs now support signed entitlement token:
+
+- header: `X-Entitlement: <signed_token>`
+- env:
+  - `APP_ENTITLEMENT_REQUIRED=true|false`
+  - `APP_ENTITLEMENT_SECRET=<strong-secret>`
+
+When `APP_ENTITLEMENT_REQUIRED=true`, `X-Subscription-Tier` header fallback is disabled.
+
+Generate a local token for testing:
+
+```bash
+make entitlement-token TIER=pro TTL_SECONDS=3600
+```
+
+Use the generated token in `/orchestrate` page (Entitlement Token field), or pass it via header in API calls.
 
 Useful operations:
 

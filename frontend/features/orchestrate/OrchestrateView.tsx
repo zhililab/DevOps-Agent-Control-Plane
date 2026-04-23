@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
-import type { WorkflowOrchestrationRecord, WorkflowStepDefinition, WorkflowTemplate } from "@/lib/types";
+import type { WorkflowOrchestrationRecord, WorkflowQueueJob, WorkflowStepDefinition, WorkflowTemplate } from "@/lib/types";
 
 function splitLines(value: string): string[] {
   return value
@@ -21,7 +21,9 @@ const DEFAULT_STEPS: WorkflowStepDefinition[] = [
 
 export function OrchestrateView() {
   const [entrySource, setEntrySource] = useState("web_ui");
+  const [runMode, setRunMode] = useState<"sync" | "async">("sync");
   const [subscriptionTier, setSubscriptionTier] = useState<"free" | "pro" | "power">("pro");
+  const [entitlementToken, setEntitlementToken] = useState("");
   const [steps, setSteps] = useState<WorkflowStepDefinition[]>(DEFAULT_STEPS);
   const [templateName, setTemplateName] = useState("Default DevOps Loop");
   const [templateDescription, setTemplateDescription] = useState(
@@ -50,6 +52,8 @@ export function OrchestrateView() {
   const [persistTemplate, setPersistTemplate] = useState(false);
 
   const [latest, setLatest] = useState<WorkflowOrchestrationRecord | null>(null);
+  const [queueJob, setQueueJob] = useState<WorkflowQueueJob | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,45 +74,149 @@ export function OrchestrateView() {
     void loadTemplates();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cached = window.localStorage.getItem("entitlement_token");
+    if (cached) setEntitlementToken(cached);
+  }, []);
+
+  useEffect(() => {
+    if (!queueJob || queueJob.status === "succeeded" || queueJob.status === "failed" || queueJob.status === "canceled") {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void refreshQueueJob(queueJob.id, false);
+    }, 1500);
+    return () => window.clearInterval(timer);
+  }, [queueJob]);
+
   const activeStepCount = useMemo(() => steps.filter((step) => step.enabled).length, [steps]);
+
+  function buildPayload() {
+    return {
+      entry_source: entrySource.trim() || "web_ui",
+      steps,
+      daily_context: {
+        tasks: splitLines(tasksText),
+        meetings: splitLines(meetingsText),
+        blockers: splitLines(blockersText),
+        priorities: splitLines(prioritiesText),
+      },
+      technical_input: {
+        issue_description: issueDescription.trim(),
+        errors: splitLines(errorsText),
+        logs: logsText.trim(),
+        code_snippets: splitLines(codeSnippetsText),
+      },
+      reflection_input: {
+        completed: splitLines(completedText),
+        unfinished: splitLines(unfinishedText),
+        blockers: splitLines(reflectionBlockersText),
+        mood_or_notes: moodNotes.trim(),
+      },
+      persist_knowledge: persistKnowledge,
+      persist_template: persistTemplate,
+    };
+  }
+
+  function buildRunOptions() {
+    const options: { subscription_tier?: "free" | "pro" | "power"; entitlement_token?: string } = {
+      subscription_tier: subscriptionTier,
+    };
+    if (entitlementToken.trim()) {
+      options.entitlement_token = entitlementToken.trim();
+    }
+    return options;
+  }
+
+  async function refreshQueueJob(jobId: number, showToast = true) {
+    try {
+      const current = await apiClient.getWorkflowQueueJob(jobId);
+      setQueueJob(current);
+      if (current.status === "succeeded" && current.orchestration_id) {
+        const detail = await apiClient.getWorkflowOrchestration(current.orchestration_id);
+        setLatest(detail);
+      }
+      if (showToast) {
+        setStatus(`Queue job #${jobId} status: ${current.status}.`);
+      }
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : "Failed to refresh queue status.");
+    }
+  }
 
   async function onRun(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus(null);
     setError(null);
+    setIsSubmitting(true);
+    setQueueJob(null);
 
     try {
-      const record = await apiClient.runWorkflowOrchestration(
-        {
-          entry_source: entrySource.trim() || "web_ui",
-          steps,
-          daily_context: {
-            tasks: splitLines(tasksText),
-            meetings: splitLines(meetingsText),
-            blockers: splitLines(blockersText),
-            priorities: splitLines(prioritiesText),
-          },
-          technical_input: {
-            issue_description: issueDescription.trim(),
-            errors: splitLines(errorsText),
-            logs: logsText.trim(),
-            code_snippets: splitLines(codeSnippetsText),
-          },
-          reflection_input: {
-            completed: splitLines(completedText),
-            unfinished: splitLines(unfinishedText),
-            blockers: splitLines(reflectionBlockersText),
-            mood_or_notes: moodNotes.trim(),
-          },
-          persist_knowledge: persistKnowledge,
-          persist_template: persistTemplate,
-        },
-        { subscription_tier: subscriptionTier }
-      );
-      setLatest(record);
-      setStatus(`Orchestration #${record.id} completed with status: ${record.status}.`);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("entitlement_token", entitlementToken.trim());
+      }
+      if (runMode === "sync") {
+        const record = await apiClient.runWorkflowOrchestration(buildPayload(), buildRunOptions());
+        setLatest(record);
+        setStatus(`Orchestration #${record.id} completed with status: ${record.status}.`);
+      } else {
+        const queued = await apiClient.enqueueWorkflowOrchestration(buildPayload(), buildRunOptions());
+        setQueueJob({
+          id: queued.job_id,
+          status: queued.status,
+          attempts: queued.attempts,
+          max_attempts: queued.max_attempts,
+          cancel_requested: false,
+          orchestration_id: null,
+          error_message: "",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        setStatus(`Queue job #${queued.job_id} submitted.`);
+        await refreshQueueJob(queued.job_id, false);
+      }
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : "Failed to run orchestration.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function onRetryQueueJob() {
+    if (!queueJob) return;
+    setStatus(null);
+    setError(null);
+    try {
+      const retried = await apiClient.retryWorkflowQueueJob(queueJob.id);
+      setQueueJob((current) =>
+        current
+          ? {
+              ...current,
+              status: retried.status,
+              attempts: retried.attempts,
+              max_attempts: retried.max_attempts,
+              error_message: "",
+            }
+          : null
+      );
+      setStatus(`Queue job #${queueJob.id} retried.`);
+      await refreshQueueJob(queueJob.id, false);
+    } catch (retryError) {
+      setError(retryError instanceof Error ? retryError.message : "Failed to retry queue job.");
+    }
+  }
+
+  async function onCancelQueueJob() {
+    if (!queueJob) return;
+    setStatus(null);
+    setError(null);
+    try {
+      const canceled = await apiClient.cancelWorkflowQueueJob(queueJob.id);
+      setQueueJob(canceled);
+      setStatus(`Queue job #${queueJob.id} cancel request accepted.`);
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : "Failed to cancel queue job.");
     }
   }
 
@@ -188,6 +296,21 @@ export function OrchestrateView() {
             <option value="pro">Pro</option>
             <option value="power">Power</option>
           </select>
+        </label>
+        <label>
+          Run Mode
+          <select value={runMode} onChange={(event) => setRunMode(event.target.value as "sync" | "async")}>
+            <option value="sync">Sync (blocking)</option>
+            <option value="async">Async Queue</option>
+          </select>
+        </label>
+        <label>
+          Entitlement Token (signed)
+          <input
+            value={entitlementToken}
+            onChange={(event) => setEntitlementToken(event.target.value)}
+            placeholder="Optional when server entitlement check is disabled"
+          />
         </label>
         <p className="muted">Active steps: {activeStepCount}. Free tier allows a single active step.</p>
       </section>
@@ -330,11 +453,38 @@ export function OrchestrateView() {
             onChange={(event) => setPersistTemplate(event.target.checked)}
           />
         </label>
-        <button type="submit">Run Orchestration</button>
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Submitting..." : runMode === "sync" ? "Run Orchestration" : "Enqueue Orchestration"}
+        </button>
       </form>
 
       {status ? <p className="status status-success">{status}</p> : null}
       {error ? <p className="status status-error">{error}</p> : null}
+
+      {queueJob ? (
+        <section className="reflection-section">
+          <h3>Queue Job</h3>
+          <article className="result-block">
+            <p>
+              <strong>Job #{queueJob.id}</strong> · status={queueJob.status} · attempts={queueJob.attempts}/
+              {queueJob.max_attempts}
+            </p>
+            {queueJob.orchestration_id ? <p className="muted">Orchestration #{queueJob.orchestration_id} attached.</p> : null}
+            {queueJob.error_message ? <p className="muted">Error: {queueJob.error_message}</p> : null}
+            <div className="button-row">
+              <button type="button" onClick={() => void refreshQueueJob(queueJob.id)}>
+                Refresh Status
+              </button>
+              <button type="button" onClick={onRetryQueueJob} disabled={queueJob.status !== "failed" && queueJob.status !== "canceled"}>
+                Retry
+              </button>
+              <button type="button" onClick={onCancelQueueJob} disabled={queueJob.status === "succeeded" || queueJob.status === "failed" || queueJob.status === "canceled"}>
+                Cancel
+              </button>
+            </div>
+          </article>
+        </section>
+      ) : null}
 
       {latest ? (
         <section className="reflection-section">

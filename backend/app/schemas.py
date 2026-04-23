@@ -325,7 +325,7 @@ class PromptTemplateImportResponse(BaseModel):
 
 
 SubscriptionTier = Literal["free", "pro", "power"]
-OrchestrationStatus = Literal["success", "partial_success", "failed"]
+OrchestrationStatus = Literal["running", "success", "partial_success", "failed", "canceled"]
 StepStatus = Literal["success", "failed", "skipped"]
 AgentType = Literal["planner", "analyzer", "reviewer"]
 
@@ -463,3 +463,25 @@ class WorkflowOrchestrationMetricsResponse(BaseModel):
     weekly_active_orchestrations: int
     partial_success_rate: float
     average_duration_ms: int
+
+
+QueueJobStatus = Literal["queued", "running", "succeeded", "failed", "canceled"]
+
+
+class WorkflowQueueRunResponse(BaseModel):
+    job_id: int
+    status: QueueJobStatus
+    attempts: int
+    max_attempts: int
+
+
+class WorkflowQueueJobRead(BaseModel):
+    id: int
+    status: QueueJobStatus
+    attempts: int
+    max_attempts: int
+    cancel_requested: bool
+    orchestration_id: int | None
+    error_message: str
+    created_at: datetime
+    updated_at: datetime

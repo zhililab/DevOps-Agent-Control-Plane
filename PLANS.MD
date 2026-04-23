@@ -40,29 +40,35 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 - added simplified always-on server deployment path: `docker-compose.server.yml` + `make server-deploy`
 - added deterministic multi-agent orchestration workflow (Planner/Analyzer/Reviewer)
 - added orchestration persistence entities: `WorkflowOrchestration`, `WorkflowStepRun`, `WorkflowTemplate`
+- added orchestration queue persistence entity: `WorkflowQueueJob`
 - added orchestration APIs:
   - `POST /api/orchestrations/run`
   - `GET /api/orchestrations/history`
   - `GET /api/orchestrations/{id}`
+  - `GET /api/orchestrations/metrics?days=...`
+  - `POST /api/orchestrations/queue/run`
+  - `GET /api/orchestrations/queue/{job_id}`
+  - `POST /api/orchestrations/queue/{job_id}/retry`
+  - `POST /api/orchestrations/queue/{job_id}/cancel`
   - template CRUD/import/export under `/api/orchestrations/templates*`
 - added orchestration UI pages:
   - `/orchestrate` (run + replay + template operations)
   - `/orchestrations` (history + filter)
 - added free/pro/power tier gate (free single-step restriction for orchestration runs)
+- added signed entitlement verification path (`X-Entitlement`) with config switch for required mode
 - added partial-success fallback strategy (step failure does not abort full workflow)
 - added reusable output persistence bridge from orchestration to knowledge/templates
 - added orchestration backend and frontend test coverage
+- upgraded `/orchestrate` UI with sync/async run mode, queue job status card, retry/cancel actions
+- upgraded dashboard orchestration KPI visualization with 7D/30D window switch
 - recorded local timing proxy for CI split:
   - `make test` real time: `~2.21s`
   - `make qa-fast` real time: `~7.59s` (includes frontend production build)
 
 ## Next Tasks
-- add billing-grade entitlement service (replace header/config tier gate with signed user entitlement)
-- add async queue execution for long orchestration runs (job status + retry + cancellation)
-- add orchestration KPI metrics endpoint and dashboard cards:
-  - weekly active orchestrations (north-star)
-  - partial-success rate
-  - average run duration
+- remove legacy `X-Subscription-Tier` fallback in production profile and migrate fully to signed entitlement
+- connect queue controls into dedicated `/orchestrations` history view (job list + status timeline + retry audit)
+- extend dashboard KPI trend from bar-only to line+delta insights with anomaly hinting
 - add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)
 - add E2E tests for `/orchestrate -> /orchestrations` full browser flow
 - run full k8s gate on a reachable cluster context (`make k8s-dry-run` currently blocked by cluster connectivity on local env)

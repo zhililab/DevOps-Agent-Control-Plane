@@ -1,4 +1,4 @@
-.PHONY: test test-watch test-until-pass qa-fast qa-visual qa-all smoke-check release-check server-bootstrap server-deploy server-down server-restart server-status server-logs kind-deploy k3d-deploy dev-up dev-down dev-restart dev-status dev-logs templates-import-json templates-import-sql k8s-render k8s-dry-run k8s-apply k8s-verify
+.PHONY: test test-watch test-until-pass qa-fast qa-visual qa-all smoke-check release-check server-bootstrap server-deploy server-down server-restart server-status server-logs kind-deploy k3d-deploy dev-up dev-down dev-restart dev-status dev-logs templates-import-json templates-import-sql entitlement-token k8s-render k8s-dry-run k8s-apply k8s-verify
 
 test:
 	./scripts/test_cycle.sh
@@ -79,6 +79,9 @@ templates-import-json:
 
 templates-import-sql:
 	cd backend && ./.venv/bin/python scripts/init_templates.py --mode sql --source builtin
+
+entitlement-token:
+	cd backend && ./.venv/bin/python scripts/generate_entitlement.py --tier $${TIER:-pro} --ttl-seconds $${TTL_SECONDS:-3600}
 
 k8s-render:
 	kubectl kustomize k8s >/tmp/personal-agent-k8s-rendered.yaml && wc -l /tmp/personal-agent-k8s-rendered.yaml

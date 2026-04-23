@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { vi } from "vitest";
 
 import DashboardPage from "@/app/dashboard/page";
@@ -65,7 +65,20 @@ describe("dashboard flow", () => {
         );
       }
 
-      if (url.includes("/orchestrations/metrics")) {
+      if (url.includes("/orchestrations/metrics?days=30")) {
+        return new Response(
+          JSON.stringify({
+            period_days: 30,
+            total_runs: 22,
+            weekly_active_orchestrations: 15,
+            partial_success_rate: 0.1,
+            average_duration_ms: 940,
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (url.includes("/orchestrations/metrics?days=7")) {
         return new Response(
           JSON.stringify({
             period_days: 7,
@@ -73,6 +86,31 @@ describe("dashboard flow", () => {
             weekly_active_orchestrations: 9,
             partial_success_rate: 0.25,
             average_duration_ms: 1850,
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (url.includes("/orchestrations/history")) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 11,
+                status: "success",
+                duration_ms: 1200,
+                entry_source: "manual",
+                subscription_tier: "pro",
+                summary: {
+                  conclusion: "ok",
+                  risks: [],
+                  next_actions: [],
+                },
+                steps: [],
+                created_at: "2026-04-20T00:00:00Z",
+                updated_at: "2026-04-20T00:00:00Z",
+              },
+            ],
           }),
           { status: 200 }
         );
@@ -113,5 +151,51 @@ describe("dashboard flow", () => {
     expect(within(waoCard!).getByText("9")).toBeInTheDocument();
     expect(within(partialSuccessCard!).getByText("25.0%")).toBeInTheDocument();
     expect(within(avgDurationCard!).getByText("1.9s")).toBeInTheDocument();
+
+    const switchTo30Days = screen.getByRole("button", { name: "30D Window" });
+    fireEvent.click(switchTo30Days);
+
+    await waitFor(() => {
+      expect(within(waoCard!).getByText("15")).toBeInTheDocument();
+    });
+    expect(within(partialSuccessCard!).getByText("10.0%")).toBeInTheDocument();
+    expect(within(avgDurationCard!).getByText("940ms")).toBeInTheDocument();
+
+    expect(screen.getByText("Workflow orchestrations in last 30 days")).toBeInTheDocument();
+  });
+
+  test("falls back to safe defaults when orchestration metrics endpoint fails", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url.includes("/plans/history") || url.includes("/reflections/history") || url.includes("/analysis/history")) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+
+      if (url.includes("/orchestrations/metrics")) {
+        return new Response(JSON.stringify({ detail: "boom" }), { status: 500 });
+      }
+
+      if (url.includes("/orchestrations/history")) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+
+      return new Response(JSON.stringify({ detail: `Unhandled mock url: ${url}` }), { status: 500 });
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Some dashboard data is unavailable: orchestration metrics\./)).toBeInTheDocument();
+    });
+
+    const waoCard = screen.getByText("Weekly Active Orchestrations").closest("article");
+    const partialSuccessCard = screen.getByText("Partial Success Rate").closest("article");
+    const avgDurationCard = screen.getByText("Avg Orchestration Duration").closest("article");
+
+    expect(within(waoCard!).getByText("0")).toBeInTheDocument();
+    expect(within(partialSuccessCard!).getByText("0.0%")).toBeInTheDocument();
+    expect(within(avgDurationCard!).getByText("0ms")).toBeInTheDocument();
   });
 });
