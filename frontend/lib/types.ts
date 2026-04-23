@@ -225,10 +225,12 @@ export type WorkflowQueueRunResponse = {
 };
 
 export type WorkflowQueueJobEvent = {
-  event: string;
+  id: number;
+  queue_job_id: number;
+  event_type: string;
   status: WorkflowQueueJobStatus;
-  at: string;
-  detail?: string;
+  detail: string;
+  created_at: string;
 };
 
 export type WorkflowQueueJob = {

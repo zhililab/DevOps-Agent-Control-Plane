@@ -79,7 +79,7 @@ Documentation map: `docs/README.md`.
 - `GET /api/orchestrations/{id}`: get orchestration run detail with step replay
 - `GET /api/orchestrations/metrics`: orchestration KPI metrics (`days=7|30|...`)
 - `POST /api/orchestrations/queue/run`: enqueue orchestration run (async)
-- `GET /api/orchestrations/queue/{job_id}`: get queue job status
+- `GET /api/orchestrations/queue/{job_id}`: get queue job status with real queue events timeline payload
 - `POST /api/orchestrations/queue/{job_id}/retry`: retry failed/canceled queue job
 - `POST /api/orchestrations/queue/{job_id}/cancel`: request queue job cancellation
 - `POST /api/orchestrations/templates`: create orchestration workflow template
