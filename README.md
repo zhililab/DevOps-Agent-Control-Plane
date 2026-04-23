@@ -5,6 +5,8 @@ Monorepo-style MVP with:
 - `backend/`: FastAPI + SQLAlchemy API
 - PostgreSQL scaffolding (optional for local via Docker), with SQLite default for fast boot
 
+Documentation map: `docs/README.md`.
+
 ## Project Structure
 
 ```text
@@ -172,6 +174,9 @@ This starts:
 - `backend`
 - `frontend`
 - `gateway` (Nginx on port `80`, routing `/api` to backend)
+
+Server startup now runs: `alembic upgrade head -> core table bootstrap check -> uvicorn`.
+This protects against partial migration states that can cause missing-table runtime errors.
 
 Useful operations:
 

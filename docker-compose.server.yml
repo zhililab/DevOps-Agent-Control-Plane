@@ -23,7 +23,7 @@ services:
       APP_DEBUG: "false"
       APP_API_PREFIX: /api
       DATABASE_URL: postgresql+psycopg://postgres:${DB_PASSWORD_URLENC:-change-me}@postgres:5432/personal_agent
-    command: ["/bin/sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    command: ["/bin/sh", "-c", "alembic upgrade head && python -m app.db_bootstrap && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     ports:
       - "127.0.0.1:8000:8000"
 
