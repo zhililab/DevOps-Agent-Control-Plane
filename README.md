@@ -157,6 +157,14 @@ For quickest always-on access on a server (without Kubernetes), use Docker Compo
 DB_PASSWORD='replace-with-strong-password' make server-deploy
 ```
 
+If server network to PyPI is unstable, you can set a mirror for backend image build:
+
+```bash
+PIP_INDEX_URL='https://pypi.tuna.tsinghua.edu.cn/simple' \
+DB_PASSWORD='replace-with-strong-password' \
+make server-deploy
+```
+
 If backend keeps restarting after password/env changes, reset old Postgres data volume once:
 
 ```bash
