@@ -224,6 +224,13 @@ export type WorkflowQueueRunResponse = {
   max_attempts: number;
 };
 
+export type WorkflowQueueJobEvent = {
+  event: string;
+  status: WorkflowQueueJobStatus;
+  at: string;
+  detail?: string;
+};
+
 export type WorkflowQueueJob = {
   id: number;
   status: WorkflowQueueJobStatus;
@@ -234,6 +241,11 @@ export type WorkflowQueueJob = {
   error_message: string;
   created_at: string;
   updated_at: string;
+  events?: WorkflowQueueJobEvent[];
+};
+
+export type WorkflowQueueHistoryResponse = {
+  items: WorkflowQueueJob[];
 };
 
 export type WorkflowTemplateImportResponse = {

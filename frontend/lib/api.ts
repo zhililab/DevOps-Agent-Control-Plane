@@ -16,6 +16,7 @@ import type {
   WorkflowOrchestrationHistoryResponse,
   WorkflowOrchestrationMetrics,
   WorkflowOrchestrationRecord,
+  WorkflowQueueHistoryResponse,
   WorkflowQueueJob,
   WorkflowQueueRunResponse,
   WorkflowStepDefinition,
@@ -279,6 +280,14 @@ export const apiClient = {
 
   getWorkflowQueueJob(jobId: number) {
     return request<WorkflowQueueJob>(`/orchestrations/queue/${jobId}`);
+  },
+
+  listWorkflowQueueJobs(params?: { status?: string; limit?: number }) {
+    const search = new URLSearchParams();
+    if (params?.status) search.set("status", params.status);
+    if (params?.limit) search.set("limit", String(params.limit));
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return request<WorkflowQueueHistoryResponse>(`/orchestrations/queue/history${suffix}`);
   },
 
   retryWorkflowQueueJob(jobId: number) {

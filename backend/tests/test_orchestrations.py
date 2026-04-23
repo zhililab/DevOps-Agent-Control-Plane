@@ -192,6 +192,123 @@ def test_signed_entitlement_enforced_when_required(client) -> None:
         settings.entitlement_secret = old_secret
 
 
+def test_production_mode_requires_signed_entitlement_and_disables_legacy_tier_header(client) -> None:
+    settings = get_settings()
+    old_environment = settings.environment
+    old_required = settings.entitlement_required
+    old_secret = settings.entitlement_secret
+    old_allow_legacy = settings.allow_legacy_subscription_tier_fallback
+    try:
+        settings.environment = "production"
+        settings.entitlement_required = False
+        settings.allow_legacy_subscription_tier_fallback = True
+        settings.entitlement_secret = "prod-secret"
+
+        legacy_only = client.post(
+            "/api/orchestrations/run",
+            json=_default_run_payload(),
+            headers={"X-Subscription-Tier": "power"},
+        )
+        assert legacy_only.status_code == 401
+
+        token = sign_entitlement_token(secret="prod-secret", tier="power", ttl_seconds=600)
+        token_response = client.post(
+            "/api/orchestrations/run",
+            json=_default_run_payload(),
+            headers={"X-Entitlement": token},
+        )
+        assert token_response.status_code == 200
+        assert token_response.json()["subscription_tier"] == "power"
+    finally:
+        settings.environment = old_environment
+        settings.entitlement_required = old_required
+        settings.entitlement_secret = old_secret
+        settings.allow_legacy_subscription_tier_fallback = old_allow_legacy
+
+
+def test_non_production_allows_legacy_tier_header_when_explicitly_enabled(client) -> None:
+    settings = get_settings()
+    old_environment = settings.environment
+    old_required = settings.entitlement_required
+    old_allow_legacy = settings.allow_legacy_subscription_tier_fallback
+    try:
+        settings.environment = "local"
+        settings.entitlement_required = False
+        settings.allow_legacy_subscription_tier_fallback = True
+
+        response = client.post(
+            "/api/orchestrations/run",
+            json=_default_run_payload(),
+            headers={"X-Subscription-Tier": "power"},
+        )
+        assert response.status_code == 200
+        assert response.json()["subscription_tier"] == "power"
+    finally:
+        settings.environment = old_environment
+        settings.entitlement_required = old_required
+        settings.allow_legacy_subscription_tier_fallback = old_allow_legacy
+
+
+def test_non_production_ignores_legacy_tier_header_when_fallback_disabled(client) -> None:
+    settings = get_settings()
+    old_environment = settings.environment
+    old_required = settings.entitlement_required
+    old_allow_legacy = settings.allow_legacy_subscription_tier_fallback
+    old_default_tier = settings.default_subscription_tier
+    try:
+        settings.environment = "local"
+        settings.entitlement_required = False
+        settings.allow_legacy_subscription_tier_fallback = False
+        settings.default_subscription_tier = "pro"
+
+        response = client.post(
+            "/api/orchestrations/run",
+            json=_default_run_payload(),
+            headers={"X-Subscription-Tier": "power"},
+        )
+        assert response.status_code == 200
+        assert response.json()["subscription_tier"] == "pro"
+    finally:
+        settings.environment = old_environment
+        settings.entitlement_required = old_required
+        settings.allow_legacy_subscription_tier_fallback = old_allow_legacy
+        settings.default_subscription_tier = old_default_tier
+
+
+def test_queue_production_mode_requires_signed_entitlement(client) -> None:
+    settings = get_settings()
+    old_environment = settings.environment
+    old_required = settings.entitlement_required
+    old_secret = settings.entitlement_secret
+    old_allow_legacy = settings.allow_legacy_subscription_tier_fallback
+    try:
+        settings.environment = "production"
+        settings.entitlement_required = False
+        settings.allow_legacy_subscription_tier_fallback = True
+        settings.entitlement_secret = "queue-prod-secret"
+
+        legacy_only = client.post(
+            "/api/orchestrations/queue/run",
+            json=_default_run_payload(),
+            headers={"X-Subscription-Tier": "power"},
+        )
+        assert legacy_only.status_code == 401
+
+        token = sign_entitlement_token(secret="queue-prod-secret", tier="pro", ttl_seconds=600)
+        token_response = client.post(
+            "/api/orchestrations/queue/run",
+            json=_default_run_payload(),
+            headers={"X-Entitlement": token},
+        )
+        assert token_response.status_code == 200
+        assert token_response.json()["status"] in {"queued", "running", "succeeded"}
+    finally:
+        settings.environment = old_environment
+        settings.entitlement_required = old_required
+        settings.entitlement_secret = old_secret
+        settings.allow_legacy_subscription_tier_fallback = old_allow_legacy
+
+
 def test_queue_run_status_retry_and_cancel(client) -> None:
     settings = get_settings()
     old_secret = settings.entitlement_secret
@@ -224,6 +341,33 @@ def test_queue_run_status_retry_and_cancel(client) -> None:
             retry_response = client.post(f"/api/orchestrations/queue/{job_id}/retry")
             assert retry_response.status_code == 200
             assert retry_response.json()["job_id"] == job_id
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
+
+
+def test_queue_history_endpoint_lists_jobs(client) -> None:
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "queue-history-secret"
+        settings.entitlement_required = True
+        token = sign_entitlement_token(secret="queue-history-secret", tier="pro", ttl_seconds=600)
+
+        run_response = client.post(
+            "/api/orchestrations/queue/run",
+            json=_default_run_payload(),
+            headers={"X-Entitlement": token},
+        )
+        assert run_response.status_code == 200
+
+        history_response = client.get("/api/orchestrations/queue/history?limit=20")
+        assert history_response.status_code == 200
+        history_items = history_response.json()["items"]
+        assert len(history_items) >= 1
+        assert "status" in history_items[0]
+        assert "attempts" in history_items[0]
     finally:
         settings.entitlement_secret = old_secret
         settings.entitlement_required = old_required

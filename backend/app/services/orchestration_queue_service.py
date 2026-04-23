@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models import WorkflowQueueJob
-from app.schemas import WorkflowOrchestrationRunRequest, WorkflowQueueJobRead, WorkflowQueueRunResponse
+from app.schemas import WorkflowOrchestrationRunRequest, WorkflowQueueHistoryResponse, WorkflowQueueJobRead, WorkflowQueueRunResponse
 from app.services.orchestration_service import run_orchestration
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,23 @@ def get_queue_job(db: Session, job_id: int) -> WorkflowQueueJobRead:
     if job is None:
         raise HTTPException(status_code=404, detail="Queue job not found.")
     return _to_queue_read(job)
+
+
+def list_queue_jobs(
+    db: Session,
+    *,
+    status: str | None = None,
+    limit: int = 50,
+) -> WorkflowQueueHistoryResponse:
+    query = db.query(WorkflowQueueJob)
+    if status is not None:
+        query = query.filter(WorkflowQueueJob.status == status)
+    jobs = (
+        query.order_by(WorkflowQueueJob.updated_at.desc(), WorkflowQueueJob.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return WorkflowQueueHistoryResponse(items=[_to_queue_read(job) for job in jobs])
 
 
 def retry_queue_job(db: Session, job_id: int, background_tasks: BackgroundTasks) -> WorkflowQueueRunResponse:

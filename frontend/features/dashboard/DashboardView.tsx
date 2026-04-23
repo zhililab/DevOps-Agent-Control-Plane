@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { KnowledgeGraphPreview } from "@/components/charts/KnowledgeGraphPreview";
 import { MiniBarTrend } from "@/components/charts/MiniBarTrend";
+import { MiniLineTrend } from "@/components/charts/MiniLineTrend";
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
 import type {
@@ -45,11 +46,15 @@ function formatDurationMs(value: number): string {
 }
 
 function buildRecentDateKeys(days: number): string[] {
+  return buildDateKeysForWindow(days, 0);
+}
+
+function buildDateKeysForWindow(days: number, offsetDays: number): string[] {
   const result: string[] = [];
   const now = new Date();
   for (let i = days - 1; i >= 0; i -= 1) {
     const current = new Date(now);
-    current.setDate(now.getDate() - i);
+    current.setDate(now.getDate() - offsetDays - i);
     result.push(current.toISOString().slice(0, 10));
   }
   return result;
@@ -83,6 +88,105 @@ function hasOrchestrationMetricsPayload(value: unknown): value is WorkflowOrches
     typeof metrics.partial_success_rate === "number" &&
     typeof metrics.average_duration_ms === "number"
   );
+}
+
+type OrchestrationWindowStats = {
+  runs: number;
+  partialSuccessCount: number;
+  failedCount: number;
+};
+
+type OrchestrationPeriodStats = {
+  current: OrchestrationWindowStats;
+  previous: OrchestrationWindowStats;
+};
+
+function emptyWindowStats(): OrchestrationWindowStats {
+  return { runs: 0, partialSuccessCount: 0, failedCount: 0 };
+}
+
+function buildOrchestrationPeriodStats(
+  orchestrations: WorkflowOrchestrationRecord[],
+  windowDays: number
+): OrchestrationPeriodStats {
+  const currentSet = new Set(buildDateKeysForWindow(windowDays, 0));
+  const previousSet = new Set(buildDateKeysForWindow(windowDays, windowDays));
+  const current = emptyWindowStats();
+  const previous = emptyWindowStats();
+
+  orchestrations.forEach((item) => {
+    const dateKey = item.created_at?.slice(0, 10);
+    if (!dateKey) return;
+    const isCurrent = currentSet.has(dateKey);
+    const isPrevious = previousSet.has(dateKey);
+    if (!isCurrent && !isPrevious) return;
+
+    const target = isCurrent ? current : previous;
+    target.runs += 1;
+    if (item.status === "partial_success") {
+      target.partialSuccessCount += 1;
+    }
+    if (item.status === "failed") {
+      target.failedCount += 1;
+    }
+  });
+
+  return { current, previous };
+}
+
+function toPartialSuccessRate(stats: OrchestrationWindowStats): number {
+  return stats.runs > 0 ? stats.partialSuccessCount / stats.runs : 0;
+}
+
+function toPartialFailRatio(stats: OrchestrationWindowStats): number {
+  return (stats.partialSuccessCount + 1) / (stats.failedCount + 1);
+}
+
+function formatSignedInteger(value: number): string {
+  if (value > 0) return `+${value}`;
+  return `${value}`;
+}
+
+function formatSignedPercentPoint(value: number): string {
+  const inPoints = value * 100;
+  const rounded = Math.abs(inPoints) < 0.05 ? 0 : inPoints;
+  const formatted = rounded.toFixed(1);
+  if (rounded > 0) return `+${formatted}pp`;
+  return `${formatted}pp`;
+}
+
+function deltaClassName(value: number, inverse = false): string {
+  if (Math.abs(value) < 0.0001) return "kpi-delta-neutral";
+  const isPositive = value > 0;
+  if (inverse) {
+    return isPositive ? "kpi-delta-negative" : "kpi-delta-positive";
+  }
+  return isPositive ? "kpi-delta-positive" : "kpi-delta-negative";
+}
+
+function buildAnomalyHints(stats: OrchestrationPeriodStats, windowDays: number): string[] {
+  const hints: string[] = [];
+  const currentRuns = stats.current.runs;
+  const previousRuns = stats.previous.runs;
+
+  if (previousRuns >= 6 && currentRuns <= previousRuns * 0.5) {
+    hints.push(`Sharp run drop: ${currentRuns} runs vs ${previousRuns} in the previous ${windowDays}-day window.`);
+  }
+
+  const currentRatio = toPartialFailRatio(stats.current);
+  const previousRatio = toPartialFailRatio(stats.previous);
+  if (
+    stats.current.runs >= 4 &&
+    stats.previous.runs >= 4 &&
+    currentRatio >= previousRatio * 1.75 &&
+    stats.current.partialSuccessCount >= 2
+  ) {
+    hints.push(
+      `Partial-success/fail ratio spiked from ${previousRatio.toFixed(2)} to ${currentRatio.toFixed(2)}.`
+    );
+  }
+
+  return hints;
 }
 
 export function DashboardView() {
@@ -248,6 +352,18 @@ export function DashboardView() {
       ),
     [orchestrationDateKeys, state.orchestrations]
   );
+  const orchestrationPeriodStats = useMemo(
+    () => buildOrchestrationPeriodStats(state.orchestrations, orchestrationWindowDays),
+    [state.orchestrations, orchestrationWindowDays]
+  );
+  const previousRunBaseline = orchestrationPeriodStats.previous.runs;
+  const runCountDelta = state.orchestrationMetrics.total_runs - previousRunBaseline;
+  const previousPartialSuccessRate = toPartialSuccessRate(orchestrationPeriodStats.previous);
+  const partialSuccessRateDelta = state.orchestrationMetrics.partial_success_rate - previousPartialSuccessRate;
+  const anomalyHints = useMemo(
+    () => buildAnomalyHints(orchestrationPeriodStats, orchestrationWindowDays),
+    [orchestrationPeriodStats, orchestrationWindowDays]
+  );
 
   const mergedError = [error, orchestrationError].filter(Boolean).join(" ") || null;
 
@@ -293,6 +409,14 @@ export function DashboardView() {
           <p className="kpi-value">{state.analyses.length}</p>
         </article>
         <article className="kpi-card animate-enter">
+          <p className="kpi-label">Orchestration Runs</p>
+          <p className="muted">Last {orchestrationWindowDays} days</p>
+          <p className="kpi-value">{state.orchestrationMetrics.total_runs}</p>
+          <p className={`kpi-delta ${deltaClassName(runCountDelta)}`}>
+            {formatSignedInteger(runCountDelta)} vs previous {orchestrationWindowDays}D
+          </p>
+        </article>
+        <article className="kpi-card animate-enter">
           <p className="kpi-label">Weekly Active Orchestrations</p>
           <p className="muted">Last {orchestrationWindowDays} days</p>
           <p className="kpi-value">{state.orchestrationMetrics.weekly_active_orchestrations}</p>
@@ -301,6 +425,9 @@ export function DashboardView() {
           <p className="kpi-label">Partial Success Rate</p>
           <p className="muted">Last {orchestrationWindowDays} days</p>
           <p className="kpi-value">{formatPercent(state.orchestrationMetrics.partial_success_rate)}</p>
+          <p className={`kpi-delta ${deltaClassName(partialSuccessRateDelta, true)}`}>
+            {formatSignedPercentPoint(partialSuccessRateDelta)} vs previous {orchestrationWindowDays}D
+          </p>
         </article>
         <article className="kpi-card animate-enter">
           <p className="kpi-label">Avg Orchestration Duration</p>
@@ -328,6 +455,17 @@ export function DashboardView() {
         })}
       </section>
       {orchestrationLoading ? <p className="muted">Updating orchestration window...</p> : null}
+      <section className="anomaly-hints" aria-label="orchestration-anomaly-hints">
+        {anomalyHints.length > 0 ? (
+          anomalyHints.map((hint, index) => (
+            <p key={`${hint}-${index}`} className="status status-error">
+              Anomaly hint: {hint}
+            </p>
+          ))
+        ) : (
+          <p className="muted">No orchestration anomalies detected for the selected window.</p>
+        )}
+      </section>
 
       <section className="chart-grid">
         <MiniBarTrend title="Planning Activity" subtitle="Daily plans in last 7 days" data={planTrend} />
@@ -342,7 +480,7 @@ export function DashboardView() {
           subtitle="Technical analyses in last 7 days"
           data={analysisTrend}
         />
-        <MiniBarTrend
+        <MiniLineTrend
           title="Orchestration Activity"
           subtitle={`Workflow orchestrations in last ${orchestrationWindowDays} days`}
           data={orchestrationTrend}
