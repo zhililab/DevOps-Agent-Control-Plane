@@ -15,7 +15,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
       args:
-        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
         PIP_EXTRA_INDEX_URL: ${PIP_EXTRA_INDEX_URL:-}
     container_name: personal-agent-backend
     restart: unless-stopped

@@ -157,7 +157,11 @@ For quickest always-on access on a server (without Kubernetes), use Docker Compo
 DB_PASSWORD='replace-with-strong-password' make server-deploy
 ```
 
-If server network to PyPI is unstable, you can set a mirror for backend image build:
+Backend image build now defaults to:
+
+`PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple`
+
+You can still override it when needed:
 
 ```bash
 PIP_INDEX_URL='https://pypi.tuna.tsinghua.edu.cn/simple' \
