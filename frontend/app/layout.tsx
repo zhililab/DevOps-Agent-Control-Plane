@@ -19,7 +19,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <main className="container app-shell">
           <header className="app-header">
             <p className="eyebrow">PERSONAL OPERATING SYSTEM</p>
-            <h1>Personal Agent Assistant</h1>
+            <div className="brand-row">
+              <img src="/logo-mark.svg" alt="Personal Agent Assistant logo" className="brand-logo" />
+              <h1>Personal Agent Assistant</h1>
+            </div>
             <p className="muted">Execution, reflection, and reusable workflows.</p>
           </header>
           <AppNav />
