@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from enum import Enum
 
-from sqlalchemy import Date, DateTime, Enum as SqlEnum, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -19,6 +19,31 @@ class TaskStatus(str, Enum):
     pending = "pending"
     in_progress = "in_progress"
     done = "done"
+
+
+class SubscriptionTier(str, Enum):
+    free = "free"
+    pro = "pro"
+    power = "power"
+
+
+class SubscriptionStatus(str, Enum):
+    inactive = "inactive"
+    active = "active"
+    past_due = "past_due"
+    canceled = "canceled"
+
+
+class UsageMetric(str, Enum):
+    workflow_runs = "workflow_runs"
+    queued_runs = "queued_runs"
+
+
+class MonetizationEventKind(str, Enum):
+    subscription_changed = "subscription_changed"
+    usage_recorded = "usage_recorded"
+    usage_limit_reached = "usage_limit_reached"
+    entitlement_checked = "entitlement_checked"
 
 
 class UserProfile(Base):
@@ -194,4 +219,58 @@ class WorkflowQueueEvent(Base):
     event_type: Mapped[str] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(32))
     detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class SubscriptionProfile(Base):
+    __tablename__ = "subscription_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    subject: Mapped[str] = mapped_column(String(120), index=True)
+    tier: Mapped[SubscriptionTier] = mapped_column(
+        SqlEnum(SubscriptionTier, native_enum=False),
+        default=SubscriptionTier.free,
+        index=True,
+    )
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        SqlEnum(SubscriptionStatus, native_enum=False),
+        default=SubscriptionStatus.inactive,
+        index=True,
+    )
+    billing_provider: Mapped[str] = mapped_column(String(32), default="manual")
+    external_customer_id: Mapped[str] = mapped_column(String(160), default="")
+    external_subscription_id: Mapped[str] = mapped_column(String(160), default="")
+    current_period_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False)
+    entitlements_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class UsageCounter(Base):
+    __tablename__ = "usage_counters"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    subscription_profile_id: Mapped[int] = mapped_column(Integer, index=True)
+    metric: Mapped[UsageMetric] = mapped_column(SqlEnum(UsageMetric, native_enum=False), index=True)
+    period_start: Mapped[date] = mapped_column(Date, index=True)
+    period_end: Mapped[date] = mapped_column(Date, index=True)
+    used: Mapped[int] = mapped_column(Integer, default=0)
+    limit: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class MonetizationEvent(Base):
+    __tablename__ = "monetization_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    subscription_profile_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    usage_counter_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    event_kind: Mapped[MonetizationEventKind] = mapped_column(
+        SqlEnum(MonetizationEventKind, native_enum=False),
+        index=True,
+    )
+    event_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)

@@ -2,11 +2,44 @@ import base64
 import hashlib
 import hmac
 import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 
 from app.schemas import SubscriptionTier
+
+
+CAPABILITY_MATRIX: dict[SubscriptionTier, dict[str, int | bool | str]] = {
+    "free": {
+        "max_enabled_steps": 1,
+        "queue_enabled": True,
+        "required_tier_for_multi_step": "pro",
+    },
+    "pro": {
+        "max_enabled_steps": 3,
+        "queue_enabled": True,
+        "required_tier_for_multi_step": "pro",
+    },
+    "power": {
+        "max_enabled_steps": 3,
+        "queue_enabled": True,
+        "required_tier_for_multi_step": "pro",
+    },
+}
+
+QUOTA_MATRIX: dict[SubscriptionTier, dict[str, int]] = {
+    "free": {"window_days": 7, "max_runs": 25},
+    "pro": {"window_days": 7, "max_runs": 300},
+    "power": {"window_days": 7, "max_runs": 2000},
+}
+
+
+@dataclass(frozen=True)
+class EntitlementContext:
+    tier: SubscriptionTier
+    subject_id: str
+    source: str
 
 
 def normalize_tier(value: str) -> SubscriptionTier:
@@ -43,10 +76,29 @@ def resolve_tier_from_entitlement(
     default_tier: str,
     required: bool,
 ) -> SubscriptionTier:
+    return resolve_entitlement_context(
+        token,
+        secret=secret,
+        default_tier=default_tier,
+        required=required,
+    ).tier
+
+
+def resolve_entitlement_context(
+    token: str | None,
+    *,
+    secret: str,
+    default_tier: str,
+    required: bool,
+) -> EntitlementContext:
     if not token:
         if required:
             raise HTTPException(status_code=401, detail="Missing entitlement token.")
-        return normalize_tier(default_tier)
+        return EntitlementContext(
+            tier=normalize_tier(default_tier),
+            subject_id=f"default:{_subject_hash('anonymous')}",
+            source="default",
+        )
 
     if not secret.strip():
         raise HTTPException(status_code=500, detail="Entitlement secret is not configured.")
@@ -64,7 +116,31 @@ def resolve_tier_from_entitlement(
     tier = payload.get("tier")
     if not isinstance(tier, str) or not tier.strip():
         raise HTTPException(status_code=401, detail="Entitlement tier is missing.")
-    return normalize_tier(tier)
+    raw_subject = payload.get("user_id")
+    if not isinstance(raw_subject, str) or not raw_subject.strip():
+        raw_subject = "anonymous"
+    return EntitlementContext(
+        tier=normalize_tier(tier),
+        subject_id=f"ent:{_subject_hash(raw_subject)}",
+        source="entitlement",
+    )
+
+
+def resolve_legacy_entitlement_context(legacy_tier: str) -> EntitlementContext:
+    tier = normalize_tier(legacy_tier)
+    return EntitlementContext(
+        tier=tier,
+        subject_id=f"legacy:{_subject_hash(f'legacy-{tier}')}",
+        source="legacy_header",
+    )
+
+
+def capability_policy_for_tier(tier: str) -> dict[str, int | bool | str]:
+    return CAPABILITY_MATRIX[normalize_tier(tier)].copy()
+
+
+def quota_policy_for_tier(tier: str) -> dict[str, int]:
+    return QUOTA_MATRIX[normalize_tier(tier)].copy()
 
 
 def _split_token(token: str) -> tuple[str, str]:
@@ -84,3 +160,7 @@ def _decode_payload(payload_part: str) -> dict:
     if not isinstance(payload, dict):
         raise HTTPException(status_code=401, detail="Malformed entitlement payload.")
     return payload
+
+
+def _subject_hash(value: str) -> str:
+    return hashlib.sha256(value.strip().lower().encode("utf-8")).hexdigest()[:16]

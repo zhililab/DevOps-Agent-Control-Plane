@@ -5,6 +5,7 @@ import type {
   DailyReflectionHistoryResponse,
   DailyReflectionInput,
   DailyReflectionRecord,
+  MonetizationObservability,
   NoteEntry,
   PromptTemplate,
   PromptTemplateImportResponse,
@@ -317,6 +318,10 @@ export const apiClient = {
 
   getWorkflowOrchestrationMetrics(days = 7) {
     return request<WorkflowOrchestrationMetrics>(`/orchestrations/metrics?days=${days}`);
+  },
+
+  getMonetizationObservability(days = 7) {
+    return request<MonetizationObservability>(`/orchestrations/monetization/observability?days=${days}`);
   },
 
   createWorkflowTemplate(payload: {

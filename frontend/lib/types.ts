@@ -215,6 +215,35 @@ export type WorkflowOrchestrationMetrics = {
   average_duration_ms: number;
 };
 
+export type MonetizationHealthStatus = "healthy" | "warning" | "critical";
+
+export type MonetizationObservabilityKpis = {
+  total_revenue_usd: number;
+  paid_runs: number;
+  conversion_rate: number;
+  failed_payment_rate: number;
+};
+
+export type MonetizationObservabilityTrendPoint = {
+  date: string;
+  revenue_usd: number;
+  paid_runs: number;
+  conversion_rate: number;
+};
+
+export type MonetizationObservabilityHealth = {
+  status: MonetizationHealthStatus;
+  summary: string;
+  incidents: string[];
+};
+
+export type MonetizationObservability = {
+  period_days: number;
+  kpis: MonetizationObservabilityKpis;
+  trend: MonetizationObservabilityTrendPoint[];
+  health: MonetizationObservabilityHealth;
+};
+
 export type WorkflowQueueJobStatus = "queued" | "running" | "succeeded" | "failed" | "canceled";
 
 export type WorkflowQueueRunResponse = {

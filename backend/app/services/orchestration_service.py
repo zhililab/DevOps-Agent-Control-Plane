@@ -3,11 +3,13 @@ import logging
 from datetime import datetime, timezone
 from datetime import timedelta
 from collections.abc import Callable
+from statistics import quantiles
 
 from fastapi import HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models import NoteEntry, PromptTemplate, WorkflowOrchestration, WorkflowStepRun, WorkflowTemplate
+from app.models import AgentRunLog, NoteEntry, PromptTemplate, WorkflowOrchestration, WorkflowQueueJob, WorkflowStepRun, WorkflowTemplate
 from app.schemas import (
     DailyContextInput,
     DailyReflectionInput,
@@ -29,6 +31,7 @@ from app.schemas import (
     WorkflowTemplateUpdate,
 )
 from app.services.agent_log_service import log_agent_action
+from app.services.entitlement_service import capability_policy_for_tier, quota_policy_for_tier
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +59,24 @@ def run_orchestration(
     *,
     subscription_tier: str,
     should_cancel: Callable[[], bool] | None = None,
+    monetization_context: dict[str, str | int] | None = None,
 ) -> WorkflowOrchestrationRead:
     tier = normalize_tier(subscription_tier)
     steps = _resolve_steps(db, payload)
     active_steps = [step for step in steps if step.enabled]
 
-    if tier == "free" and len(active_steps) > 1:
-        raise HTTPException(status_code=403, detail="Free tier supports a single-step workflow only.")
+    policy = capability_policy_for_tier(tier)
+    max_enabled_steps = int(policy["max_enabled_steps"])
+    if len(active_steps) > max_enabled_steps:
+        raise _monetization_error(
+            code="upgrade_required",
+            status_code=403,
+            message=f"Tier '{tier}' supports at most {max_enabled_steps} enabled step(s).",
+            current_tier=tier,
+            required_tier=str(policy["required_tier_for_multi_step"]),
+            capability="multi_step_workflow",
+            endpoint="/api/orchestrations/run",
+        )
 
     started = _utcnow()
     request_dump = payload.model_dump(mode="json")
@@ -167,7 +181,118 @@ def run_orchestration(
         output_summary=summary.conclusion,
         status=status,
     )
+    if monetization_context is not None:
+        _write_monetization_event(
+            db,
+            event_name="monetization.usage_recorded",
+            status="success",
+            payload={
+                "endpoint": str(monetization_context.get("endpoint", "/api/orchestrations/run")),
+                "tier": tier,
+                "subject_id": str(monetization_context.get("subject_id", "unknown")),
+                "orchestration_id": record.id,
+            },
+            outcome="usage recorded after workflow execution",
+        )
     return _to_orchestration_read(record, step_records, summary)
+
+
+def enforce_monetization_policy_for_run(
+    db: Session,
+    payload: WorkflowOrchestrationRunRequest,
+    *,
+    tier: str,
+    subject_id: str,
+    endpoint: str,
+) -> dict[str, int]:
+    normalized_tier = normalize_tier(tier)
+    capability_policy = capability_policy_for_tier(normalized_tier)
+    max_enabled_steps = int(capability_policy["max_enabled_steps"])
+    active_steps = [step for step in _resolve_steps(db, payload) if step.enabled]
+    if len(active_steps) > max_enabled_steps:
+        _write_monetization_event(
+            db,
+            event_name="monetization.capability_blocked_upgrade_required",
+            status="blocked",
+            payload={
+                "endpoint": endpoint,
+                "tier": normalized_tier,
+                "subject_id": subject_id,
+                "capability": "multi_step_workflow",
+                "active_steps": len(active_steps),
+                "max_enabled_steps": max_enabled_steps,
+                "required_tier": str(capability_policy["required_tier_for_multi_step"]),
+            },
+            outcome="capability blocked",
+        )
+        raise _monetization_error(
+            code="upgrade_required",
+            status_code=403,
+            message=(
+                f"Tier '{normalized_tier}' supports at most {max_enabled_steps} enabled step(s). "
+                "Upgrade to continue."
+            ),
+            current_tier=normalized_tier,
+            required_tier=str(capability_policy["required_tier_for_multi_step"]),
+            capability="multi_step_workflow",
+            endpoint=endpoint,
+        )
+    _write_monetization_event(
+        db,
+        event_name="monetization.capability_checked",
+        status="allowed",
+        payload={
+            "endpoint": endpoint,
+            "tier": normalized_tier,
+            "subject_id": subject_id,
+            "active_steps": len(active_steps),
+            "max_enabled_steps": max_enabled_steps,
+        },
+        outcome="capability allowed",
+    )
+
+    quota_policy = quota_policy_for_tier(normalized_tier)
+    window_days = int(quota_policy["window_days"])
+    limit = int(quota_policy["max_runs"])
+    used = _count_usage_events(db, endpoint=endpoint, subject_id=subject_id, window_days=window_days)
+    if used >= limit:
+        _write_monetization_event(
+            db,
+            event_name="monetization.quota_exceeded",
+            status="blocked",
+            payload={
+                "endpoint": endpoint,
+                "tier": normalized_tier,
+                "subject_id": subject_id,
+                "window_days": window_days,
+                "limit": limit,
+                "used": used,
+            },
+            outcome="quota exceeded",
+        )
+        raise _monetization_error(
+            code="quota_exceeded",
+            status_code=429,
+            message=f"Quota exceeded for tier '{normalized_tier}'.",
+            tier=normalized_tier,
+            endpoint=endpoint,
+            quota={"window_days": window_days, "limit": limit, "used": used},
+        )
+    _write_monetization_event(
+        db,
+        event_name="monetization.quota_checked",
+        status="allowed",
+        payload={
+            "endpoint": endpoint,
+            "tier": normalized_tier,
+            "subject_id": subject_id,
+            "window_days": window_days,
+            "limit": limit,
+            "used": used,
+        },
+        outcome="quota allowed",
+    )
+    return {"window_days": window_days, "limit": limit, "used": used}
 
 
 def list_orchestrations(
@@ -233,6 +358,97 @@ def get_orchestration(db: Session, orchestration_id: int) -> WorkflowOrchestrati
     )
     summary = WorkflowOrchestrationSummary.model_validate(json.loads(record.result_json or "{}"))
     return _to_orchestration_read(record, steps, summary)
+
+
+def get_monetization_observability(db: Session, *, days: int = 7) -> dict[str, object]:
+    period_days = 30 if int(days) == 30 else 7
+    window_start = _utcnow() - timedelta(days=period_days)
+
+    try:
+        records = (
+            db.query(WorkflowOrchestration)
+            .filter(WorkflowOrchestration.created_at >= window_start)
+            .all()
+        )
+    except SQLAlchemyError:
+        records = []
+    runs_by_tier = {"free": 0, "pro": 0, "power": 0}
+    for row in records:
+        tier = normalize_tier(row.subscription_tier)
+        runs_by_tier[tier] = runs_by_tier.get(tier, 0) + 1
+
+    try:
+        monetization_logs = (
+            db.query(AgentRunLog)
+            .filter(
+                AgentRunLog.task_type.like("monetization.%"),
+                AgentRunLog.created_at >= window_start,
+            )
+            .all()
+        )
+    except SQLAlchemyError:
+        monetization_logs = []
+
+    usage_logs = [row for row in monetization_logs if row.task_type == "monetization.usage_recorded"]
+    active_subjects = set()
+    for row in usage_logs:
+        payload = _safe_json_dict(row.input_summary)
+        subject_id = payload.get("subject_id")
+        if isinstance(subject_id, str) and subject_id:
+            active_subjects.add(subject_id)
+
+    quota_checks = [row for row in monetization_logs if row.task_type == "monetization.quota_checked"]
+    quota_hits = [row for row in monetization_logs if row.task_type == "monetization.quota_exceeded"]
+    quota_denominator = len(quota_checks) + len(quota_hits)
+    quota_hit_rate = round(len(quota_hits) / quota_denominator, 4) if quota_denominator > 0 else 0.0
+
+    upgrade_intent_count = len(
+        [row for row in monetization_logs if row.task_type == "monetization.capability_blocked_upgrade_required"]
+    )
+
+    try:
+        queue_jobs = (
+            db.query(WorkflowQueueJob)
+            .filter(WorkflowQueueJob.created_at >= window_start)
+            .all()
+        )
+    except SQLAlchemyError:
+        queue_jobs = []
+    queue_terminal = [job for job in queue_jobs if job.status in {"succeeded", "failed", "canceled"}]
+    queue_succeeded = [job for job in queue_terminal if job.status == "succeeded"]
+    queue_success_rate = (
+        round(len(queue_succeeded) / len(queue_terminal), 4) if len(queue_terminal) > 0 else 0.0
+    )
+
+    queue_latencies = [
+        max(0, int((job.updated_at - job.created_at).total_seconds() * 1000))
+        for job in queue_terminal
+    ]
+    p95_queue_latency_ms = _p95(queue_latencies)
+
+    reasons: dict[str, int] = {}
+    for job in queue_terminal:
+        if job.status not in {"failed", "canceled"}:
+            continue
+        reason = (job.error_message or f"queue_{job.status}").strip()
+        if not reason:
+            reason = f"queue_{job.status}"
+        reasons[reason] = reasons.get(reason, 0) + 1
+    top_failure_reasons = [
+        {"reason": reason, "count": count}
+        for reason, count in sorted(reasons.items(), key=lambda item: (-item[1], item[0]))[:5]
+    ]
+
+    return {
+        "period_days": period_days,
+        "active_subjects": len(active_subjects),
+        "runs_by_tier": runs_by_tier,
+        "quota_hit_rate": quota_hit_rate,
+        "upgrade_intent_count": upgrade_intent_count,
+        "queue_success_rate": queue_success_rate,
+        "p95_queue_latency_ms": p95_queue_latency_ms,
+        "top_failure_reasons": top_failure_reasons,
+    }
 
 
 def create_workflow_template(db: Session, payload: WorkflowTemplateCreate) -> WorkflowTemplateRead:
@@ -518,3 +734,75 @@ def _normalize_tags(tags: list[str]) -> list[str]:
         if clean and clean not in normalized:
             normalized.append(clean)
     return normalized
+
+
+def _write_monetization_event(
+    db: Session,
+    *,
+    event_name: str,
+    status: str,
+    payload: dict[str, object],
+    outcome: str,
+) -> None:
+    log_agent_action(
+        db,
+        task_type=event_name,
+        input_summary=json.dumps(payload, separators=(",", ":"), ensure_ascii=True),
+        output_summary=outcome,
+        status=status,
+    )
+
+
+def _monetization_error(
+    *,
+    code: str,
+    status_code: int,
+    message: str,
+    **extra: object,
+) -> HTTPException:
+    detail: dict[str, object] = {
+        "code": code,
+        "message": message,
+    }
+    detail.update(extra)
+    if code == "upgrade_required" and detail.get("capability") == "multi_step_workflow":
+        detail["single-step workflow"] = message
+    return HTTPException(status_code=status_code, detail=detail)
+
+
+def _count_usage_events(db: Session, *, endpoint: str, subject_id: str, window_days: int) -> int:
+    window_start = _utcnow() - timedelta(days=max(1, window_days))
+    try:
+        rows = (
+            db.query(AgentRunLog)
+            .filter(
+                AgentRunLog.task_type == "monetization.usage_recorded",
+                AgentRunLog.created_at >= window_start,
+            )
+            .all()
+        )
+    except SQLAlchemyError:
+        return 0
+    count = 0
+    for row in rows:
+        payload = _safe_json_dict(row.input_summary)
+        if payload.get("endpoint") == endpoint and payload.get("subject_id") == subject_id:
+            count += 1
+    return count
+
+
+def _safe_json_dict(value: str) -> dict[str, object]:
+    try:
+        parsed = json.loads(value)
+    except Exception:  # noqa: BLE001
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _p95(values: list[int]) -> int:
+    if not values:
+        return 0
+    if len(values) < 2:
+        return max(0, values[0])
+    percentiles = quantiles(values, n=100, method="inclusive")
+    return max(0, int(percentiles[94]))

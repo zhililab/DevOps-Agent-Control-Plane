@@ -11,6 +11,9 @@ import { apiClient } from "@/lib/api";
 import type {
   DailyPlanRecord,
   DailyReflectionRecord,
+  MonetizationHealthStatus,
+  MonetizationObservability,
+  MonetizationObservabilityTrendPoint,
   TechnicalAnalysisRecord,
   WorkflowOrchestrationRecord,
   WorkflowOrchestrationMetrics,
@@ -22,6 +25,7 @@ type DashboardState = {
   analyses: TechnicalAnalysisRecord[];
   orchestrations: WorkflowOrchestrationRecord[];
   orchestrationMetrics: WorkflowOrchestrationMetrics;
+  monetizationObservability: MonetizationObservability;
 };
 
 const DEFAULT_ORCHESTRATION_METRICS: WorkflowOrchestrationMetrics = {
@@ -32,7 +36,28 @@ const DEFAULT_ORCHESTRATION_METRICS: WorkflowOrchestrationMetrics = {
   average_duration_ms: 0,
 };
 
+const DEFAULT_MONETIZATION_OBSERVABILITY: MonetizationObservability = {
+  period_days: 7,
+  kpis: {
+    total_revenue_usd: 0,
+    paid_runs: 0,
+    conversion_rate: 0,
+    failed_payment_rate: 0,
+  },
+  trend: [],
+  health: {
+    status: "healthy",
+    summary: "No monetization health incidents in the selected window.",
+    incidents: [],
+  },
+};
+
 const DASHBOARD_WINDOW_OPTIONS = [7, 30] as const;
+const USD_FORMATTER = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 2,
+});
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
@@ -43,6 +68,10 @@ function formatDurationMs(value: number): string {
     return `${(value / 1000).toFixed(1)}s`;
   }
   return `${Math.round(value)}ms`;
+}
+
+function formatUsd(value: number): string {
+  return USD_FORMATTER.format(value);
 }
 
 function buildRecentDateKeys(days: number): string[] {
@@ -88,6 +117,85 @@ function hasOrchestrationMetricsPayload(value: unknown): value is WorkflowOrches
     typeof metrics.partial_success_rate === "number" &&
     typeof metrics.average_duration_ms === "number"
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function safeNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return fallback;
+}
+
+function safeString(value: unknown, fallback: string): string {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return fallback;
+}
+
+function parseHealthStatus(value: unknown): MonetizationHealthStatus {
+  return value === "warning" || value === "critical" || value === "healthy" ? value : "healthy";
+}
+
+function parseTrendPoint(value: unknown): MonetizationObservabilityTrendPoint | null {
+  if (!isRecord(value)) return null;
+  const date = safeString(value.date, "");
+  if (!date) return null;
+  return {
+    date,
+    revenue_usd: safeNumber(value.revenue_usd),
+    paid_runs: safeNumber(value.paid_runs),
+    conversion_rate: safeNumber(value.conversion_rate),
+  };
+}
+
+function normalizeMonetizationObservability(
+  value: unknown,
+  windowDays: number
+): { data: MonetizationObservability; valid: boolean } {
+  if (!isRecord(value)) {
+    return {
+      data: { ...DEFAULT_MONETIZATION_OBSERVABILITY, period_days: windowDays },
+      valid: false,
+    };
+  }
+
+  const rootCandidate = isRecord(value.observability) ? value.observability : value;
+  const kpisCandidate = isRecord(rootCandidate.kpis) ? rootCandidate.kpis : {};
+  const healthCandidate = isRecord(rootCandidate.health) ? rootCandidate.health : {};
+  const trendCandidate = Array.isArray(rootCandidate.trend) ? rootCandidate.trend : [];
+  const incidents = Array.isArray(healthCandidate.incidents)
+    ? healthCandidate.incidents.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+
+  const parsed: MonetizationObservability = {
+    period_days: safeNumber(rootCandidate.period_days, windowDays),
+    kpis: {
+      total_revenue_usd: safeNumber(kpisCandidate.total_revenue_usd),
+      paid_runs: safeNumber(kpisCandidate.paid_runs),
+      conversion_rate: safeNumber(kpisCandidate.conversion_rate),
+      failed_payment_rate: safeNumber(kpisCandidate.failed_payment_rate),
+    },
+    trend: trendCandidate.map(parseTrendPoint).filter((point): point is MonetizationObservabilityTrendPoint => point !== null),
+    health: {
+      status: parseHealthStatus(healthCandidate.status),
+      summary: safeString(
+        healthCandidate.summary,
+        DEFAULT_MONETIZATION_OBSERVABILITY.health.summary
+      ),
+      incidents,
+    },
+  };
+
+  const valid =
+    "kpis" in rootCandidate &&
+    "trend" in rootCandidate &&
+    "health" in rootCandidate &&
+    isRecord(rootCandidate.kpis) &&
+    Array.isArray(rootCandidate.trend) &&
+    isRecord(rootCandidate.health);
+
+  return { data: parsed, valid };
 }
 
 type OrchestrationWindowStats = {
@@ -164,6 +272,12 @@ function deltaClassName(value: number, inverse = false): string {
   return isPositive ? "kpi-delta-positive" : "kpi-delta-negative";
 }
 
+function healthClassName(status: MonetizationHealthStatus): string {
+  if (status === "critical") return "status-error";
+  if (status === "warning") return "status-default";
+  return "status-success";
+}
+
 function buildAnomalyHints(stats: OrchestrationPeriodStats, windowDays: number): string[] {
   const hints: string[] = [];
   const currentRuns = stats.current.runs;
@@ -196,6 +310,7 @@ export function DashboardView() {
     analyses: [],
     orchestrations: [],
     orchestrationMetrics: DEFAULT_ORCHESTRATION_METRICS,
+    monetizationObservability: DEFAULT_MONETIZATION_OBSERVABILITY,
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -228,6 +343,7 @@ export function DashboardView() {
         analyses,
         orchestrations: [],
         orchestrationMetrics: { ...DEFAULT_ORCHESTRATION_METRICS },
+        monetizationObservability: { ...DEFAULT_MONETIZATION_OBSERVABILITY },
       };
       setState(nextState);
 
@@ -262,9 +378,10 @@ export function DashboardView() {
     async function loadOrchestrationWindow() {
       setOrchestrationLoading(true);
 
-      const [metricsResult, historyResult] = await Promise.allSettled([
+      const [metricsResult, historyResult, monetizationResult] = await Promise.allSettled([
         apiClient.getWorkflowOrchestrationMetrics(orchestrationWindowDays),
         apiClient.listWorkflowOrchestrations({ limit: 200 }),
+        apiClient.getMonetizationObservability(orchestrationWindowDays),
       ]);
 
       const metrics =
@@ -272,12 +389,19 @@ export function DashboardView() {
           ? metricsResult.value
           : { ...DEFAULT_ORCHESTRATION_METRICS, period_days: orchestrationWindowDays };
       const orchestrations =
-        historyResult.status === "fulfilled" && hasItemsPayload(historyResult.value) ? historyResult.value.items : [];
+        historyResult.status === "fulfilled" && hasItemsPayload(historyResult.value)
+          ? historyResult.value.items
+          : [];
+      const monetization = normalizeMonetizationObservability(
+        monetizationResult.status === "fulfilled" ? monetizationResult.value : null,
+        orchestrationWindowDays
+      );
 
       setState((prev) => ({
         ...prev,
         orchestrationMetrics: metrics,
         orchestrations,
+        monetizationObservability: monetization.data,
       }));
 
       const failedEndpoints: string[] = [];
@@ -287,7 +411,6 @@ export function DashboardView() {
       if (historyResult.status === "rejected" || (historyResult.status === "fulfilled" && !hasItemsPayload(historyResult.value))) {
         failedEndpoints.push("orchestration history");
       }
-
       if (failedEndpoints.length > 0) {
         setOrchestrationError(`Some dashboard data is unavailable: ${failedEndpoints.join(", ")}.`);
       } else {
@@ -364,6 +487,17 @@ export function DashboardView() {
     () => buildAnomalyHints(orchestrationPeriodStats, orchestrationWindowDays),
     [orchestrationPeriodStats, orchestrationWindowDays]
   );
+  const monetizationRevenueTrend = useMemo(() => {
+    const revenueByDate = new Map<string, number>();
+    state.monetizationObservability.trend.forEach((item) => {
+      const dateKey = item.date.slice(0, 10);
+      revenueByDate.set(dateKey, (revenueByDate.get(dateKey) ?? 0) + item.revenue_usd);
+    });
+    return orchestrationDateKeys.map((dateKey) => ({
+      label: dateKey.slice(5),
+      value: revenueByDate.get(dateKey) ?? 0,
+    }));
+  }, [orchestrationDateKeys, state.monetizationObservability.trend]);
 
   const mergedError = [error, orchestrationError].filter(Boolean).join(" ") || null;
 
@@ -434,6 +568,26 @@ export function DashboardView() {
           <p className="muted">Last {orchestrationWindowDays} days</p>
           <p className="kpi-value">{formatDurationMs(state.orchestrationMetrics.average_duration_ms)}</p>
         </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Revenue</p>
+          <p className="muted">Last {orchestrationWindowDays} days</p>
+          <p className="kpi-value">{formatUsd(state.monetizationObservability.kpis.total_revenue_usd)}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Paid Runs</p>
+          <p className="muted">Last {orchestrationWindowDays} days</p>
+          <p className="kpi-value">{state.monetizationObservability.kpis.paid_runs}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Conversion Rate</p>
+          <p className="muted">Last {orchestrationWindowDays} days</p>
+          <p className="kpi-value">{formatPercent(state.monetizationObservability.kpis.conversion_rate)}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Failed Payment Rate</p>
+          <p className="muted">Last {orchestrationWindowDays} days</p>
+          <p className="kpi-value">{formatPercent(state.monetizationObservability.kpis.failed_payment_rate)}</p>
+        </article>
       </section>
 
       <section className="graph-filter-row" aria-label="orchestration-window-switcher">
@@ -486,6 +640,26 @@ export function DashboardView() {
           data={orchestrationTrend}
           tone="success"
         />
+        <MiniLineTrend
+          title="Monetization Revenue"
+          subtitle={`Revenue trend in last ${orchestrationWindowDays} days`}
+          data={monetizationRevenueTrend}
+        />
+        <article className="chart-card animate-enter" aria-label="monetization-health">
+          <h3>Monetization Health</h3>
+          <p className={`status ${healthClassName(state.monetizationObservability.health.status)}`}>
+            {state.monetizationObservability.health.status.toUpperCase()} · {state.monetizationObservability.health.summary}
+          </p>
+          {state.monetizationObservability.health.incidents.length > 0 ? (
+            <ul>
+              {state.monetizationObservability.health.incidents.map((incident) => (
+                <li key={incident}>{incident}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">No monetization incidents detected.</p>
+          )}
+        </article>
       </section>
 
       <section className="graph-grid">

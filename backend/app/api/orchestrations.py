@@ -19,7 +19,7 @@ from app.schemas import (
     WorkflowTemplateRead,
     WorkflowTemplateUpdate,
 )
-from app.services.entitlement_service import resolve_tier_from_entitlement
+from app.services.entitlement_service import resolve_entitlement_context, resolve_legacy_entitlement_context
 from app.services.orchestration_queue_service import (
     cancel_queue_job,
     enqueue_orchestration_run,
@@ -29,6 +29,7 @@ from app.services.orchestration_queue_service import (
 )
 from app.services.orchestration_service import (
     create_workflow_template,
+    enforce_monetization_policy_for_run,
     export_workflow_templates,
     get_orchestration,
     get_orchestration_metrics,
@@ -55,15 +56,32 @@ def run_orchestration_endpoint(
         and legacy_tier
         and settings.effective_allow_legacy_subscription_tier_fallback
     ):
-        tier = legacy_tier
+        entitlement = resolve_legacy_entitlement_context(legacy_tier)
     else:
-        tier = resolve_tier_from_entitlement(
+        entitlement = resolve_entitlement_context(
             entitlement_token,
             secret=settings.entitlement_secret,
             default_tier=settings.default_subscription_tier,
             required=settings.effective_entitlement_required,
         )
-    return run_orchestration(db, payload, subscription_tier=tier)
+    enforce_monetization_policy_for_run(
+        db,
+        payload,
+        tier=entitlement.tier,
+        subject_id=entitlement.subject_id,
+        endpoint="/api/orchestrations/run",
+    )
+    return run_orchestration(
+        db,
+        payload,
+        subscription_tier=entitlement.tier,
+        monetization_context={
+            "endpoint": "/api/orchestrations/run",
+            "tier": entitlement.tier,
+            "subject_id": entitlement.subject_id,
+            "source": entitlement.source,
+        },
+    )
 
 
 @router.get("/history", response_model=WorkflowOrchestrationHistoryResponse)
@@ -98,19 +116,32 @@ def enqueue_orchestration_endpoint(
         and legacy_tier
         and settings.effective_allow_legacy_subscription_tier_fallback
     ):
-        tier = legacy_tier
+        entitlement = resolve_legacy_entitlement_context(legacy_tier)
     else:
-        tier = resolve_tier_from_entitlement(
+        entitlement = resolve_entitlement_context(
             entitlement_token,
             secret=settings.entitlement_secret,
             default_tier=settings.default_subscription_tier,
             required=settings.effective_entitlement_required,
         )
+    enforce_monetization_policy_for_run(
+        db,
+        payload,
+        tier=entitlement.tier,
+        subject_id=entitlement.subject_id,
+        endpoint="/api/orchestrations/queue/run",
+    )
     return enqueue_orchestration_run(
         db,
         payload,
-        subscription_tier=tier,
+        subscription_tier=entitlement.tier,
         background_tasks=background_tasks,
+        monetization_context={
+            "endpoint": "/api/orchestrations/queue/run",
+            "tier": entitlement.tier,
+            "subject_id": entitlement.subject_id,
+            "source": entitlement.source,
+        },
     )
 
 

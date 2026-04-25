@@ -499,3 +499,63 @@ class WorkflowQueueJobRead(BaseModel):
 
 class WorkflowQueueHistoryResponse(BaseModel):
     items: list[WorkflowQueueJobRead]
+
+
+MonetizationTier = Literal["free", "pro", "power"]
+MonetizationSubscriptionStatus = Literal["inactive", "active", "past_due", "canceled"]
+UsageMetric = Literal["workflow_runs", "queued_runs"]
+MonetizationEventKind = Literal[
+    "subscription_changed",
+    "usage_recorded",
+    "usage_limit_reached",
+    "entitlement_checked",
+]
+
+
+class SubscriptionProfileRead(BaseModel):
+    id: int
+    subject: str
+    tier: MonetizationTier
+    status: MonetizationSubscriptionStatus
+    billing_provider: str
+    external_customer_id: str
+    external_subscription_id: str
+    current_period_start: datetime | None
+    current_period_end: datetime | None
+    cancel_at_period_end: bool
+    entitlements: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UsageCounterRead(BaseModel):
+    id: int
+    subscription_profile_id: int
+    metric: UsageMetric
+    period_start: date
+    period_end: date
+    used: int
+    limit: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MonetizationEventRead(BaseModel):
+    id: int
+    subscription_profile_id: int | None
+    usage_counter_id: int | None
+    event_kind: MonetizationEventKind
+    event: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MonetizationObservabilityResponse(BaseModel):
+    profile: SubscriptionProfileRead | None = None
+    counters: list[UsageCounterRead] = Field(default_factory=list)
+    recent_events: list[MonetizationEventRead] = Field(default_factory=list)
