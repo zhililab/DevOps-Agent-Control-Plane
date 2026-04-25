@@ -5,6 +5,7 @@ import type {
   DailyReflectionHistoryResponse,
   DailyReflectionInput,
   DailyReflectionRecord,
+  EntitlementBootstrap,
   MonetizationObservability,
   NoteEntry,
   PromptTemplate,
@@ -318,6 +319,10 @@ export const apiClient = {
 
   getWorkflowOrchestrationMetrics(days = 7) {
     return request<WorkflowOrchestrationMetrics>(`/orchestrations/metrics?days=${days}`);
+  },
+
+  getEntitlementBootstrapToken() {
+    return request<EntitlementBootstrap>("/orchestrations/entitlement/bootstrap");
   },
 
   getMonetizationObservability(days = 7) {

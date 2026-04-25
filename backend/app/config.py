@@ -30,6 +30,14 @@ class Settings(BaseSettings):
         default=False,
         validation_alias="APP_ALLOW_LEGACY_SUBSCRIPTION_TIER_FALLBACK",
     )
+    enable_public_entitlement_bootstrap: bool = Field(
+        default=False,
+        validation_alias="APP_ENABLE_PUBLIC_ENTITLEMENT_BOOTSTRAP",
+    )
+    public_entitlement_bootstrap_ttl_seconds: int = Field(
+        default=3600 * 24 * 30,
+        validation_alias="APP_PUBLIC_ENTITLEMENT_BOOTSTRAP_TTL_SECONDS",
+    )
 
     @property
     def is_production(self) -> bool:

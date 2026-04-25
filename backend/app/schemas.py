@@ -465,6 +465,12 @@ class WorkflowOrchestrationMetricsResponse(BaseModel):
     average_duration_ms: int
 
 
+class EntitlementBootstrapResponse(BaseModel):
+    token: str
+    tier: SubscriptionTier
+    expires_at: datetime
+
+
 QueueJobStatus = Literal["queued", "running", "succeeded", "failed", "canceled"]
 
 

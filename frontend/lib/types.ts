@@ -215,6 +215,12 @@ export type WorkflowOrchestrationMetrics = {
   average_duration_ms: number;
 };
 
+export type EntitlementBootstrap = {
+  token: string;
+  tier: SubscriptionTier;
+  expires_at: string;
+};
+
 export type MonetizationHealthStatus = "healthy" | "warning" | "critical";
 
 export type MonetizationObservabilityKpis = {

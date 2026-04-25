@@ -1,11 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
 from app.schemas import (
+    EntitlementBootstrapResponse,
     WorkflowOrchestrationHistoryResponse,
     WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
@@ -19,7 +22,12 @@ from app.schemas import (
     WorkflowTemplateRead,
     WorkflowTemplateUpdate,
 )
-from app.services.entitlement_service import resolve_entitlement_context, resolve_legacy_entitlement_context
+from app.services.entitlement_service import (
+    normalize_tier,
+    resolve_entitlement_context,
+    resolve_legacy_entitlement_context,
+    sign_entitlement_token,
+)
 from app.services.orchestration_queue_service import (
     cancel_queue_job,
     enqueue_orchestration_run,
@@ -100,6 +108,30 @@ def get_orchestration_metrics_endpoint(
     days: int = Query(default=7, ge=1, le=90),
 ) -> WorkflowOrchestrationMetricsResponse:
     return get_orchestration_metrics(db, days=days)
+
+
+@router.get("/entitlement/bootstrap", response_model=EntitlementBootstrapResponse)
+def get_entitlement_bootstrap_token() -> EntitlementBootstrapResponse:
+    settings = get_settings()
+    if not settings.enable_public_entitlement_bootstrap:
+        raise HTTPException(status_code=404, detail="Not found.")
+    if not settings.entitlement_secret.strip():
+        raise HTTPException(status_code=503, detail="Entitlement bootstrap is unavailable.")
+
+    ttl_seconds = max(300, int(settings.public_entitlement_bootstrap_ttl_seconds))
+    tier = normalize_tier(settings.default_subscription_tier)
+    token = sign_entitlement_token(
+        secret=settings.entitlement_secret,
+        tier=tier,
+        user_id="public-bootstrap",
+        ttl_seconds=ttl_seconds,
+    )
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+    return EntitlementBootstrapResponse(
+        token=token,
+        tier=tier,
+        expires_at=expires_at,
+    )
 
 
 @router.post("/queue/run", response_model=WorkflowQueueRunResponse)

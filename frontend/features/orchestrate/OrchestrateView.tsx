@@ -18,12 +18,13 @@ const DEFAULT_STEPS: WorkflowStepDefinition[] = [
   { step_name: "Analyze Technical Signals", agent_type: "analyzer", enabled: true },
   { step_name: "Review And Reflect", agent_type: "reviewer", enabled: true },
 ];
+const DEFAULT_PUBLIC_ENTITLEMENT_TOKEN = process.env.NEXT_PUBLIC_DEFAULT_ENTITLEMENT_TOKEN ?? "";
 
 export function OrchestrateView() {
   const [entrySource, setEntrySource] = useState("web_ui");
   const [runMode, setRunMode] = useState<"sync" | "async">("sync");
   const [subscriptionTier, setSubscriptionTier] = useState<"free" | "pro" | "power">("pro");
-  const [entitlementToken, setEntitlementToken] = useState("");
+  const [entitlementToken, setEntitlementToken] = useState(DEFAULT_PUBLIC_ENTITLEMENT_TOKEN);
   const [steps, setSteps] = useState<WorkflowStepDefinition[]>(DEFAULT_STEPS);
   const [templateName, setTemplateName] = useState("Default DevOps Loop");
   const [templateDescription, setTemplateDescription] = useState(
@@ -77,7 +78,13 @@ export function OrchestrateView() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const cached = window.localStorage.getItem("entitlement_token");
-    if (cached) setEntitlementToken(cached);
+    if (cached) {
+      setEntitlementToken(cached);
+      return;
+    }
+    if (DEFAULT_PUBLIC_ENTITLEMENT_TOKEN.trim()) {
+      window.localStorage.setItem("entitlement_token", DEFAULT_PUBLIC_ENTITLEMENT_TOKEN.trim());
+    }
   }, []);
 
   useEffect(() => {
@@ -129,6 +136,27 @@ export function OrchestrateView() {
     return options;
   }
 
+  function isMissingEntitlementError(value: unknown): boolean {
+    if (!(value instanceof Error)) return false;
+    return value.message.trim().toLowerCase() === "missing entitlement token.";
+  }
+
+  async function tryBootstrapEntitlementToken(): Promise<string | null> {
+    try {
+      const response = await apiClient.getEntitlementBootstrapToken();
+      const token = response.token.trim();
+      if (!token) return null;
+      setEntitlementToken(token);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("entitlement_token", token);
+      }
+      setStatus("Loaded entitlement token from server bootstrap endpoint.");
+      return token;
+    } catch {
+      return null;
+    }
+  }
+
   async function refreshQueueJob(jobId: number, showToast = true) {
     try {
       const current = await apiClient.getWorkflowQueueJob(jobId);
@@ -156,12 +184,15 @@ export function OrchestrateView() {
       if (typeof window !== "undefined") {
         window.localStorage.setItem("entitlement_token", entitlementToken.trim());
       }
-      if (runMode === "sync") {
-        const record = await apiClient.runWorkflowOrchestration(buildPayload(), buildRunOptions());
-        setLatest(record);
-        setStatus(`Orchestration #${record.id} completed with status: ${record.status}.`);
-      } else {
-        const queued = await apiClient.enqueueWorkflowOrchestration(buildPayload(), buildRunOptions());
+      const executeRun = async (options: { subscription_tier?: "free" | "pro" | "power"; entitlement_token?: string }) => {
+        if (runMode === "sync") {
+          const record = await apiClient.runWorkflowOrchestration(buildPayload(), options);
+          setLatest(record);
+          setStatus(`Orchestration #${record.id} completed with status: ${record.status}.`);
+          return;
+        }
+
+        const queued = await apiClient.enqueueWorkflowOrchestration(buildPayload(), options);
         setQueueJob({
           id: queued.job_id,
           status: queued.status,
@@ -175,6 +206,23 @@ export function OrchestrateView() {
         });
         setStatus(`Queue job #${queued.job_id} submitted.`);
         await refreshQueueJob(queued.job_id, false);
+      };
+
+      const runOptions = buildRunOptions();
+      try {
+        await executeRun(runOptions);
+      } catch (runError) {
+        if (!isMissingEntitlementError(runError)) {
+          throw runError;
+        }
+        const bootstrapToken = await tryBootstrapEntitlementToken();
+        if (!bootstrapToken) {
+          throw runError;
+        }
+        await executeRun({
+          ...runOptions,
+          entitlement_token: bootstrapToken,
+        });
       }
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : "Failed to run orchestration.");
@@ -309,7 +357,7 @@ export function OrchestrateView() {
           <input
             value={entitlementToken}
             onChange={(event) => setEntitlementToken(event.target.value)}
-            placeholder="Optional when server entitlement check is disabled"
+            placeholder="Auto-fetched on demand when server bootstrap is enabled"
           />
         </label>
         <p className="muted">Active steps: {activeStepCount}. Free tier allows a single active step.</p>

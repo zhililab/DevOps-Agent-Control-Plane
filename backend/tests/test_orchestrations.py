@@ -374,3 +374,42 @@ def test_queue_history_endpoint_lists_jobs(client) -> None:
     finally:
         settings.entitlement_secret = old_secret
         settings.entitlement_required = old_required
+
+
+def test_entitlement_bootstrap_endpoint_disabled_by_default(client) -> None:
+    settings = get_settings()
+    old_enabled = settings.enable_public_entitlement_bootstrap
+    old_secret = settings.entitlement_secret
+    try:
+        settings.enable_public_entitlement_bootstrap = False
+        settings.entitlement_secret = "bootstrap-secret"
+        response = client.get("/api/orchestrations/entitlement/bootstrap")
+        assert response.status_code == 404
+    finally:
+        settings.enable_public_entitlement_bootstrap = old_enabled
+        settings.entitlement_secret = old_secret
+
+
+def test_entitlement_bootstrap_endpoint_returns_signed_token_when_enabled(client) -> None:
+    settings = get_settings()
+    old_enabled = settings.enable_public_entitlement_bootstrap
+    old_secret = settings.entitlement_secret
+    old_ttl = settings.public_entitlement_bootstrap_ttl_seconds
+    old_default_tier = settings.default_subscription_tier
+    try:
+        settings.enable_public_entitlement_bootstrap = True
+        settings.entitlement_secret = "bootstrap-secret"
+        settings.public_entitlement_bootstrap_ttl_seconds = 600
+        settings.default_subscription_tier = "pro"
+
+        response = client.get("/api/orchestrations/entitlement/bootstrap")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["tier"] == "pro"
+        assert isinstance(body["token"], str) and "." in body["token"]
+        assert "expires_at" in body
+    finally:
+        settings.enable_public_entitlement_bootstrap = old_enabled
+        settings.entitlement_secret = old_secret
+        settings.public_entitlement_bootstrap_ttl_seconds = old_ttl
+        settings.default_subscription_tier = old_default_tier
