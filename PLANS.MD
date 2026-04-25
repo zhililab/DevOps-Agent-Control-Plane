@@ -59,6 +59,14 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 - added partial-success fallback strategy (step failure does not abort full workflow)
 - added reusable output persistence bridge from orchestration to knowledge/templates
 - added orchestration backend and frontend test coverage
+- added monetization/observability contract tests for:
+  - entitlement expired + signature mismatch handling
+  - token-vs-legacy tier mismatch precedence
+  - free-tier capability deny in queued orchestration execution
+  - quota boundary (`429`) behavior on orchestration metrics endpoint
+  - orchestration metrics response shape + deterministic history ordering checks
+- added frontend dashboard monetization KPI render/fallback contract tests
+- added observability API route for monetization aggregation: `GET /api/observability/monetization?days=7|30`
 - upgraded `/orchestrate` UI with sync/async run mode, queue job status card, retry/cancel actions
 - upgraded dashboard orchestration KPI visualization with 7D/30D window switch
 - recorded local timing proxy for CI split:
@@ -66,6 +74,8 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
   - `make qa-fast` real time: `~7.59s` (includes frontend production build)
 
 ## Next Tasks
+- expose dedicated monetization APIs for subscription profile, usage counters, and event audit feed (current tests validate existing orchestration-based contracts only)
+- align frontend monetization observability client path with backend canonical route (`/api/observability/monetization`)
 - remove legacy `X-Subscription-Tier` fallback in production profile and migrate fully to signed entitlement
 - connect queue controls into dedicated `/orchestrations` history view (job list + status timeline + retry audit)
 - extend dashboard KPI trend from bar-only to line+delta insights with anomaly hinting

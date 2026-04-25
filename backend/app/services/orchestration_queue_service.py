@@ -26,18 +26,20 @@ def enqueue_orchestration_run(
     *,
     subscription_tier: str,
     background_tasks: BackgroundTasks,
+    monetization_context: dict[str, str | int] | None = None,
 ) -> WorkflowQueueRunResponse:
+    request_body: dict[str, object] = {
+        "payload": payload.model_dump(mode="json"),
+        "subscription_tier": subscription_tier,
+    }
+    if monetization_context is not None:
+        request_body["monetization_context"] = monetization_context
     job = WorkflowQueueJob(
         status="queued",
         attempts=0,
         max_attempts=3,
         cancel_requested=False,
-        request_json=json.dumps(
-            {
-                "payload": payload.model_dump(mode="json"),
-                "subscription_tier": subscription_tier,
-            }
-        ),
+        request_json=json.dumps(request_body, separators=(",", ":"), ensure_ascii=True),
     )
     db.add(job)
     db.flush()
@@ -50,6 +52,22 @@ def enqueue_orchestration_run(
     )
     db.commit()
     db.refresh(job)
+
+    if monetization_context is not None:
+        from app.services.orchestration_service import _write_monetization_event
+
+        _write_monetization_event(
+            db,
+            event_name="monetization.usage_recorded",
+            status="success",
+            payload={
+                "endpoint": str(monetization_context.get("endpoint", "/api/orchestrations/queue/run")),
+                "tier": str(monetization_context.get("tier", subscription_tier)),
+                "subject_id": str(monetization_context.get("subject_id", "unknown")),
+                "queue_job_id": job.id,
+            },
+            outcome="usage recorded after queue accept",
+        )
 
     background_tasks.add_task(_process_queue_job, job.id)
     return WorkflowQueueRunResponse(job_id=job.id, status=job.status, attempts=job.attempts, max_attempts=job.max_attempts)  # type: ignore[arg-type]
@@ -180,11 +198,13 @@ def _process_queue_job(job_id: int) -> None:
             current = db.query(WorkflowQueueJob).filter(WorkflowQueueJob.id == job_id).first()
             return bool(current.cancel_requested) if current is not None else True
 
+        monetization_context = request_data.get("monetization_context", {})
         result = run_orchestration(
             db,
             payload,
             subscription_tier=subscription_tier,
             should_cancel=_is_cancel_requested,
+            monetization_context=monetization_context if isinstance(monetization_context, dict) else None,
         )
         refreshed = db.query(WorkflowQueueJob).filter(WorkflowQueueJob.id == job_id).first()
         if refreshed is None:

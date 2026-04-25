@@ -79,6 +79,7 @@ Documentation map: `docs/README.md`.
 - `GET /api/orchestrations/{id}`: get orchestration run detail with step replay
 - `GET /api/orchestrations/metrics`: orchestration KPI metrics (`days=7|30|...`)
 - `POST /api/orchestrations/queue/run`: enqueue orchestration run (async)
+- `GET /api/orchestrations/queue/history`: list queue jobs (status/attempts snapshot)
 - `GET /api/orchestrations/queue/{job_id}`: get queue job status with real queue events timeline payload
 - `POST /api/orchestrations/queue/{job_id}/retry`: retry failed/canceled queue job
 - `POST /api/orchestrations/queue/{job_id}/cancel`: request queue job cancellation
@@ -87,6 +88,7 @@ Documentation map: `docs/README.md`.
 - `GET /api/orchestrations/templates`: list orchestration workflow templates
 - `GET /api/orchestrations/templates/export`: export orchestration workflow templates
 - `POST /api/orchestrations/templates/import`: import orchestration workflow templates
+- `GET /api/observability/monetization`: monetization observability aggregation (`days=7|30`)
 - `POST /api/tasks`: create task
 - `GET /api/tasks`: list tasks
 - `PUT /api/tasks/{id}`: update task
@@ -225,6 +227,17 @@ Effective auth behavior:
 - In `production`, signed `X-Entitlement` is always required and `X-Subscription-Tier` fallback is disabled.
 - In non-production, `X-Subscription-Tier` fallback is only honored when `APP_ALLOW_LEGACY_SUBSCRIPTION_TIER_FALLBACK=true`.
 - `APP_ENTITLEMENT_REQUIRED=true` enforces signed `X-Entitlement` in every environment.
+- Signed token is authoritative when both headers are provided (`X-Entitlement` tier overrides mismatched legacy tier header).
+- Expired or signature-invalid tokens return deterministic `401` errors.
+- Free tier capability guard denies multi-step orchestration runs with `403`.
+
+Observability and quota contract notes:
+
+- `GET /api/orchestrations/metrics` response fields are stable and ordered as:
+  `period_days`, `total_runs`, `weekly_active_orchestrations`, `partial_success_rate`, `average_duration_ms`.
+- `GET /api/orchestrations/history` is returned newest-first for deterministic dashboard aggregation.
+- Global request quota/rate-limit boundary returns `429 Too many requests. Please retry later.` once configured per window limit is exceeded.
+- Dashboard contract note: monetization observability backend route is `GET /api/observability/monetization`; if UI still requests legacy path, KPI fallback/safe defaults are expected.
 
 Generate a local token for testing:
 

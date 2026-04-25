@@ -21,6 +21,9 @@ CORE_TABLES = (
     "workflow_templates",
     "workflow_queue_jobs",
     "workflow_queue_events",
+    "subscription_profiles",
+    "usage_counters",
+    "monetization_events",
 )
 
 
