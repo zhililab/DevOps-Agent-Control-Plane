@@ -62,7 +62,8 @@ PY
 }
 
 build_smoke_entitlement_token() {
-  python3 - <<'PY'
+  local py_cmd="${1:-python3}"
+  APP_ENTITLEMENT_SECRET="$APP_ENTITLEMENT_SECRET" "$py_cmd" - <<'PY'
 import base64
 import hashlib
 import hmac
@@ -141,9 +142,40 @@ if ! wait_http "http://127.0.0.1/health" "backend"; then
 fi
 
 log "running smoke-check against gateway/backend"
-SMOKE_ENTITLEMENT_TOKEN="$(build_smoke_entitlement_token || true)"
+SMOKE_ENTITLEMENT_TOKEN=""
+if command -v python3 >/dev/null 2>&1; then
+  SMOKE_ENTITLEMENT_TOKEN="$(build_smoke_entitlement_token python3 2>/dev/null || true)"
+fi
+if [[ -z "$SMOKE_ENTITLEMENT_TOKEN" ]] && command -v python >/dev/null 2>&1; then
+  SMOKE_ENTITLEMENT_TOKEN="$(build_smoke_entitlement_token python 2>/dev/null || true)"
+fi
 if [[ -z "$SMOKE_ENTITLEMENT_TOKEN" ]]; then
-  log "failed to build smoke entitlement token; check APP_ENTITLEMENT_SECRET"
+  SMOKE_ENTITLEMENT_TOKEN="$(docker exec -e APP_ENTITLEMENT_SECRET="$APP_ENTITLEMENT_SECRET" personal-agent-backend python - <<'PY'
+import base64
+import hashlib
+import hmac
+import json
+import os
+import time
+
+secret = os.environ.get("APP_ENTITLEMENT_SECRET", "").strip()
+if not secret:
+    raise SystemExit(1)
+
+payload = {
+    "tier": "pro",
+    "user_id": "deploy-smoke",
+    "exp": int(time.time()) + 3600,
+}
+payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+encoded_payload = base64.urlsafe_b64encode(payload_json).decode("utf-8").rstrip("=")
+signature = hmac.new(secret.encode("utf-8"), encoded_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+print(f"{encoded_payload}.{signature}")
+PY
+ 2>/dev/null || true)"
+fi
+if [[ -z "$SMOKE_ENTITLEMENT_TOKEN" ]]; then
+  log "failed to build smoke entitlement token; check APP_ENTITLEMENT_SECRET and Python availability"
   print_diag
   exit 1
 fi
