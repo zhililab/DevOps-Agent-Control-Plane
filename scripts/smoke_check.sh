@@ -5,6 +5,7 @@ set -euo pipefail
 FRONTEND_BASE="${FRONTEND_BASE:-http://127.0.0.1:3000}"
 BACKEND_BASE="${BACKEND_BASE:-http://127.0.0.1:8000}"
 API_BASE="${API_BASE:-$BACKEND_BASE/api}"
+ENTITLEMENT_TOKEN="${ENTITLEMENT_TOKEN:-}"
 
 log() {
   echo "[smoke] $*"
@@ -40,6 +41,31 @@ assert_api_json_contains() {
 
   local body
   body="$(curl -sS -X POST "$url" -H "Content-Type: application/json" -d "$payload")"
+
+  if [[ "$body" != *"$must_contain"* ]]; then
+    log "api assertion failed: ${url} missing '${must_contain}'"
+    echo "$body"
+    return 1
+  fi
+
+  log "api ok: ${url} contains '${must_contain}'"
+}
+
+assert_api_json_contains_with_entitlement() {
+  local url="$1"
+  local payload="$2"
+  local must_contain="$3"
+
+  if [[ -z "$ENTITLEMENT_TOKEN" ]]; then
+    log "api assertion failed: ${url} requires entitlement token but ENTITLEMENT_TOKEN is empty"
+    return 1
+  fi
+
+  local body
+  body="$(curl -sS -X POST "$url" \
+    -H "Content-Type: application/json" \
+    -H "X-Entitlement: ${ENTITLEMENT_TOKEN}" \
+    -d "$payload")"
 
   if [[ "$body" != *"$must_contain"* ]]; then
     log "api assertion failed: ${url} missing '${must_contain}'"
@@ -117,7 +143,7 @@ main() {
     '{"issue_description":"Smoke issue","logs":"error line","errors":["timeout"],"code_snippets":["kubectl get pods"]}' \
     '"problem_statement"'
 
-  assert_api_json_contains \
+  assert_api_json_contains_with_entitlement \
     "${API_BASE}/orchestrations/run" \
     '{"entry_source":"smoke_check","steps":[{"step_name":"Smoke planner","agent_type":"planner","enabled":true}],"daily_context":{"tasks":["Smoke task"],"meetings":["Smoke meeting"],"blockers":["None"],"priorities":["Smoke task"]},"persist_knowledge":false,"persist_template":false}' \
     '"summary":{"conclusion"'

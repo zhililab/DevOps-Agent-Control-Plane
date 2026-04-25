@@ -7,6 +7,7 @@ DB_PASSWORD="${DB_PASSWORD:-}"
 DB_PASSWORD_URLENC="${DB_PASSWORD_URLENC:-}"
 PUBLIC_HOST="${PUBLIC_HOST:-}"
 RESET_DB="${RESET_DB:-0}"
+APP_ENTITLEMENT_SECRET="${APP_ENTITLEMENT_SECRET:-}"
 
 if [[ -z "$DB_PASSWORD" ]]; then
   echo "[deploy-simple] missing DB_PASSWORD env"
@@ -33,6 +34,56 @@ fi
 
 log() {
   echo "[deploy-simple] $*"
+}
+
+ensure_entitlement_secret() {
+  if [[ -n "$APP_ENTITLEMENT_SECRET" ]]; then
+    return 0
+  fi
+
+  if command -v openssl >/dev/null 2>&1; then
+    APP_ENTITLEMENT_SECRET="$(openssl rand -hex 32 2>/dev/null || true)"
+  fi
+
+  if [[ -z "$APP_ENTITLEMENT_SECRET" ]] && command -v python3 >/dev/null 2>&1; then
+    APP_ENTITLEMENT_SECRET="$(python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)"
+  fi
+
+  if [[ -z "$APP_ENTITLEMENT_SECRET" ]]; then
+    log "failed to generate APP_ENTITLEMENT_SECRET (need openssl or python3)"
+    return 1
+  fi
+
+  log "APP_ENTITLEMENT_SECRET not provided; generated ephemeral secret for this deploy run."
+}
+
+build_smoke_entitlement_token() {
+  python3 - <<'PY'
+import base64
+import hashlib
+import hmac
+import json
+import os
+import time
+
+secret = os.environ.get("APP_ENTITLEMENT_SECRET", "").strip()
+if not secret:
+    raise SystemExit(1)
+
+payload = {
+    "tier": "pro",
+    "user_id": "deploy-smoke",
+    "exp": int(time.time()) + 3600,
+}
+payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+encoded_payload = base64.urlsafe_b64encode(payload_json).decode("utf-8").rstrip("=")
+signature = hmac.new(secret.encode("utf-8"), encoded_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+print(f"{encoded_payload}.{signature}")
+PY
 }
 
 print_diag() {
@@ -71,6 +122,7 @@ wait_http() {
 }
 
 cd "$ROOT_DIR"
+ensure_entitlement_secret
 
 if [[ "$RESET_DB" == "1" ]]; then
   log "RESET_DB=1 -> removing existing stack and postgres volume"
@@ -78,7 +130,7 @@ if [[ "$RESET_DB" == "1" ]]; then
 fi
 
 log "starting stack with docker compose"
-DB_PASSWORD="$DB_PASSWORD" DB_PASSWORD_URLENC="$DB_PASSWORD_URLENC" docker compose -f docker-compose.server.yml up -d --build
+DB_PASSWORD="$DB_PASSWORD" DB_PASSWORD_URLENC="$DB_PASSWORD_URLENC" APP_ENTITLEMENT_SECRET="$APP_ENTITLEMENT_SECRET" docker compose -f docker-compose.server.yml up -d --build
 
 wait_http "http://127.0.0.1/" "gateway"
 if ! wait_http "http://127.0.0.1/health" "backend"; then
@@ -89,7 +141,13 @@ if ! wait_http "http://127.0.0.1/health" "backend"; then
 fi
 
 log "running smoke-check against gateway/backend"
-if ! FRONTEND_BASE="http://127.0.0.1" BACKEND_BASE="http://127.0.0.1" ./scripts/smoke_check.sh; then
+SMOKE_ENTITLEMENT_TOKEN="$(build_smoke_entitlement_token || true)"
+if [[ -z "$SMOKE_ENTITLEMENT_TOKEN" ]]; then
+  log "failed to build smoke entitlement token; check APP_ENTITLEMENT_SECRET"
+  print_diag
+  exit 1
+fi
+if ! FRONTEND_BASE="http://127.0.0.1" BACKEND_BASE="http://127.0.0.1" ENTITLEMENT_TOKEN="$SMOKE_ENTITLEMENT_TOKEN" ./scripts/smoke_check.sh; then
   log "smoke-check failed; collecting diagnostics"
   print_diag
   exit 1
