@@ -326,7 +326,7 @@ export const apiClient = {
   },
 
   getMonetizationObservability(days = 7) {
-    return request<MonetizationObservability>(`/orchestrations/monetization/observability?days=${days}`);
+    return request<MonetizationObservability>(`/observability/monetization?days=${days}`);
   },
 
   createWorkflowTemplate(payload: {

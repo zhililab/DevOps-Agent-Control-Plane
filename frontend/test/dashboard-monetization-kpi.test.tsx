@@ -30,7 +30,7 @@ describe("dashboard monetization kpi", () => {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
 
-      if (url.includes("/orchestrations/monetization/observability")) {
+      if (url.includes("/observability/monetization")) {
         return new Response(
           JSON.stringify({
             observability: {
@@ -107,7 +107,7 @@ describe("dashboard monetization kpi", () => {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
 
-      if (url.includes("/orchestrations/monetization/observability")) {
+      if (url.includes("/observability/monetization")) {
         return new Response(
           JSON.stringify({
             observability: {

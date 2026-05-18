@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Personal Agent Product Promo</title>
+    <style>
+      :root {
+        --bg: #0f1119;
+        --surface: #181b2b;
+        --surface-soft: #1e2235;
+        --text: #e9ecff;
+        --muted: #a4afcc;
+        --border: #2d3350;
+        --brand: #a68aff;
+        --brand-strong: #7f62ff;
+        --error: #ff7b8a;
+        --success: #66d2ab;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Avenir Next", "Segoe UI", "Sora", sans-serif;
+      }
+
+      #personal-agent-promo {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 12% 10%, rgba(166, 138, 255, 0.26), transparent 36%),
+          radial-gradient(circle at 85% 18%, rgba(102, 210, 171, 0.12), transparent 30%),
+          radial-gradient(circle at 54% 90%, rgba(127, 98, 255, 0.2), transparent 34%),
+          #0f1119;
+      }
+
+      .grid {
+        position: absolute;
+        inset: -80px;
+        background-image:
+          linear-gradient(rgba(164, 175, 204, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(164, 175, 204, 0.08) 1px, transparent 1px);
+        background-size: 58px 58px;
+        opacity: 0.9;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        width: 100%;
+        height: 100%;
+        padding: 92px 112px;
+        opacity: 0;
+      }
+
+      .scene-1,
+      .scene-5 {
+        align-items: center;
+        justify-content: space-between;
+        gap: 86px;
+      }
+
+      .scene-2,
+      .scene-3,
+      .scene-4 {
+        flex-direction: column;
+        justify-content: center;
+        gap: 46px;
+      }
+
+      .brand-lockup {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .logo-mark {
+        width: 78px;
+        height: 78px;
+        border-radius: 18px;
+        background: center / contain no-repeat url("assets/icon.svg");
+        box-shadow: 0 18px 46px rgba(127, 98, 255, 0.42);
+      }
+
+      .label {
+        margin: 0 0 16px;
+        color: var(--brand);
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        max-width: 760px;
+        font-size: 100px;
+      }
+
+      h2 {
+        max-width: 1160px;
+        font-size: 76px;
+      }
+
+      .subcopy {
+        max-width: 780px;
+        margin: 28px 0 0;
+        color: var(--muted);
+        font-size: 30px;
+        line-height: 1.35;
+      }
+
+      .dashboard-stack {
+        position: relative;
+        width: 820px;
+        min-height: 690px;
+      }
+
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: rgba(24, 27, 43, 0.92);
+        box-shadow: 0 26px 70px rgba(5, 7, 18, 0.48);
+        backdrop-filter: blur(12px);
+      }
+
+      .hero-panel {
+        position: absolute;
+        right: 0;
+        top: 20px;
+        width: 690px;
+        padding: 28px;
+      }
+
+      .floating-card {
+        position: absolute;
+        width: 330px;
+        min-height: 170px;
+        padding: 24px;
+      }
+
+      .card-a {
+        left: 0;
+        top: 170px;
+      }
+
+      .card-b {
+        right: 28px;
+        bottom: 48px;
+      }
+
+      .card-c {
+        left: 64px;
+        bottom: 8px;
+      }
+
+      .metric {
+        margin: 0;
+        font-size: 64px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .metric-label {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 22px;
+      }
+
+      .mini-bars {
+        display: flex;
+        align-items: end;
+        height: 150px;
+        gap: 14px;
+        margin-top: 26px;
+      }
+
+      .mini-bars span {
+        width: 52px;
+        min-height: 20px;
+        border-radius: 10px 10px 4px 4px;
+        background: linear-gradient(180deg, var(--brand), var(--brand-strong));
+      }
+
+      .workflow-board {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+      }
+
+      .lane {
+        position: relative;
+        min-height: 455px;
+        padding: 30px;
+      }
+
+      .lane h3,
+      .audit-card h3,
+      .queue-card h3 {
+        margin: 0 0 18px;
+        font-size: 34px;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .chip {
+        border: 1px solid rgba(166, 138, 255, 0.44);
+        border-radius: 999px;
+        padding: 11px 16px;
+        background: rgba(30, 34, 53, 0.82);
+        color: var(--text);
+        font-size: 21px;
+      }
+
+      .chip.success {
+        border-color: rgba(102, 210, 171, 0.62);
+        color: var(--success);
+      }
+
+      .chip.error {
+        border-color: rgba(255, 123, 138, 0.62);
+        color: var(--error);
+      }
+
+      .run-token {
+        position: absolute;
+        left: 72px;
+        bottom: 54px;
+        width: 96px;
+        height: 96px;
+        border: 2px solid var(--brand);
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 35% 30%, #e9ecff, transparent 16%),
+          radial-gradient(circle at center, rgba(166, 138, 255, 0.94), rgba(127, 98, 255, 0.42));
+        box-shadow: 0 0 56px rgba(166, 138, 255, 0.52);
+      }
+
+      .audit-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 26px;
+      }
+
+      .audit-card {
+        min-height: 470px;
+        padding: 28px;
+      }
+
+      .audit-row {
+        margin: 20px 0 0;
+        padding: 18px;
+        border: 1px solid rgba(45, 51, 80, 0.9);
+        border-radius: 12px;
+        background: rgba(30, 34, 53, 0.7);
+      }
+
+      .audit-row strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--brand);
+        font-size: 18px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .audit-row span {
+        display: block;
+        color: var(--text);
+        font-size: 22px;
+        line-height: 1.28;
+      }
+
+      .scrubber {
+        position: relative;
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(45, 51, 80, 0.9);
+        overflow: hidden;
+      }
+
+      .scrubber span {
+        display: block;
+        width: 42%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--brand-strong), var(--success));
+      }
+
+      .queue-grid {
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 32px;
+      }
+
+      .queue-card {
+        padding: 30px;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 18px;
+      }
+
+      .timeline-node {
+        display: grid;
+        grid-template-columns: 34px 1fr auto;
+        align-items: center;
+        gap: 18px;
+        min-height: 72px;
+        padding: 16px 18px;
+        border: 1px solid rgba(45, 51, 80, 0.9);
+        border-radius: 14px;
+        background: rgba(30, 34, 53, 0.72);
+        font-size: 24px;
+      }
+
+      .dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--brand);
+        box-shadow: 0 0 22px rgba(166, 138, 255, 0.58);
+      }
+
+      .tier-stack {
+        display: grid;
+        gap: 20px;
+      }
+
+      .tier {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(30, 34, 53, 0.76);
+        font-size: 27px;
+      }
+
+      .entitlement {
+        position: relative;
+        overflow: hidden;
+        margin-top: 20px;
+        padding: 22px 24px;
+        border: 1px solid rgba(102, 210, 171, 0.42);
+        border-radius: 14px;
+        color: var(--success);
+        background: rgba(102, 210, 171, 0.08);
+        font-size: 24px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .entitlement-shimmer {
+        position: absolute;
+        inset: 0;
+        width: 35%;
+        background: linear-gradient(90deg, transparent, rgba(233, 236, 255, 0.24), transparent);
+      }
+
+      .orbital-panels {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .mini-panel {
+        position: absolute;
+        width: 330px;
+        height: 150px;
+        border: 1px solid rgba(45, 51, 80, 0.78);
+        border-radius: 14px;
+        background: rgba(24, 27, 43, 0.55);
+      }
+
+      .mini-1 {
+        left: 160px;
+        top: 150px;
+      }
+
+      .mini-2 {
+        right: 170px;
+        top: 210px;
+      }
+
+      .mini-3 {
+        left: 260px;
+        bottom: 155px;
+      }
+
+      .final-copy {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        text-align: center;
+      }
+
+      .final-copy .brand-lockup {
+        justify-content: center;
+        margin-bottom: 34px;
+      }
+
+      .final-copy h1 {
+        max-width: none;
+      }
+
+      .final-copy .subcopy {
+        max-width: none;
+        margin-left: auto;
+        margin-right: auto;
+        font-size: 40px;
+      }
+
+      .wipe {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        pointer-events: none;
+        background:
+          linear-gradient(100deg, transparent 0%, rgba(127, 98, 255, 0.88) 48%, rgba(233, 236, 255, 0.82) 54%, transparent 100%);
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="personal-agent-promo"
+      data-composition-id="personal-agent-promo"
+      data-start="0"
+      data-duration="20"
+      data-width="1920"
+      data-height="1080"
+      data-track-index="0"
+    >
+      <div class="grid" data-layout-ignore></div>
+
+      <section class="scene scene-1">
+        <div class="copy-block">
+          <div class="brand-lockup">
+            <div class="logo-mark" role="img" aria-label="Personal Agent"></div>
+            <p class="label">Personal Agent</p>
+          </div>
+          <h1>Your AI workflow shouldn't be a black box.</h1>
+          <p class="subcopy">Turn daily DevOps work into a system you can run, inspect, and improve.</p>
+        </div>
+        <div class="dashboard-stack">
+          <article class="panel hero-panel">
+            <p class="metric-label">Execution loop</p>
+            <h3 style="margin: 0; font-size: 44px">Dashboard</h3>
+            <div class="mini-bars">
+              <span style="height: 46%"></span>
+              <span style="height: 72%"></span>
+              <span style="height: 58%"></span>
+              <span style="height: 88%"></span>
+              <span style="height: 64%"></span>
+              <span style="height: 94%"></span>
+            </div>
+          </article>
+          <article class="panel floating-card card-a">
+            <p class="metric-label">Orchestration runs</p>
+            <p class="metric">42</p>
+          </article>
+          <article class="panel floating-card card-b">
+            <p class="metric-label">Partial success rate</p>
+            <p class="metric">8.7%</p>
+          </article>
+          <article class="panel floating-card card-c">
+            <p class="metric-label">Avg duration</p>
+            <p class="metric">1.4s</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="scene scene-2">
+        <div>
+          <p class="label">Deterministic orchestration</p>
+          <h2>Plan, analyze, review, reflect. Then run it again.</h2>
+        </div>
+        <div class="workflow-board">
+          <article class="panel lane">
+            <h3>Planner</h3>
+            <div class="chip-row">
+              <span class="chip">daily context</span>
+              <span class="chip">priorities</span>
+              <span class="chip success">next action</span>
+            </div>
+            <div class="run-token"></div>
+          </article>
+          <article class="panel lane">
+            <h3>Analyzer</h3>
+            <div class="chip-row">
+              <span class="chip">logs</span>
+              <span class="chip">signals</span>
+              <span class="chip error">risk</span>
+            </div>
+            <div class="run-token"></div>
+          </article>
+          <article class="panel lane">
+            <h3>Reviewer</h3>
+            <div class="chip-row">
+              <span class="chip">evidence</span>
+              <span class="chip">reflection</span>
+              <span class="chip success">closed loop</span>
+            </div>
+            <div class="run-token"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="scene scene-3">
+        <div>
+          <p class="label">Inspectable outputs</p>
+          <h2>Every step leaves conclusion, evidence, risk, and a next action.</h2>
+        </div>
+        <div class="audit-grid">
+          <article class="panel audit-card">
+            <h3>Plan The Day</h3>
+            <div class="audit-row"><strong>Conclusion</strong><span>Release pipeline gets first focus.</span></div>
+            <div class="audit-row"><strong>Evidence</strong><span>Two blocked deploy checks remain.</span></div>
+            <div class="audit-row"><strong>Risk</strong><span>Approval delay may push staging.</span></div>
+          </article>
+          <article class="panel audit-card">
+            <h3>Analyze Signals</h3>
+            <div class="audit-row"><strong>Conclusion</strong><span>Registry timeout is the likely source.</span></div>
+            <div class="audit-row"><strong>Evidence</strong><span>Upload stage fails after artifact handoff.</span></div>
+            <div class="audit-row"><strong>Next Action</strong><span>Verify retry policy in staging.</span></div>
+          </article>
+          <article class="panel audit-card">
+            <h3>Review And Reflect</h3>
+            <div class="audit-row"><strong>Conclusion</strong><span>Keep owner visible until validation closes.</span></div>
+            <div class="audit-row"><strong>Evidence</strong><span>Timeline replay has the handoff.</span></div>
+            <div class="audit-row"><strong>Risk</strong><span>Context switching after meetings.</span></div>
+          </article>
+        </div>
+        <div class="scrubber"><span></span></div>
+      </section>
+
+      <section class="scene scene-4">
+        <div>
+          <p class="label">Queue lifecycle and tier boundaries</p>
+          <h2>Queued, running, succeeded, failed, canceled. All replayable.</h2>
+        </div>
+        <div class="queue-grid">
+          <article class="panel queue-card">
+            <h3>Timeline Replay</h3>
+            <div class="timeline">
+              <div class="timeline-node"><span class="dot"></span><span>queued</span><span>#108</span></div>
+              <div class="timeline-node"><span class="dot"></span><span>running</span><span>attempt 1/3</span></div>
+              <div class="timeline-node"><span class="dot"></span><span>failed</span><span class="chip error">timeout</span></div>
+              <div class="timeline-node"><span class="dot"></span><span>retry accepted</span><span class="chip success">idempotent</span></div>
+              <div class="timeline-node"><span class="dot"></span><span>succeeded</span><span class="chip success">run linked</span></div>
+            </div>
+          </article>
+          <aside class="panel queue-card">
+            <h3>Entitlement</h3>
+            <div class="tier-stack">
+              <div class="tier"><span>free</span><span>guarded</span></div>
+              <div class="tier"><span>pro</span><span>signed</span></div>
+              <div class="tier"><span>power</span><span>audited</span></div>
+            </div>
+            <div class="entitlement">X-Entitlement: verified<span class="entitlement-shimmer" data-layout-ignore></span></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="scene scene-5">
+        <div class="orbital-panels" data-layout-ignore>
+          <div class="mini-panel mini-1"></div>
+          <div class="mini-panel mini-2"></div>
+          <div class="mini-panel mini-3"></div>
+        </div>
+        <div class="final-copy">
+          <div class="brand-lockup">
+            <div class="logo-mark" role="img" aria-label="Personal Agent"></div>
+            <p class="label">Personal Agent</p>
+          </div>
+          <h1>Execution you can inspect.</h1>
+          <p class="subcopy">Build reusable DevOps workflows with deterministic, replayable agent orchestration.</p>
+        </div>
+      </section>
+
+      <div class="wipe" data-layout-ignore></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const tl = gsap.timeline({ paused: true });
+      const sceneIn = (selector, time) => {
+        tl.set(selector, { opacity: 1 }, time);
+      };
+      const wipe = (time) => {
+        tl.fromTo(".wipe", { opacity: 0, x: -1920 }, { opacity: 1, x: 1920, duration: 0.62, ease: "power3.inOut", overwrite: "auto" }, time);
+      tl.to(".wipe", { opacity: 0, duration: 0.2, ease: "power1.out", overwrite: "auto" }, time + 0.64);
+      };
+
+      sceneIn(".scene-1", 0);
+      tl.fromTo(".grid", { x: 0, y: 0 }, { x: 70, y: 45, duration: 20, ease: "none" }, 0);
+      tl.fromTo(".scene-1 .brand-lockup", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.58, ease: "power3.out" }, 0.2);
+      tl.fromTo(".scene-1 h1", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.72, ease: "expo.out" }, 0.48);
+      tl.fromTo(".scene-1 .subcopy", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.58, ease: "power2.out" }, 0.85);
+      tl.fromTo(".hero-panel", { opacity: 0, y: 70, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "back.out(1.2)" }, 0.5);
+      tl.fromTo(".card-a", { opacity: 0, x: -80, y: 40 }, { opacity: 1, x: 0, y: 0, duration: 0.64, ease: "power4.out" }, 0.95);
+      tl.fromTo(".card-b", { opacity: 0, x: 90, y: 50 }, { opacity: 1, x: 0, y: 0, duration: 0.64, ease: "circ.out" }, 1.15);
+      tl.fromTo(".card-c", { opacity: 0, y: 80, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.64, ease: "back.out(1.5)" }, 1.32);
+      tl.fromTo(".mini-bars span", { scaleY: 0.12, opacity: 0.45, transformOrigin: "bottom center" }, { scaleY: 1, opacity: 1, stagger: 0.08, duration: 0.7, ease: "power3.out" }, 1.36);
+      tl.to(".dashboard-stack", { y: -12, duration: 2.8, ease: "sine.inOut" }, 1.1);
+      wipe(3.55);
+
+      sceneIn(".scene-2", 4);
+      tl.fromTo(".scene-2 .label", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, 4.16);
+      tl.fromTo(".scene-2 h2", { opacity: 0, x: -70 }, { opacity: 1, x: 0, duration: 0.68, ease: "expo.out" }, 4.34);
+      tl.fromTo(".lane:nth-child(1)", { opacity: 0, y: 82 }, { opacity: 1, y: 0, duration: 0.62, ease: "back.out(1.1)" }, 4.86);
+      tl.fromTo(".lane:nth-child(2)", { opacity: 0, y: 82 }, { opacity: 1, y: 0, duration: 0.62, ease: "power4.out" }, 5.04);
+      tl.fromTo(".lane:nth-child(3)", { opacity: 0, y: 82 }, { opacity: 1, y: 0, duration: 0.62, ease: "circ.out" }, 5.22);
+      tl.fromTo(".scene-2 .chip", { opacity: 0, y: 20, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, stagger: 0.04, duration: 0.4, ease: "power2.out" }, 5.45);
+      tl.fromTo(".scene-2 .run-token", { opacity: 0, x: -35, scale: 0.72 }, { opacity: 1, x: 0, scale: 1, stagger: 0.1, duration: 0.6, ease: "back.out(1.8)" }, 5.64);
+      tl.to(".scene-2 .run-token", { x: 170, duration: 1.35, ease: "power1.inOut" }, 6.4);
+      wipe(7.55);
+
+      sceneIn(".scene-3", 8);
+      tl.fromTo(".scene-3 .label", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 8.14);
+      tl.fromTo(".scene-3 h2", { opacity: 0, y: 48 }, { opacity: 1, y: 0, duration: 0.66, ease: "expo.out" }, 8.36);
+      tl.fromTo(".audit-card:nth-child(1)", { opacity: 0, x: -95, rotation: -2 }, { opacity: 1, x: 0, rotation: 0, duration: 0.7, ease: "power4.out" }, 8.92);
+      tl.fromTo(".audit-card:nth-child(2)", { opacity: 0, y: 88, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: "back.out(1.2)" }, 9.08);
+      tl.fromTo(".audit-card:nth-child(3)", { opacity: 0, x: 95, rotation: 2 }, { opacity: 1, x: 0, rotation: 0, duration: 0.7, ease: "circ.out" }, 9.24);
+      tl.fromTo(".audit-row", { opacity: 0, y: 24 }, { opacity: 1, y: 0, stagger: 0.045, duration: 0.36, ease: "power2.out" }, 9.62);
+      tl.fromTo(".scrubber span", { x: -760 }, { x: 1120, duration: 2.1, ease: "power1.inOut" }, 10.25);
+      wipe(12.05);
+
+      sceneIn(".scene-4", 12.5);
+      tl.fromTo(".scene-4 .label", { opacity: 0, x: -34 }, { opacity: 1, x: 0, duration: 0.42, ease: "power2.out" }, 12.64);
+      tl.fromTo(".scene-4 h2", { opacity: 0, y: 52 }, { opacity: 1, y: 0, duration: 0.62, ease: "expo.out" }, 12.84);
+      tl.fromTo(".queue-card:first-child", { opacity: 0, x: -86 }, { opacity: 1, x: 0, duration: 0.64, ease: "power4.out" }, 13.25);
+      tl.fromTo(".queue-card:last-child", { opacity: 0, x: 86 }, { opacity: 1, x: 0, duration: 0.64, ease: "circ.out" }, 13.36);
+      tl.fromTo(".timeline-node", { opacity: 0, x: -38 }, { opacity: 1, x: 0, stagger: 0.13, duration: 0.38, ease: "power2.out" }, 13.74);
+      tl.fromTo(".dot", { scale: 0.55 }, { scale: 1.15, yoyo: true, repeat: 1, stagger: 0.13, duration: 0.2, ease: "power1.inOut" }, 13.8);
+      tl.fromTo(".tier", { opacity: 0, y: 28 }, { opacity: 1, y: 0, stagger: 0.1, duration: 0.42, ease: "back.out(1.2)" }, 14.04);
+      tl.fromTo(".entitlement", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.48, ease: "power3.out" }, 14.72);
+      tl.fromTo(".entitlement-shimmer", { x: -240 }, { x: 520, duration: 1, ease: "power1.inOut" }, 14.9);
+      wipe(16.08);
+
+      sceneIn(".scene-5", 16.5);
+      tl.fromTo(".mini-panel", { opacity: 0, y: 60, scale: 0.88 }, { opacity: 1, y: 0, scale: 1, stagger: 0.12, duration: 0.58, ease: "power3.out" }, 16.62);
+      tl.to(".mini-1", { y: -18, x: 24, duration: 2.6, ease: "sine.inOut" }, 17);
+      tl.to(".mini-2", { y: 22, x: -18, duration: 2.6, ease: "sine.inOut" }, 17);
+      tl.to(".mini-3", { y: -12, x: -22, duration: 2.6, ease: "sine.inOut" }, 17);
+      tl.fromTo(".scene-5 .brand-lockup", { opacity: 0, y: 40, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.62, ease: "back.out(1.2)" }, 16.86);
+      tl.fromTo(".scene-5 h1", { opacity: 0, y: 62 }, { opacity: 1, y: 0, duration: 0.74, ease: "expo.out" }, 17.24);
+      tl.fromTo(".scene-5 .subcopy", { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.54, ease: "power2.out" }, 17.82);
+      tl.to(".scene-5", { opacity: 0, duration: 0.5, ease: "power1.in" }, 19.5);
+
+      window.__timelines["personal-agent-promo"] = tl;
+    </script>
+  </body>
+</html>

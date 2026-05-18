@@ -10,11 +10,12 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 
 ---
 
-# 0. Current Iteration Snapshot (2026-04-23)
+# 0. Current Iteration Snapshot (2026-05-19)
 
-## Theme Upgrade (In Progress)
-- target style: Obsidian-like visual language (dark canvas, violet accent, layered cards, knowledge graph feeling)
-- status: frontend visual redesign is underway and already runnable locally
+## Iteration Theme
+- product direction: deterministic personal DevOps orchestration with inspectable replay, queue lifecycle visibility, entitlement-aware tier gates, and reusable knowledge/templates
+- UI direction: Obsidian-like visual language remains the active baseline (dark canvas, violet accent, layered cards, knowledge graph feeling)
+- status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; next work is polish, canonical route cleanup, deeper history controls, and deployment evidence
 
 ## Completed In This Iteration
 - added route-level cinematic transition layer
@@ -40,22 +41,28 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 - added simplified always-on server deployment path: `docker-compose.server.yml` + `make server-deploy`
 - added deterministic multi-agent orchestration workflow (Planner/Analyzer/Reviewer)
 - added orchestration persistence entities: `WorkflowOrchestration`, `WorkflowStepRun`, `WorkflowTemplate`
-- added orchestration queue persistence entity: `WorkflowQueueJob`
+- added orchestration queue persistence entities: `WorkflowQueueJob`, `WorkflowQueueEvent`
+- added monetization persistence entities: `SubscriptionProfile`, `UsageCounter`, `MonetizationEvent`
 - added orchestration APIs:
   - `POST /api/orchestrations/run`
   - `GET /api/orchestrations/history`
   - `GET /api/orchestrations/{id}`
   - `GET /api/orchestrations/metrics?days=...`
+  - `GET /api/orchestrations/entitlement/bootstrap`
   - `POST /api/orchestrations/queue/run`
+  - `GET /api/orchestrations/queue/history`
   - `GET /api/orchestrations/queue/{job_id}`
   - `POST /api/orchestrations/queue/{job_id}/retry`
   - `POST /api/orchestrations/queue/{job_id}/cancel`
   - template CRUD/import/export under `/api/orchestrations/templates*`
 - added orchestration UI pages:
   - `/orchestrate` (run + replay + template operations)
-  - `/orchestrations` (history + filter)
+  - `/orchestrations` (history + filter + queue job list + timeline replay)
 - added free/pro/power tier gate (free single-step restriction for orchestration runs)
 - added signed entitlement verification path (`X-Entitlement`) with config switch for required mode
+- added production behavior that requires signed entitlement and disables legacy tier fallback
+- added non-production legacy `X-Subscription-Tier` fallback only when explicitly enabled
+- added local entitlement token helper and optional public bootstrap endpoint
 - added partial-success fallback strategy (step failure does not abort full workflow)
 - added reusable output persistence bridge from orchestration to knowledge/templates
 - added orchestration backend and frontend test coverage
@@ -67,17 +74,21 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
   - orchestration metrics response shape + deterministic history ordering checks
 - added frontend dashboard monetization KPI render/fallback contract tests
 - added observability API route for monetization aggregation: `GET /api/observability/monetization?days=7|30`
+- added dedicated monetization read APIs:
+  - `GET /api/monetization/profile?subject=...`
+  - `GET /api/monetization/usage?subject=...`
+  - `GET /api/monetization/events?limit=...`
+- aligned frontend monetization observability client with backend canonical route: `/api/observability/monetization`
 - upgraded `/orchestrate` UI with sync/async run mode, queue job status card, retry/cancel actions
+- upgraded `/orchestrations` UI with queue status filtering and timeline replay from `WorkflowQueueEvent`
 - upgraded dashboard orchestration KPI visualization with 7D/30D window switch
 - recorded local timing proxy for CI split:
   - `make test` real time: `~2.21s`
   - `make qa-fast` real time: `~7.59s` (includes frontend production build)
 
-## Next Tasks
-- expose dedicated monetization APIs for subscription profile, usage counters, and event audit feed (current tests validate existing orchestration-based contracts only)
-- align frontend monetization observability client path with backend canonical route (`/api/observability/monetization`)
-- remove legacy `X-Subscription-Tier` fallback in production profile and migrate fully to signed entitlement
-- connect queue controls into dedicated `/orchestrations` history view (job list + status timeline + retry audit)
+## Still Pending / Next Tasks
+- migrate production callers fully to signed entitlement and keep legacy `X-Subscription-Tier` fallback limited to explicit non-production use
+- connect retry/cancel controls into dedicated `/orchestrations` history view (job list + timeline replay exists; actions still live in `/orchestrate`)
 - extend dashboard KPI trend from bar-only to line+delta insights with anomaly hinting
 - add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)
 - add E2E tests for `/orchestrate -> /orchestrations` full browser flow

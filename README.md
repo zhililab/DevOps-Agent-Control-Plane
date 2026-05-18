@@ -89,6 +89,9 @@ Documentation map: `docs/README.md`.
 - `GET /api/orchestrations/templates/export`: export orchestration workflow templates
 - `POST /api/orchestrations/templates/import`: import orchestration workflow templates
 - `GET /api/observability/monetization`: monetization observability aggregation (`days=7|30`)
+- `GET /api/monetization/profile`: read subscription profile by `subject`
+- `GET /api/monetization/usage`: read usage counters by `subject`
+- `GET /api/monetization/events`: read newest-first monetization event audit feed
 - `POST /api/tasks`: create task
 - `GET /api/tasks`: list tasks
 - `PUT /api/tasks/{id}`: update task
@@ -237,7 +240,7 @@ Observability and quota contract notes:
   `period_days`, `total_runs`, `weekly_active_orchestrations`, `partial_success_rate`, `average_duration_ms`.
 - `GET /api/orchestrations/history` is returned newest-first for deterministic dashboard aggregation.
 - Global request quota/rate-limit boundary returns `429 Too many requests. Please retry later.` once configured per window limit is exceeded.
-- Dashboard contract note: monetization observability backend route is `GET /api/observability/monetization`; if UI still requests legacy path, KPI fallback/safe defaults are expected.
+- Dashboard contract note: monetization observability backend route is `GET /api/observability/monetization`; the frontend API client uses this canonical route.
 
 Generate a local token for testing:
 
@@ -267,6 +270,8 @@ After `make server-deploy`, public routes are:
 - Today Plan: `http://1.117.63.81/today`
 - Reflection: `http://1.117.63.81/reflection`
 - Technical Analysis: `http://1.117.63.81/technical-analysis`
+- Orchestrate: `http://1.117.63.81/orchestrate`
+- Orchestration History: `http://1.117.63.81/orchestrations`
 - Knowledge: `http://1.117.63.81/knowledge`
 - Templates: `http://1.117.63.81/templates`
 - API health: `http://1.117.63.81/api/health`
@@ -410,10 +415,10 @@ This MVP intentionally keeps scope small. Current constraints:
 - No semantic/vector search or ranking for knowledge retrieval yet.
 - Knowledge and templates support only basic text query (`q`) and exact tag filter (`tag`) in backend retrieval.
 - No RBAC / multi-tenant separation in app layer yet.
-- No background jobs / queue for heavy analysis requests.
+- Orchestration has a lightweight FastAPI background-task queue, but no separate durable worker process yet.
 - Technical analysis output is deterministic rules-based (inspectable), not model-generated ranking.
 - Kubernetes manifests are baseline production-ready for a single environment, but remain non-HA.
-- This release still avoids external integrations and async orchestration.
+- This release still avoids external integrations and autonomous external actions.
 
 ## Security Hardening (Current)
 
