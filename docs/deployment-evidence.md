@@ -60,6 +60,30 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - smoke checks passed for core pages and core workflow APIs
   - runtime security check passed for security headers, canonical health, entitlement boundary, oversized payload handling, and no exposed `X-Powered-By`
 
+## 2026-05-22 History Ledger Release Verification
+
+- Latest deployed commit: `a07e8d5 chore: release deploy 2026-05-22-0043`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release fixes included:
+  - immutable `history_events` ledger table and Alembic migration
+  - canonical JSON payload hashing and integrity verification service
+  - orchestration, step replay, queue lifecycle, entitlement, and monetization audit event capture
+  - idempotent backfill from existing orchestration, queue, step, and agent log tables
+  - read-only history ledger API: `GET /api/orchestrations/{id}/history-events`
+  - `/orchestrations` browser control for ledger event count and integrity status
+- Verified on local gates:
+  - `make qa-fast` passed
+  - `make release-check` passed, including visual baseline, Playwright E2E, and security check
+- Verified on remote:
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - Docker Compose services were healthy after deployment
+  - `curl http://1.117.63.81/health` returned `{"status":"ok"}`
+  - `curl http://1.117.63.81/api/orchestrations/12/history-events` returned `integrity_status: valid` with 6 ledger events
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
