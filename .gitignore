@@ -12,6 +12,7 @@ node_modules/
 *.db
 .env
 .env.local
+.deploy.env
 
 # OS
 .DS_Store

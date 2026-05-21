@@ -278,6 +278,27 @@ make server-down
 
 Detailed guide: `docs/deploy-simple-server.md`.
 
+## Release Commit And Remote Deploy
+
+Local private deploy settings live in `.deploy.env` and are intentionally ignored by git. Use `.deploy.env.example`
+as the tracked template.
+
+After development is complete, run:
+
+```bash
+make release-deploy
+```
+
+The release deploy script:
+- runs the configured local gate (`CHECK_CMD`, default `make qa-fast`)
+- stages and commits local changes
+- pushes `origin master`
+- SSHes to `root@1.117.63.81`
+- runs `git fetch --prune`, `git checkout master -f`, `git reset --hard origin/master`
+- runs `make server-deploy` on the server with values from `.deploy.env`
+
+Set `REMOTE_RESET_DB=1` in `.deploy.env` only when the remote database can be discarded.
+
 ### Deployment Verification
 
 After `make server-deploy`, verify the deployment through the gateway:

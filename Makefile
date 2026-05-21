@@ -1,4 +1,4 @@
-.PHONY: test test-watch test-until-pass qa-fast qa-visual qa-all smoke-check release-check server-bootstrap server-deploy server-down server-restart server-status server-logs kind-deploy k3d-deploy dev-up dev-down dev-restart dev-status dev-logs templates-import-json templates-import-sql entitlement-token k8s-render k8s-dry-run k8s-apply k8s-verify
+.PHONY: test test-watch test-until-pass qa-fast qa-visual qa-all smoke-check release-check release-deploy server-bootstrap server-deploy server-down server-restart server-status server-logs kind-deploy k3d-deploy dev-up dev-down dev-restart dev-status dev-logs templates-import-json templates-import-sql entitlement-token k8s-render k8s-dry-run k8s-apply k8s-verify
 
 test:
 	./scripts/test_cycle.sh
@@ -33,6 +33,9 @@ smoke-check:
 
 release-check: qa-all k8s-dry-run
 	@echo "[release-check] qa-all and k8s dry-run passed"
+
+release-deploy:
+	./scripts/release_deploy_remote.sh
 
 server-bootstrap:
 	./scripts/bootstrap_centos_kind.sh
