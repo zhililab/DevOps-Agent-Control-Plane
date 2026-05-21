@@ -227,7 +227,7 @@ This starts:
 - `frontend`
 - `gateway` (Nginx on port `80`, routing `/api` to backend)
 
-Server startup now runs: `alembic upgrade head -> core table bootstrap check -> uvicorn`.
+Server startup now runs: `python -m app.db_migration -> uvicorn`. The migration wrapper applies Alembic normally and can stamp an existing bootstrap-created schema before upgrading, which keeps server deploys restartable without resetting data.
 This protects against partial migration states that can cause missing-table runtime errors.
 
 ## Entitlement Gate (Billing-ready tier check)

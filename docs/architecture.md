@@ -12,7 +12,7 @@ This document describes the current deployable DevOps personal workflow orchestr
 ## Current Deployment Target
 - The MVP deployment is converging on the simple Docker Compose server path: `make server-deploy`.
 - Runtime services are `postgres`, `backend`, `frontend`, and `gateway`; the gateway is the public edge on port `80` and routes `/api` to FastAPI.
-- Server and local dev startup run Alembic migrations, a core table bootstrap check, then `uvicorn` so partially migrated databases fail early and visibly.
+- Server and local dev startup run `python -m app.db_migration`, then `uvicorn`. The wrapper applies Alembic, stamps legacy bootstrap-created schemas that lack an Alembic revision marker, and verifies core tables so partially migrated databases fail early and visibly.
 - Deployment verification should use the gateway path `GET /health`, then the primary orchestration UI pages `/orchestrate`, `/orchestrations`, and `/dashboard`.
 - Kubernetes manifests remain available as a first-version deployment option and release dry-run target, but they are not the preferred MVP operations path yet.
 - Production hardening is intentionally scoped to a single environment: signed entitlement, basic rate limiting, sanitized audit logs, bounded payloads, and minimal public routes.

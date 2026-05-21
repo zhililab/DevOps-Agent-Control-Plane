@@ -79,8 +79,7 @@ ensure_prerequisites
 log "migrating isolated SQLite database"
 (
   cd "$ROOT_DIR/backend"
-  ./.venv/bin/alembic upgrade head >/dev/null
-  ./.venv/bin/python -m app.db_bootstrap >/dev/null
+  ./.venv/bin/python -m app.db_migration >/dev/null
 )
 
 E2E_TOKEN="$(
