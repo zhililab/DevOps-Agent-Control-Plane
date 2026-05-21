@@ -43,6 +43,23 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - remote `make server-deploy` runs smoke checks and runtime security checks
   - deployment uses `RESET_DB=0` unless the database can be discarded
 
+## 2026-05-22 Hardening Release Verification
+
+- Latest deployed commit: `96902f9 chore: release deploy 2026-05-22-0016`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release fixes included:
+  - deterministic startup migration wrapper for legacy bootstrap-created databases
+  - direct Alembic head marker recovery for existing schemas without `alembic_version`
+  - forced gateway recreation during server deploy so mounted Nginx config changes take effect
+  - gateway hiding of upstream `X-Powered-By`
+- Verified on remote:
+  - gateway and backend readiness checks passed
+  - smoke checks passed for core pages and core workflow APIs
+  - runtime security check passed for security headers, canonical health, entitlement boundary, oversized payload handling, and no exposed `X-Powered-By`
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
