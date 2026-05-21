@@ -30,6 +30,19 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - `curl http://1.117.63.81/health` returned `{"status":"ok"}`
   - `http://1.117.63.81/dashboard` returned `200`
 
+## 2026-05-21 Security Hardening Baseline
+
+- Added planned checks:
+  - `make security-check`
+  - gateway security headers
+  - report-only CSP
+  - production CORS origin configuration
+  - frontend dependency high/critical audit
+  - runtime entitlement, free-tier, canonical health, and oversized-payload assertions
+- Expected deployment behavior:
+  - remote `make server-deploy` runs smoke checks and runtime security checks
+  - deployment uses `RESET_DB=0` unless the database can be discarded
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.

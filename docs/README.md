@@ -11,6 +11,7 @@ This directory keeps project documents that explain how the personal agent is de
 ## Product And Architecture
 
 - `architecture.md`: compact MVP architecture notes for backend, frontend, and audit logging.
+- `core-functionality-check.md`: current MVP target, core pages/APIs, release path, and security baseline.
 - `visual-guidelines.md`: UI theme tokens, reusable component rules, motion guidance, and accessibility guardrails.
 
 ## Deployment

@@ -30,7 +30,22 @@ Expected:
 - `/orchestrations` shows the created run and persisted step replay
 - browser request includes `X-Entitlement` and does not emit legacy `X-Subscription-Tier`
 
-## 3) Manifest Render Gate
+## 3) Security Gate
+
+Run the security and robustness checks:
+
+```bash
+make security-check
+```
+
+Expected:
+- gateway security headers are present in config
+- frontend does not expose `X-Powered-By`
+- backend security tests pass for CORS, rate limiting, payload bounds, and log sanitization
+- frontend dependency audit has no high or critical vulnerabilities
+- runtime gateway assertions run when `SECURITY_CHECK_BASE` is provided
+
+## 4) Manifest Render Gate
 
 Render Kubernetes manifests without requiring a reachable cluster:
 
@@ -41,7 +56,7 @@ make k8s-render
 Expected:
 - manifests render successfully for later k3d/k8s validation
 
-## 4) Server Deploy Gate
+## 5) Server Deploy Gate
 
 Deploy through the current MVP server path:
 
@@ -54,10 +69,11 @@ Expected:
 - remote host pulls `origin/master`
 - `make server-deploy` completes on the server
 - remote smoke checks pass
+- remote runtime security checks pass
 
 Set `REMOTE_RESET_DB=1` only when the remote database can be discarded. Routine docs/script changes should keep it at `0`.
 
-## 5) Runtime Verification Gate
+## 6) Runtime Verification Gate
 
 Verify the deployed gateway:
 
@@ -71,8 +87,10 @@ curl -s -o /dev/null -w '%{http_code}' http://1.117.63.81/orchestrations
 Expected:
 - health returns `{"status":"ok"}`
 - core pages return `200`
+- core page responses include baseline security headers
+- `X-Powered-By` is not exposed
 
-## 6) Smoke Check Gate
+## 7) Smoke Check Gate
 
 Automated smoke check:
 
@@ -85,7 +103,7 @@ This command verifies:
 - backend health (`/health`)
 - core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, and monetization read APIs
 
-## 7) Rollback Trigger
+## 8) Rollback Trigger
 
 Rollback should be considered if any of these happen:
 - repeated 5xx in backend logs after rollout

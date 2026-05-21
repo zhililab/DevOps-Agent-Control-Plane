@@ -91,7 +91,11 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - verified extended local smoke checks against dev stack with signed entitlement token
 - verified local Kubernetes manifest rendering with `make k8s-render` (275 rendered lines); `make k8s-dry-run` still requires a reachable cluster context
 - added real-browser orchestration E2E coverage for `/orchestrate -> /orchestrations` with Playwright and an isolated local test stack
-- updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, and `make k8s-render`
+- added core functionality check document: `docs/core-functionality-check.md`
+- added security hardening and robustness gate: `make security-check`
+- added gateway security headers, report-only CSP, configurable production CORS, and hidden frontend `X-Powered-By`
+- upgraded frontend security patch dependencies: Next `15.5.18`, React/ReactDOM `19.2.6`, Vitest `2.1.9`
+- updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, `make security-check`, and `make k8s-render`
 - verified simplified server deployment on target host with `make server-deploy`
   - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`
   - follow-up docs/script health-path commit: `eb32a17 docs: align deployment health check path`
@@ -106,7 +110,7 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 ## Still Pending / Next Tasks
 
 ### Launch Required
-- keep `make qa-all`, `make e2e-orchestration`, and server smoke checks green before each release
+- keep `make qa-all`, `make e2e-orchestration`, `make security-check`, and server smoke checks green before each release
 - capture any future production deployment run in `docs/deployment-evidence.md`
 
 ### UX Closeout

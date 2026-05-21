@@ -38,6 +38,54 @@ def test_rate_limit_returns_429_when_exceeded(monkeypatch) -> None:
     get_settings.cache_clear()
 
 
+def test_rate_limit_response_includes_retry_after(monkeypatch) -> None:
+    monkeypatch.setenv("APP_RATE_LIMIT_ENABLED", "true")
+    monkeypatch.setenv("APP_RATE_LIMIT_MAX_REQUESTS", "1")
+    monkeypatch.setenv("APP_RATE_LIMIT_WINDOW_SECONDS", "60")
+
+    get_settings.cache_clear()
+    app = create_app()
+
+    with TestClient(app) as client:
+        first = client.get("/api/templates/init/json")
+        second = client.get("/api/templates/init/json")
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.headers["Retry-After"].isdigit()
+
+    get_settings.cache_clear()
+
+
+def test_cors_allowed_origin_is_configurable(monkeypatch) -> None:
+    monkeypatch.setenv("APP_CORS_ALLOWED_ORIGINS", "http://1.117.63.81,http://localhost:3000")
+
+    get_settings.cache_clear()
+    app = create_app()
+
+    with TestClient(app) as client:
+        allowed = client.options(
+            "/api/templates/init/json",
+            headers={
+                "Origin": "http://1.117.63.81",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        denied = client.options(
+            "/api/templates/init/json",
+            headers={
+                "Origin": "http://evil.example",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert allowed.status_code == 200
+    assert allowed.headers["access-control-allow-origin"] == "http://1.117.63.81"
+    assert "access-control-allow-origin" not in denied.headers
+
+    get_settings.cache_clear()
+
+
 def test_technical_analysis_rejects_excessive_logs(client) -> None:
     response = client.post(
         "/api/analysis/technical",

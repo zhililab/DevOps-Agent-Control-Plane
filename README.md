@@ -399,6 +399,9 @@ make qa-all
 # real-browser orchestration flow
 make e2e-orchestration
 
+# security headers, entitlement boundaries, payload/rate-limit guardrails, and high-severity dependency audit
+make security-check
+
 # app smoke checks (routes + core API loops)
 make smoke-check
 ```
@@ -409,7 +412,7 @@ Release preflight gate:
 make release-check
 ```
 
-This runs `qa-all`, the real-browser `/orchestrate -> /orchestrations` E2E flow, and `k8s-render`.
+This runs `qa-all`, the real-browser `/orchestrate -> /orchestrations` E2E flow, `security-check`, and `k8s-render`.
 The current MVP release path is the Docker Compose server deployment; k3d/k8s remains available for follow-up
 deployment validation and does not block the current server-path release.
 
@@ -443,6 +446,7 @@ CI is configured in `.github/workflows/ci.yml` with parallel jobs:
 
 Design/motion reuse guidance is documented in `docs/visual-guidelines.md`.
 Release gate checklist is documented in `docs/release-checklist.md`.
+Core functionality checks are documented in `docs/core-functionality-check.md`.
 Deployment evidence is recorded in `docs/deployment-evidence.md`.
 K3d online deployment guide is documented in `docs/deploy-k3d-online.md`.
 

@@ -185,6 +185,13 @@ if ! FRONTEND_BASE="http://127.0.0.1" BACKEND_BASE="http://127.0.0.1" ENTITLEMEN
   exit 1
 fi
 
+log "running security-check against gateway"
+if ! SECURITY_RUNTIME_ONLY=1 SECURITY_CHECK_BASE="http://127.0.0.1" SECURITY_ENTITLEMENT_SECRET="$APP_ENTITLEMENT_SECRET" ./scripts/security_check.sh; then
+  log "security-check failed; collecting diagnostics"
+  print_diag
+  exit 1
+fi
+
 log "deployment completed"
 log "open: http://${PUBLIC_HOST}"
 log "health: http://${PUBLIC_HOST}/health"

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = Field(default=True, validation_alias="APP_RATE_LIMIT_ENABLED")
     rate_limit_max_requests: int = Field(default=120, validation_alias="APP_RATE_LIMIT_MAX_REQUESTS")
     rate_limit_window_seconds: int = Field(default=60, validation_alias="APP_RATE_LIMIT_WINDOW_SECONDS")
+    cors_allowed_origins: str = Field(default="*", validation_alias="APP_CORS_ALLOWED_ORIGINS")
     default_subscription_tier: str = Field(default="pro", validation_alias="APP_DEFAULT_SUBSCRIPTION_TIER")
     entitlement_secret: str = Field(default="", validation_alias="APP_ENTITLEMENT_SECRET")
     entitlement_required: bool = Field(default=False, validation_alias="APP_ENTITLEMENT_REQUIRED")
@@ -52,6 +53,11 @@ class Settings(BaseSettings):
         if self.is_production:
             return False
         return self.allow_legacy_subscription_tier_fallback
+
+    @property
+    def effective_cors_allowed_origins(self) -> list[str]:
+        configured = [item.strip() for item in self.cors_allowed_origins.split(",") if item.strip()]
+        return configured or ["*"]
 
 
 @lru_cache
