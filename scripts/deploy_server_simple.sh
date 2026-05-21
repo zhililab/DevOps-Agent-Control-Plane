@@ -132,6 +132,8 @@ fi
 
 log "starting stack with docker compose"
 DB_PASSWORD="$DB_PASSWORD" DB_PASSWORD_URLENC="$DB_PASSWORD_URLENC" APP_ENTITLEMENT_SECRET="$APP_ENTITLEMENT_SECRET" docker compose -f docker-compose.server.yml up -d --build
+log "reloading gateway container to pick up mounted Nginx config changes"
+docker compose -f docker-compose.server.yml up -d --no-deps --force-recreate gateway
 
 wait_http "http://127.0.0.1/" "gateway"
 if ! wait_http "http://127.0.0.1/health" "backend"; then
