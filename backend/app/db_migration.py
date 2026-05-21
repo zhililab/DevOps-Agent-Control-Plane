@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
 
-from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
@@ -39,6 +39,33 @@ def should_stamp_existing_schema(connection: Connection) -> bool:
     )
 
 
+def get_current_head(config: Config) -> str:
+    head = ScriptDirectory.from_config(config).get_current_head()
+    if not head:
+        raise RuntimeError("Alembic head revision could not be determined")
+    return head
+
+
+def stamp_existing_schema_at_head(config: Config) -> str:
+    head = get_current_head(config)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS alembic_version (
+                    version_num VARCHAR(128) NOT NULL PRIMARY KEY
+                )
+                """
+            )
+        )
+        if connection.dialect.name == "postgresql":
+            connection.execute(text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)"))
+
+        connection.execute(text("DELETE FROM alembic_version"))
+        connection.execute(text("INSERT INTO alembic_version (version_num) VALUES (:version_num)"), {"version_num": head})
+    return head
+
+
 def run_startup_migrations() -> None:
     config = get_alembic_config()
 
@@ -49,8 +76,10 @@ def run_startup_migrations() -> None:
         logger.warning(
             "db_migration.existing_schema_without_alembic_revision detected; stamping current schema at head"
         )
-        command.stamp(config, "head")
+        stamped_revision = stamp_existing_schema_at_head(config)
+        logger.warning("db_migration.stamped_existing_schema revision=%s", stamped_revision)
 
+    from alembic import command
     command.upgrade(config, "head")
     ensure_core_tables()
 

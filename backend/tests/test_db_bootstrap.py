@@ -1,7 +1,13 @@
 from sqlalchemy import create_engine, text
 
 from app.db_bootstrap import CORE_TABLES
-from app.db_migration import alembic_version_has_revision, has_existing_core_schema, should_stamp_existing_schema
+from app.db_migration import (
+    alembic_version_has_revision,
+    get_alembic_config,
+    get_current_head,
+    has_existing_core_schema,
+    should_stamp_existing_schema,
+)
 from app.models import Base
 
 
@@ -55,3 +61,7 @@ def test_startup_migration_does_not_stamp_when_version_exists() -> None:
         assert has_existing_core_schema(connection) is True
         assert alembic_version_has_revision(connection) is True
         assert should_stamp_existing_schema(connection) is False
+
+
+def test_startup_migration_reads_current_alembic_head() -> None:
+    assert get_current_head(get_alembic_config()) == "0009_add_monetization_tables"
