@@ -1,10 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 
 import OrchestratePage from "@/app/orchestrate/page";
 import OrchestrationsPage from "@/app/orchestrations/page";
 
 describe("orchestration workflow", () => {
+  beforeEach(() => {
+    vi.mocked(globalThis.fetch).mockReset();
+    window.localStorage.clear();
+  });
+
   test("runs orchestration and renders step replay", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
@@ -68,6 +73,95 @@ describe("orchestration workflow", () => {
     );
     const runCall = fetchMock.mock.calls.find(([input]) => input.toString().endsWith("/orchestrations/run"));
     expect(runCall?.[1]?.headers).not.toHaveProperty("X-Subscription-Tier");
+  });
+
+  test("refreshes stale entitlement token and retries orchestration once", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const runHeaders: Record<string, string>[] = [];
+    let bootstrapCalls = 0;
+    window.localStorage.setItem("entitlement_token", "stale-token");
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url.endsWith("/orchestrations/templates")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (url.endsWith("/orchestrations/entitlement/bootstrap")) {
+        bootstrapCalls += 1;
+        if (bootstrapCalls === 1) {
+          return new Response(JSON.stringify({ detail: "Not found." }), { status: 404 });
+        }
+        return new Response(
+          JSON.stringify({
+            token: "fresh-token",
+            tier: "pro",
+            expires_at: "2026-05-22T01:00:00Z",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/run")) {
+        runHeaders.push((init?.headers ?? {}) as Record<string, string>);
+        if (runHeaders.length === 1) {
+          return new Response(JSON.stringify({ detail: "Invalid entitlement signature." }), { status: 401 });
+        }
+        return new Response(
+          JSON.stringify({
+            id: 102,
+            status: "success",
+            duration_ms: 90,
+            entry_source: "web_ui",
+            subscription_tier: "pro",
+            summary: {
+              conclusion: "Recovered after refreshing stale entitlement.",
+              risks: [],
+              next_actions: ["Keep replay visible."],
+            },
+            steps: [
+              {
+                id: 2,
+                step_name: "Plan The Day",
+                agent_type: "planner",
+                status: "success",
+                input_summary: "{}",
+                output_summary: "Planner completed after token refresh.",
+                audit: {
+                  conclusion: "Planner completed after token refresh.",
+                  evidence: "Signed entitlement was refreshed.",
+                  risk: "Old browser tokens can become stale after deploys.",
+                  next_action: "Continue with refreshed entitlement.",
+                },
+                fallback_action: "",
+                started_at: "2026-05-22T00:00:00Z",
+                finished_at: "2026-05-22T00:00:01Z",
+                duration_ms: 90,
+              },
+            ],
+            created_at: "2026-05-22T00:00:00Z",
+            updated_at: "2026-05-22T00:00:01Z",
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestratePage />);
+
+    await waitFor(() => {
+      expect(bootstrapCalls).toBe(1);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Run Orchestration" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Run #102/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Invalid entitlement signature.")).not.toBeInTheDocument();
+    expect(runHeaders).toHaveLength(2);
+    expect(runHeaders[0]).toMatchObject({ "X-Entitlement": "stale-token" });
+    expect(runHeaders[1]).toMatchObject({ "X-Entitlement": "fresh-token" });
+    expect(runHeaders[1]).not.toHaveProperty("X-Subscription-Tier");
+    expect(window.localStorage.getItem("entitlement_token")).toBe("fresh-token");
   });
 
   test("runs orchestration then verifies replay in history page", async () => {

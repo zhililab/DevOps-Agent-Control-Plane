@@ -20,6 +20,15 @@ const DEFAULT_STEPS: WorkflowStepDefinition[] = [
   { step_name: "Review And Reflect", agent_type: "reviewer", enabled: true },
 ];
 const DEFAULT_PUBLIC_ENTITLEMENT_TOKEN = process.env.NEXT_PUBLIC_DEFAULT_ENTITLEMENT_TOKEN ?? "";
+const ENTITLEMENT_TOKEN_STORAGE_KEY = "entitlement_token";
+const REFRESHABLE_ENTITLEMENT_ERRORS = new Set([
+  "missing entitlement token.",
+  "invalid entitlement signature.",
+  "entitlement token expired.",
+  "malformed entitlement token.",
+  "malformed entitlement payload.",
+  "entitlement tier is missing.",
+]);
 
 export function OrchestrateView() {
   const [entrySource, setEntrySource] = useState("web_ui");
@@ -77,14 +86,13 @@ export function OrchestrateView() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const cached = window.localStorage.getItem("entitlement_token");
+    const cached = window.localStorage.getItem(ENTITLEMENT_TOKEN_STORAGE_KEY)?.trim();
     if (cached) {
       setEntitlementToken(cached);
-      return;
+    } else if (DEFAULT_PUBLIC_ENTITLEMENT_TOKEN.trim()) {
+      rememberEntitlementToken(DEFAULT_PUBLIC_ENTITLEMENT_TOKEN);
     }
-    if (DEFAULT_PUBLIC_ENTITLEMENT_TOKEN.trim()) {
-      window.localStorage.setItem("entitlement_token", DEFAULT_PUBLIC_ENTITLEMENT_TOKEN.trim());
-    }
+    void tryBootstrapEntitlementToken({ showStatus: false });
   }, []);
 
   useEffect(() => {
@@ -134,21 +142,38 @@ export function OrchestrateView() {
     return options;
   }
 
-  function isMissingEntitlementError(value: unknown): boolean {
-    if (!(value instanceof Error)) return false;
-    return value.message.trim().toLowerCase() === "missing entitlement token.";
+  function rememberEntitlementToken(token: string) {
+    const trimmed = token.trim();
+    setEntitlementToken(trimmed);
+    if (typeof window === "undefined") return;
+    if (trimmed) {
+      window.localStorage.setItem(ENTITLEMENT_TOKEN_STORAGE_KEY, trimmed);
+    } else {
+      window.localStorage.removeItem(ENTITLEMENT_TOKEN_STORAGE_KEY);
+    }
   }
 
-  async function tryBootstrapEntitlementToken(): Promise<string | null> {
+  function forgetEntitlementToken() {
+    setEntitlementToken("");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(ENTITLEMENT_TOKEN_STORAGE_KEY);
+    }
+  }
+
+  function isRefreshableEntitlementError(value: unknown): boolean {
+    if (!(value instanceof Error)) return false;
+    return REFRESHABLE_ENTITLEMENT_ERRORS.has(value.message.trim().toLowerCase());
+  }
+
+  async function tryBootstrapEntitlementToken(options: { showStatus?: boolean } = {}): Promise<string | null> {
     try {
       const response = await apiClient.getEntitlementBootstrapToken();
       const token = response.token.trim();
       if (!token) return null;
-      setEntitlementToken(token);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("entitlement_token", token);
+      rememberEntitlementToken(token);
+      if (options.showStatus) {
+        setStatus("Loaded entitlement token from server bootstrap endpoint.");
       }
-      setStatus("Loaded entitlement token from server bootstrap endpoint.");
       return token;
     } catch {
       return null;
@@ -179,9 +204,7 @@ export function OrchestrateView() {
     setQueueJob(null);
 
     try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("entitlement_token", entitlementToken.trim());
-      }
+      rememberEntitlementToken(entitlementToken);
       const executeRun = async (options: { entitlement_token?: string }) => {
         if (runMode === "sync") {
           const record = await apiClient.runWorkflowOrchestration(buildPayload(), options);
@@ -210,10 +233,11 @@ export function OrchestrateView() {
       try {
         await executeRun(runOptions);
       } catch (runError) {
-        if (!isMissingEntitlementError(runError)) {
+        if (!isRefreshableEntitlementError(runError)) {
           throw runError;
         }
-        const bootstrapToken = await tryBootstrapEntitlementToken();
+        forgetEntitlementToken();
+        const bootstrapToken = await tryBootstrapEntitlementToken({ showStatus: false });
         if (!bootstrapToken) {
           throw runError;
         }
