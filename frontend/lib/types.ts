@@ -52,6 +52,8 @@ export type DailyReflectionRecord = {
   input: DailyReflectionInput;
   summary: DailyReflectionSummary;
   created_at: string;
+  record_source: string;
+  business_timezone: string;
 };
 
 export type DailyReflectionHistoryResponse = {
@@ -79,6 +81,8 @@ export type DailyPlanRecord = {
   context: DailyContextInput;
   plan: DailyPlanStructured;
   created_at: string;
+  record_source: string;
+  business_timezone: string;
 };
 
 export type DailyPlanHistoryResponse = {
@@ -109,6 +113,8 @@ export type TechnicalAnalysisRecord = {
   input: TechnicalAnalysisInput;
   output: TechnicalAnalysisOutput;
   created_at: string;
+  record_source: string;
+  business_timezone: string;
 };
 
 export type TechnicalAnalysisHistoryResponse = {

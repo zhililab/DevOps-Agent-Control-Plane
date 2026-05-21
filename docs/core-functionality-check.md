@@ -18,6 +18,7 @@ This document records the current product target and the minimum functionality t
 - Submit queued orchestration work, then inspect queue job state, retry/cancel controls, and timeline replay.
 - Review dashboard orchestration KPIs and monetization observability fallback states.
 - Generate and persist daily plans, daily reflections, and technical analysis records.
+- Review daily history with accurate `Asia/Shanghai` business dates while preserving UTC audit timestamps.
 - Browse reusable knowledge entries, prompt templates, and workflow templates.
 - Verify orchestration history ledger integrity for a run and confirm event count/status.
 
@@ -53,6 +54,8 @@ This document records the current product target and the minimum functionality t
 - `/api/health` must not become a second health route; `/health` remains canonical.
 - Orchestration ledger payload hashes must verify against canonical JSON snapshots.
 - Backfill of historical orchestration records must be idempotent.
+- Daily plan/reflection/analysis history must hide `record_source=smoke_check|system` by default and expose it only through `include_system=true`.
+- Read-only history endpoints must not create new agent run log records.
 
 ## Non-Blocking Product Modules
 

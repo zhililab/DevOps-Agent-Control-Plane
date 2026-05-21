@@ -40,7 +40,10 @@ assert_api_json_contains() {
   local must_contain="$3"
 
   local body
-  body="$(curl -sS -X POST "$url" -H "Content-Type: application/json" -d "$payload")"
+  body="$(curl -sS -X POST "$url" \
+    -H "Content-Type: application/json" \
+    -H "X-Record-Source: smoke_check" \
+    -d "$payload")"
 
   if [[ "$body" != *"$must_contain"* ]]; then
     log "api assertion failed: ${url} missing '${must_contain}'"
@@ -64,6 +67,7 @@ assert_api_json_contains_with_entitlement() {
   local body
   body="$(curl -sS -X POST "$url" \
     -H "Content-Type: application/json" \
+    -H "X-Record-Source: smoke_check" \
     -H "X-Entitlement: ${ENTITLEMENT_TOKEN}" \
     -d "$payload")"
 

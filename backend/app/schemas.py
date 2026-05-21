@@ -1,7 +1,18 @@
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict, Field, field_serializer, field_validator, model_validator
+
+from app.time_utils import format_utc_datetime
+
+
+class BaseModel(PydanticBaseModel):
+    @field_serializer("*", when_used="json")
+    def serialize_utc_datetimes(self, value: Any) -> Any:
+        if isinstance(value, datetime):
+            return format_utc_datetime(value)
+        return value
 
 
 class UserProfileBase(BaseModel):
@@ -142,6 +153,8 @@ class DailyPlanSavedResponse(BaseModel):
     context: DailyContextInput
     plan: DailyPlanStructured
     created_at: datetime
+    record_source: str = "user"
+    business_timezone: str = "Asia/Shanghai"
 
 
 class DailyPlanHistoryResponse(BaseModel):
@@ -176,6 +189,8 @@ class DailyReflectionSavedResponse(BaseModel):
     input: DailyReflectionInput
     summary: DailyReflectionSummary
     created_at: datetime
+    record_source: str = "user"
+    business_timezone: str = "Asia/Shanghai"
 
 
 class DailyReflectionHistoryResponse(BaseModel):
@@ -228,6 +243,8 @@ class TechnicalAnalysisSavedResponse(BaseModel):
     input: TechnicalAnalysisInput
     output: TechnicalAnalysisOutput
     created_at: datetime
+    record_source: str = "user"
+    business_timezone: str = "Asia/Shanghai"
 
 
 class TechnicalAnalysisHistoryResponse(BaseModel):

@@ -101,6 +101,13 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
   - idempotent backfill from existing orchestration, step, queue, queue event, and monetization agent-log records
   - read-only integrity API: `GET /api/orchestrations/{id}/history-events`
   - `/orchestrations` UI can verify and display ledger integrity status/event count per run
+- added history time accuracy and storage hygiene pass:
+  - `APP_BUSINESS_TIMEZONE=Asia/Shanghai` as the business-date source of truth
+  - UTC-marked public timestamps for API datetime fields
+  - `record_source` and `business_timezone` metadata on daily plan, reflection, and technical analysis records
+  - safe migration/backfill to recalculate historical business dates from UTC timestamps
+  - default personal history views hide smoke/system records while `include_system=true` keeps audit access
+  - read-only history endpoints no longer write `agent_run_logs`
 - updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, `make security-check`, and `make k8s-render`
 - verified simplified server deployment on target host with `make server-deploy`
   - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`
@@ -119,6 +126,7 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - keep `make qa-all`, `make e2e-orchestration`, `make security-check`, and server smoke checks green before each release
 - capture any future production deployment run in `docs/deployment-evidence.md`
 - keep orchestration history ledger backfill idempotent and integrity checks valid before production deploys
+- take a PostgreSQL backup before running history/data migrations on the remote server; routine releases keep `REMOTE_RESET_DB=0`
 
 ### UX Closeout
 - add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)

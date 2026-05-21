@@ -77,6 +77,9 @@ remote_cmd+=" PUBLIC_HOST=$(shell_quote "$PUBLIC_HOST")"
 if [[ -n "${APP_ENTITLEMENT_SECRET:-}" ]]; then
   remote_cmd+=" APP_ENTITLEMENT_SECRET=$(shell_quote "$APP_ENTITLEMENT_SECRET")"
 fi
+if [[ -n "${APP_BUSINESS_TIMEZONE:-}" ]]; then
+  remote_cmd+=" APP_BUSINESS_TIMEZONE=$(shell_quote "$APP_BUSINESS_TIMEZONE")"
+fi
 remote_cmd+=" make server-deploy"
 
 log "deploying on $REMOTE_SSH:$REMOTE_APP_DIR"

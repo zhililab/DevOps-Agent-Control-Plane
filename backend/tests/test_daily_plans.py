@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import create_engine, text
 
 
@@ -29,6 +31,88 @@ def test_daily_plan_workflow_persists_and_lists_history(client) -> None:
     assert len(history) == 1
     assert history[0]["id"] == created["id"]
     assert history[0]["context"]["tasks"][0] == "Fix CI flake"
+    assert history[0]["record_source"] == "user"
+    assert history[0]["business_timezone"] == "Asia/Shanghai"
+    assert history[0]["created_at"].endswith("Z")
+
+
+def test_daily_plan_uses_business_timezone_for_plan_date(client, monkeypatch) -> None:
+    from app.services import plan_service
+
+    monkeypatch.setattr(plan_service, "utcnow_naive", lambda: datetime(2026, 5, 21, 16, 45, 36))
+
+    response = client.post(
+        "/api/plans/daily",
+        json={
+            "tasks": ["Midnight deploy"],
+            "meetings": [],
+            "blockers": [],
+            "priorities": ["Midnight deploy"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["plan_date"] == "2026-05-22"
+    assert payload["created_at"] == "2026-05-21T16:45:36.000000Z"
+
+
+def test_daily_plan_history_filters_smoke_records_by_default(client) -> None:
+    smoke = client.post(
+        "/api/plans/daily",
+        headers={"X-Record-Source": "smoke_check"},
+        json={
+            "tasks": ["Smoke task"],
+            "meetings": ["Smoke meeting"],
+            "blockers": ["None"],
+            "priorities": ["Smoke task"],
+        },
+    )
+    user = client.post(
+        "/api/plans/daily",
+        json={
+            "tasks": ["User task"],
+            "meetings": [],
+            "blockers": [],
+            "priorities": ["User task"],
+        },
+    )
+
+    assert smoke.status_code == 200
+    assert user.status_code == 200
+
+    default_history = client.get("/api/plans/history")
+    assert default_history.status_code == 200
+    assert [item["context"]["tasks"][0] for item in default_history.json()["items"]] == ["User task"]
+
+    system_history = client.get("/api/plans/history?include_system=true")
+    assert system_history.status_code == 200
+    assert [item["record_source"] for item in system_history.json()["items"]] == ["user", "smoke_check"]
+
+
+def test_daily_plan_history_read_does_not_write_agent_log(client) -> None:
+    create_response = client.post(
+        "/api/plans/daily",
+        json={
+            "tasks": ["Audit clean history"],
+            "meetings": [],
+            "blockers": [],
+            "priorities": ["Audit clean history"],
+        },
+    )
+    assert create_response.status_code == 200
+
+    engine = create_engine("sqlite:///./test_personal_agent.db", connect_args={"check_same_thread": False})
+    with engine.begin() as connection:
+        before = connection.execute(text("SELECT COUNT(*) FROM agent_run_logs")).scalar_one()
+
+    history_response = client.get("/api/plans/history")
+    assert history_response.status_code == 200
+
+    with engine.begin() as connection:
+        after = connection.execute(text("SELECT COUNT(*) FROM agent_run_logs")).scalar_one()
+
+    assert after == before
 
 
 def test_daily_plan_still_succeeds_when_agent_log_table_missing(client) -> None:

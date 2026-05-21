@@ -44,6 +44,8 @@ Documentation map: `docs/README.md`.
 - DevOps-oriented workflow orchestration through Planner, Analyzer, and Reviewer steps.
 - Replayable orchestration history backed by persisted step records, not regenerated text.
 - Accuracy-first orchestration history ledger with canonical JSON payload hashes and integrity verification.
+- UTC audit timestamps with `Asia/Shanghai` business-date derivation for daily history accuracy.
+- Smoke/system records are tagged by `record_source` and hidden from default personal history views.
 - Async queue lifecycle with status timeline, retry, and cancel behavior.
 - Workflow templates for reusable orchestration step definitions.
 - Signed entitlement token support for free/pro/power tier boundaries.
@@ -70,11 +72,11 @@ Documentation map: `docs/README.md`.
 - `PUT /api/profile/{id}`: update profile
 - `GET /api/profile/{id}`: get profile
 - `POST /api/plans/daily`: submit daily context, generate deterministic plan, persist result
-- `GET /api/plans/history`: retrieve saved daily plans
+- `GET /api/plans/history`: retrieve saved daily plans; defaults to user records, use `include_system=true` for smoke/system audit records
 - `POST /api/reflections/daily`: submit reflection inputs, generate deterministic daily summary, persist result
-- `GET /api/reflections/history`: retrieve saved structured reflections
+- `GET /api/reflections/history`: retrieve saved structured reflections; defaults to user records, use `include_system=true` for smoke/system audit records
 - `POST /api/analysis/technical`: submit technical issue context and generate structured analysis
-- `GET /api/analysis/history`: retrieve saved technical analyses
+- `GET /api/analysis/history`: retrieve saved technical analyses; defaults to user records, use `include_system=true` for smoke/system audit records
 - `POST /api/knowledge`: create knowledge entry
 - `GET /api/knowledge`: list knowledge entries with optional `q`/`tag` filters
 - `GET /api/knowledge/{id}`: get knowledge entry
@@ -291,6 +293,8 @@ After development is complete, run:
 make release-deploy
 ```
 
+For migrations that touch stored history, create a PostgreSQL backup on the server before deploying and keep `REMOTE_RESET_DB=0`.
+
 The release deploy script:
 - runs the configured local gate (`CHECK_CMD`, default `make qa-fast`)
 - stages and commits local changes
@@ -364,6 +368,8 @@ Current test coverage includes:
 - daily planning generation + persistence + history retrieval
 - daily reflection summary generation + persistence + history retrieval
 - technical analysis generation + request validation + persistence + history retrieval
+- business timezone accuracy for daily plan/reflection/analysis dates and UTC-marked public timestamps
+- default filtering of smoke/system records from user history with `include_system=true` audit access
 - smoke-check script coverage for UI routes and core APIs, including orchestration run/history/metrics, queue run/history, monetization observability, and monetization read APIs
 - orchestration workflow run + step replay + partial failure fallback + history retrieval
 - history ledger event creation, idempotent backfill, canonical payload hash verification, and tamper detection

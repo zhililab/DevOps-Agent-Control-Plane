@@ -62,10 +62,13 @@ Expected:
 Deploy through the current MVP server path:
 
 ```bash
+# required before history/data migrations
+ssh -x root@1.117.63.81 'cd /root/code/personal-agent-ws/personal-agent && mkdir -p deploy/backups && docker exec personal-agent-postgres pg_dump -U postgres personal_agent > deploy/backups/personal_agent-$(date +%Y%m%d-%H%M%S).sql'
 make release-deploy
 ```
 
 Expected:
+- database backup is captured before migrations that alter historical data
 - local configured gate passes before commit/push
 - remote host pulls `origin/master`
 - `make server-deploy` completes on the server
@@ -83,6 +86,8 @@ curl http://1.117.63.81/health
 curl -s -o /dev/null -w '%{http_code}' http://1.117.63.81/dashboard
 curl -s -o /dev/null -w '%{http_code}' http://1.117.63.81/orchestrate
 curl -s -o /dev/null -w '%{http_code}' http://1.117.63.81/orchestrations
+curl -s http://1.117.63.81/api/plans/history
+curl -s 'http://1.117.63.81/api/plans/history?include_system=true'
 ```
 
 Expected:
@@ -90,6 +95,8 @@ Expected:
 - core pages return `200`
 - core page responses include baseline security headers
 - `X-Powered-By` is not exposed
+- default personal history excludes smoke/system records
+- `include_system=true` exposes tagged smoke/system records for audit
 
 ## 7) Smoke Check Gate
 
@@ -104,6 +111,7 @@ This command verifies:
 - backend health (`/health`)
 - core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, and monetization read APIs
 - history ledger integrity and idempotent backfill tests are covered by the local release gate
+- smoke-created daily/reflection/analysis records are tagged with `X-Record-Source: smoke_check`
 
 ## 8) Rollback Trigger
 

@@ -71,7 +71,7 @@ describe("daily planning workflow", () => {
             items: [
               {
                 id: 22,
-                plan_date: "2026-04-16",
+                plan_date: "2026-05-22",
                 context: {
                   tasks: ["Ship release"],
                   meetings: ["Daily sync"],
@@ -85,7 +85,9 @@ describe("daily planning workflow", () => {
                   next_actions: ["Start with: Ship release"],
                   status_summary: "Planned 1 task(s), 1 meeting(s), and 1 blocker(s). Primary focus: Ship release",
                 },
-                created_at: "2026-04-16T08:00:00Z",
+                created_at: "2026-05-21T16:45:36Z",
+                record_source: "user",
+                business_timezone: "Asia/Shanghai",
               },
             ],
           }),
@@ -101,6 +103,8 @@ describe("daily planning workflow", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Top Priorities" })).toBeInTheDocument();
     });
+    expect(screen.getByRole("heading", { name: "2026-05-22 · 00:45:36 GMT+8" })).toBeInTheDocument();
+    expect(screen.getByText("Business date: 2026-05-22")).toBeInTheDocument();
     expect(screen.getByText("Prepare for meeting: Daily sync")).toBeInTheDocument();
     expect(screen.getByText("Blocker risk: Pending signoff")).toBeInTheDocument();
     expect(screen.getByText("Start with: Ship release")).toBeInTheDocument();

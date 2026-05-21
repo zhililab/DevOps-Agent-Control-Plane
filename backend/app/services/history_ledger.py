@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models import AgentRunLog, HistoryEvent, WorkflowOrchestration, WorkflowQueueEvent, WorkflowQueueJob, WorkflowStepRun
+from app.time_utils import as_utc_naive, format_utc_datetime, utcnow_naive
 
 logger = logging.getLogger(__name__)
 
@@ -483,6 +484,7 @@ def _backfill_agent_logs(db: Session) -> int:
     rows = (
         db.query(AgentRunLog)
         .filter(AgentRunLog.task_type.like("monetization.%"))
+        .filter(~AgentRunLog.task_type.like("%history_requested"))
         .order_by(AgentRunLog.id.asc())
         .all()
     )
@@ -525,15 +527,13 @@ def _json_or_raw(value: str) -> Any:
 
 def _normalize_datetime(value: datetime | None) -> datetime:
     if value is None:
-        return datetime.now(timezone.utc).replace(tzinfo=None)
-    if value.tzinfo is not None:
-        return value.astimezone(timezone.utc).replace(tzinfo=None)
-    return value
+        return utcnow_naive()
+    return as_utc_naive(value)
 
 
 def _normalize_for_json(value: Any) -> Any:
     if isinstance(value, datetime):
-        return _normalize_datetime(value).isoformat(timespec="microseconds")
+        return format_utc_datetime(value)
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, dict):

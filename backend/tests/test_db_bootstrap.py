@@ -64,4 +64,4 @@ def test_startup_migration_does_not_stamp_when_version_exists() -> None:
 
 
 def test_startup_migration_reads_current_alembic_head() -> None:
-    assert get_current_head(get_alembic_config()) == "0010_add_history_events"
+    assert get_current_head(get_alembic_config()) == "0011_add_business_time_metadata"

@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import date
 
 from sqlalchemy.orm import Session
 
@@ -12,11 +11,13 @@ from app.schemas import (
     DailyPlanStructured,
 )
 from app.services.agent_log_service import log_agent_action
+from app.services.record_source import SYSTEM_RECORD_SOURCES
+from app.time_utils import business_date_from_utc, get_business_timezone_name, utcnow_naive
 
 logger = logging.getLogger(__name__)
 
 
-def create_daily_plan(db: Session, context: DailyContextInput) -> DailyPlanSavedResponse:
+def create_daily_plan(db: Session, context: DailyContextInput, *, record_source: str = "user") -> DailyPlanSavedResponse:
     logger.info(
         "daily_plan.request_received tasks=%s meetings=%s blockers=%s priorities=%s",
         len(context.tasks),
@@ -33,10 +34,14 @@ def create_daily_plan(db: Session, context: DailyContextInput) -> DailyPlanSaved
     )
 
     generated = _generate_structured_plan(context)
+    created_at = utcnow_naive()
     record = DailyPlan(
-        plan_date=date.today(),
+        plan_date=business_date_from_utc(created_at),
         context_json=json.dumps(context.model_dump(mode="json")),
         output_json=json.dumps(generated.model_dump(mode="json")),
+        record_source=record_source,
+        business_timezone=get_business_timezone_name(),
+        created_at=created_at,
     )
     db.add(record)
     db.commit()
@@ -57,19 +62,17 @@ def create_daily_plan(db: Session, context: DailyContextInput) -> DailyPlanSaved
         context=context,
         plan=generated,
         created_at=record.created_at,
+        record_source=record.record_source,
+        business_timezone=record.business_timezone,
     )
 
 
-def list_daily_plans(db: Session) -> DailyPlanHistoryResponse:
-    records = db.query(DailyPlan).order_by(DailyPlan.created_at.desc()).all()
+def list_daily_plans(db: Session, *, include_system: bool = False) -> DailyPlanHistoryResponse:
+    query = db.query(DailyPlan)
+    if not include_system:
+        query = query.filter(~DailyPlan.record_source.in_(SYSTEM_RECORD_SOURCES))
+    records = query.order_by(DailyPlan.created_at.desc(), DailyPlan.id.desc()).all()
     logger.info("daily_plan.history_requested total=%s", len(records))
-    log_agent_action(
-        db,
-        task_type="daily_plan_history_requested",
-        input_summary="history list",
-        output_summary=f"returned {len(records)} plan(s)",
-        status="success",
-    )
     items = [
         DailyPlanSavedResponse(
             id=record.id,
@@ -77,6 +80,8 @@ def list_daily_plans(db: Session) -> DailyPlanHistoryResponse:
             context=DailyContextInput.model_validate(json.loads(record.context_json or "{}")),
             plan=DailyPlanStructured.model_validate(json.loads(record.output_json or "{}")),
             created_at=record.created_at,
+            record_source=record.record_source,
+            business_timezone=record.business_timezone,
         )
         for record in records
     ]

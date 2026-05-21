@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
+import { formatBusinessTimestamp } from "@/lib/time";
 import type { DailyPlanRecord } from "@/lib/types";
 
 export function HistoryView() {
@@ -36,7 +37,8 @@ export function HistoryView() {
 
       {plans.map((plan) => (
         <section key={plan.id} className="history-plan">
-          <h3>{plan.plan_date}</h3>
+          <h3>{formatBusinessTimestamp(plan.created_at, plan.business_timezone)}</h3>
+          <p className="muted">Business date: {plan.plan_date}</p>
           <p>{plan.plan.status_summary}</p>
 
           <div className="result-grid">

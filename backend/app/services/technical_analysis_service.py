@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import date
 
 from sqlalchemy.orm import Session
 
@@ -12,12 +11,14 @@ from app.schemas import (
     TechnicalAnalysisSavedResponse,
 )
 from app.services.agent_log_service import log_agent_action
+from app.services.record_source import SYSTEM_RECORD_SOURCES
+from app.time_utils import business_date_from_utc, get_business_timezone_name, utcnow_naive
 
 logger = logging.getLogger(__name__)
 
 
 def create_technical_analysis(
-    db: Session, payload: TechnicalAnalysisInput
+    db: Session, payload: TechnicalAnalysisInput, *, record_source: str = "user"
 ) -> TechnicalAnalysisSavedResponse:
     logger.info(
         "technical_analysis.request_received logs_len=%s errors=%s snippets=%s issue_len=%s",
@@ -35,10 +36,14 @@ def create_technical_analysis(
     )
 
     generated = _generate_structured_analysis(payload)
+    created_at = utcnow_naive()
     record = TechnicalAnalysis(
-        analysis_date=date.today(),
+        analysis_date=business_date_from_utc(created_at),
         input_json=json.dumps(_normalized_input(payload).model_dump(mode="json")),
         output_json=json.dumps(generated.model_dump(mode="json")),
+        record_source=record_source,
+        business_timezone=get_business_timezone_name(),
+        created_at=created_at,
     )
     db.add(record)
     db.commit()
@@ -59,19 +64,17 @@ def create_technical_analysis(
         input=_normalized_input(payload),
         output=generated,
         created_at=record.created_at,
+        record_source=record.record_source,
+        business_timezone=record.business_timezone,
     )
 
 
-def list_technical_analyses(db: Session) -> TechnicalAnalysisHistoryResponse:
-    records = db.query(TechnicalAnalysis).order_by(TechnicalAnalysis.created_at.desc()).all()
+def list_technical_analyses(db: Session, *, include_system: bool = False) -> TechnicalAnalysisHistoryResponse:
+    query = db.query(TechnicalAnalysis)
+    if not include_system:
+        query = query.filter(~TechnicalAnalysis.record_source.in_(SYSTEM_RECORD_SOURCES))
+    records = query.order_by(TechnicalAnalysis.created_at.desc(), TechnicalAnalysis.id.desc()).all()
     logger.info("technical_analysis.history_requested total=%s", len(records))
-    log_agent_action(
-        db,
-        task_type="technical_analysis_history_requested",
-        input_summary="history list",
-        output_summary=f"returned {len(records)} analysis item(s)",
-        status="success",
-    )
     items = [
         TechnicalAnalysisSavedResponse(
             id=record.id,
@@ -79,6 +82,8 @@ def list_technical_analyses(db: Session) -> TechnicalAnalysisHistoryResponse:
             input=TechnicalAnalysisInput.model_validate(json.loads(record.input_json or "{}")),
             output=TechnicalAnalysisOutput.model_validate(json.loads(record.output_json or "{}")),
             created_at=record.created_at,
+            record_source=record.record_source,
+            business_timezone=record.business_timezone,
         )
         for record in records
     ]

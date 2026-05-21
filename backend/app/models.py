@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from enum import Enum
 
 from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.time_utils import utcnow_naive
 
 
 def utcnow() -> datetime:
-    # Keep UTC semantics but return a naive datetime so it is compatible with
-    # DateTime(timezone=False) columns across SQLite and PostgreSQL.
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return utcnow_naive()
 
 
 class TaskStatus(str, Enum):
@@ -91,6 +90,8 @@ class ReflectionEntry(Base):
     patterns: Mapped[str] = mapped_column(Text, default="")
     next_actions: Mapped[str] = mapped_column(Text, default="")
     mood: Mapped[str] = mapped_column(String(32), default="neutral")
+    record_source: Mapped[str] = mapped_column(String(64), default="user", index=True)
+    business_timezone: Mapped[str] = mapped_column(String(64), default="Asia/Shanghai")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, onupdate=utcnow
@@ -115,6 +116,8 @@ class DailyPlan(Base):
     plan_date: Mapped[date] = mapped_column(Date, default=date.today, index=True)
     context_json: Mapped[str] = mapped_column(Text, default="{}")
     output_json: Mapped[str] = mapped_column(Text, default="{}")
+    record_source: Mapped[str] = mapped_column(String(64), default="user", index=True)
+    business_timezone: Mapped[str] = mapped_column(String(64), default="Asia/Shanghai")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -125,6 +128,8 @@ class TechnicalAnalysis(Base):
     analysis_date: Mapped[date] = mapped_column(Date, default=date.today, index=True)
     input_json: Mapped[str] = mapped_column(Text, default="{}")
     output_json: Mapped[str] = mapped_column(Text, default="{}")
+    record_source: Mapped[str] = mapped_column(String(64), default="user", index=True)
+    business_timezone: Mapped[str] = mapped_column(String(64), default="Asia/Shanghai")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 

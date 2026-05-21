@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from datetime import timedelta
 from collections.abc import Callable
 from statistics import quantiles
@@ -38,6 +38,7 @@ from app.services.history_ledger import (
     append_orchestration_completed_event,
     append_step_event,
 )
+from app.time_utils import utcnow_naive
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ DEFAULT_STEPS = [
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return utcnow_naive()
 
 
 def normalize_tier(value: str) -> SubscriptionTier:
