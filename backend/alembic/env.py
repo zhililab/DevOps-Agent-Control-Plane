@@ -60,6 +60,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         ensure_version_table_capacity(connection)
+        connection.commit()
         context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
 
         with context.begin_transaction():
