@@ -1,7 +1,12 @@
 FROM node:20-alpine AS deps
 WORKDIR /app/frontend
+ARG NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci \
+  --registry="${NPM_CONFIG_REGISTRY}" \
+  --fetch-retries=5 \
+  --fetch-retry-mintimeout=20000 \
+  --fetch-retry-maxtimeout=120000
 
 FROM node:20-alpine AS builder
 WORKDIR /app/frontend

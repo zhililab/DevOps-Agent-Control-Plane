@@ -40,6 +40,7 @@ services:
       dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_BASE: /api
+        NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY:-https://registry.npmmirror.com}
     container_name: personal-agent-frontend
     restart: unless-stopped
     depends_on:
