@@ -438,28 +438,30 @@
       <header class="hero">
         <div>
           <p class="eyebrow">PLANS.md Visual Map</p>
-          <h1>Personal Agent Assistant</h1>
+          <h1>Personal AI Operating System</h1>
           <p class="lead">
-            Build a personal AI agent assistant that turns scattered context into structured plans,
-            actionable next steps, reusable knowledge, and reflective feedback loops.
+            Build a long-term personal AI operating system for execution, reflection, and reusable
+            workflows. The current release is closing the DevOps orchestration MVP: deterministic
+            multi-agent runs, replayable evidence, queue lifecycle, templates, and tier boundaries.
           </p>
           <div class="tag-row">
-            <span class="tag ok">Daily-use MVP</span>
-            <span class="tag ok">Deterministic orchestration</span>
-            <span class="tag">Knowledge + templates</span>
-            <span class="tag todo">Communication + weekly review next</span>
+            <span class="tag ok">Long-term personal AI OS</span>
+            <span class="tag ok">DevOps orchestration MVP</span>
+            <span class="tag ok">Replayable deterministic outputs</span>
+            <span class="tag todo">Communication + weekly review roadmap</span>
           </div>
         </div>
         <aside class="hero-card">
-          <span class="status-pill">Current Snapshot: 2026-04-23</span>
+          <span class="status-pill">Current Snapshot: 2026-05-21</span>
           <p style="margin-top: 16px">
-            Theme upgrade is in progress with an Obsidian-like dark visual system, violet accent,
-            layered cards, and a knowledge-graph feel.
+            Launch closure is focused on making orchestration inspectable and deployable: API/UI
+            contract alignment, replay history, queue retry/cancel behavior, signed entitlement, and
+            rollout evidence.
           </p>
           <div class="progress-track" aria-label="MVP progress">
             <div class="progress-fill"></div>
           </div>
-          <p class="muted" style="margin-top: 10px">Approximate phase completion: P0-P6 shipped, P7-P9 pending.</p>
+          <p class="muted" style="margin-top: 10px">DevOps orchestration MVP is in launch hardening; Communication Assistant and Weekly Review are roadmap work, not deployment blockers.</p>
         </aside>
       </header>
 
@@ -497,7 +499,7 @@
 
         <div class="grid grid-2" style="margin-top: 16px">
           <article class="card">
-            <h3>Completed In This Iteration</h3>
+            <h3>Completed For DevOps Orchestration MVP</h3>
             <ul class="check-list">
               <li>Route-level cinematic transition layer.</li>
               <li>Dashboard knowledge graph visualization card.</li>
@@ -512,7 +514,7 @@
             </ul>
           </article>
           <article class="card">
-            <h3>Orchestration APIs Added</h3>
+            <h3>Current Deployment Surface</h3>
             <ul>
               <li><code>POST /api/orchestrations/run</code></li>
               <li><code>GET /api/orchestrations/history</code></li>
@@ -532,17 +534,18 @@
         <h2>Next Tasks</h2>
         <div class="grid grid-3">
           <article class="card">
-            <h3>Product + Monetization</h3>
+            <h3>Launch Boundary</h3>
             <ul class="todo-list">
-              <li>Expose dedicated monetization APIs for subscription profile, usage counters, and event audit feed.</li>
-              <li>Align frontend monetization observability path with <code>/api/observability/monetization</code>.</li>
-              <li>Migrate production fully to signed entitlement and remove legacy tier fallback.</li>
+              <li>Freeze the DevOps orchestration MVP scope around inspectable planner/analyzer/reviewer runs.</li>
+              <li>Keep Communication Assistant and Weekly Review parked as roadmap items, not launch blockers.</li>
+              <li>Keep frontend orchestration calls on signed entitlement tokens, not legacy tier headers.</li>
+              <li>Keep deployment-facing docs and smoke evidence aligned to the current orchestration surface.</li>
             </ul>
           </article>
           <article class="card">
             <h3>Orchestration UX</h3>
             <ul class="todo-list">
-              <li>Connect queue controls into dedicated history view with job list, timeline, and retry audit.</li>
+              <li>Keep queue retry/cancel controls available in the dedicated history view.</li>
               <li>Extend dashboard KPI trend with line, delta insights, and anomaly hints.</li>
               <li>Add orchestration replay UX V2 with timeline/diff view and richer failure drill-down.</li>
             </ul>
@@ -553,8 +556,9 @@
               <li>Add E2E tests for <code>/orchestrate -> /orchestrations</code>.</li>
               <li>Run full k8s gate on a reachable cluster context.</li>
               <li>Add Playwright pixel-level screenshot baseline.</li>
-              <li>Extend smoke checks to orchestration APIs/pages after <code>make dev-up</code>.</li>
+              <li>Run extended smoke checks for orchestration, queue, observability, and monetization APIs after <code>make dev-up</code>.</li>
               <li>Verify k3d and server deployment paths on target hosts and capture rollout evidence.</li>
+              <li>Verify replay integrity, partial-success behavior, entitlement boundaries, queue lifecycle, retry, and cancel idempotency.</li>
             </ul>
           </article>
         </div>
@@ -565,7 +569,7 @@
         <div class="grid grid-2">
           <article class="card">
             <h3>Product North Star</h3>
-            <p class="muted">Turn scattered thoughts, tasks, and problems into:</p>
+            <p class="muted">Evolve from a useful assistant into a personal AI operating system that turns scattered work context into:</p>
             <ul>
               <li>structured plans</li>
               <li>actionable next steps</li>
@@ -574,14 +578,14 @@
             </ul>
           </article>
           <article class="card">
-            <h3>MVP North Star</h3>
+            <h3>Current MVP North Star</h3>
             <ol>
-              <li>Define profile and preferences.</li>
-              <li>Generate a daily plan.</li>
-              <li>Generate a daily summary.</li>
-              <li>Save and review history.</li>
-              <li>Analyze a technical problem.</li>
-              <li>Generate communication drafts.</li>
+              <li>Run deterministic DevOps orchestration from user-provided context.</li>
+              <li>Preserve inspectable <code>conclusion/evidence/risk/next_action</code> outputs.</li>
+              <li>Replay saved steps and review history without losing traceability.</li>
+              <li>Handle partial success without hiding failed agent steps.</li>
+              <li>Enforce free/pro/power boundaries through signed entitlement.</li>
+              <li>Operate queue states and retry/cancel flows idempotently.</li>
             </ol>
           </article>
         </div>
@@ -591,7 +595,7 @@
         <h2>Current Scope</h2>
         <div class="grid grid-2">
           <article class="card">
-            <h3>In Scope For MVP</h3>
+            <h3>In Scope For DevOps MVP</h3>
             <div class="tag-row">
               <span class="tag ok">repository scaffold</span>
               <span class="tag ok">backend skeleton</span>
@@ -601,17 +605,20 @@
               <span class="tag ok">daily reflection</span>
               <span class="tag ok">persistence</span>
               <span class="tag ok">technical analysis</span>
-              <span class="tag">communication drafts</span>
               <span class="tag ok">knowledge storage</span>
               <span class="tag ok">deterministic orchestration</span>
               <span class="tag ok">step replay</span>
+              <span class="tag ok">partial success</span>
+              <span class="tag ok">queue lifecycle</span>
               <span class="tag ok">template CRUD</span>
               <span class="tag ok">free/pro/power gate</span>
             </div>
           </article>
           <article class="card">
-            <h3>Out Of Scope For MVP</h3>
+            <h3>Roadmap Outside Launch</h3>
             <ul>
+              <li>Communication Assistant draft generation.</li>
+              <li>Weekly Review reports and pattern summaries.</li>
               <li>Autonomous external actions.</li>
               <li>Autonomous multi-agent self-planning without user-provided context.</li>
               <li>Advanced vector retrieval.</li>
@@ -671,14 +678,14 @@
           <article class="phase-card pending">
             <span class="phase-id">P7</span>
             <h3>Communication</h3>
-            <p class="muted">Generate better conversation drafts.</p>
-            <span class="tag todo">Pending</span>
+            <p class="muted">Roadmap: generate better conversation drafts after orchestration launch.</p>
+            <span class="tag todo">Roadmap</span>
           </article>
           <article class="phase-card pending">
             <span class="phase-id">P8</span>
             <h3>Weekly Review</h3>
-            <p class="muted">Generate weekly reports and patterns.</p>
-            <span class="tag todo">Pending</span>
+            <p class="muted">Roadmap: generate weekly reports and patterns after launch hardening.</p>
+            <span class="tag todo">Roadmap</span>
           </article>
           <article class="phase-card future">
             <span class="phase-id">P9</span>
@@ -744,14 +751,14 @@
               <tr>
                 <td>P7</td>
                 <td>Communication Assistant</td>
-                <td>Generate better conversation drafts.</td>
-                <td>Multi-style message generation.</td>
+                <td>Roadmap after DevOps orchestration MVP.</td>
+                <td>Not a deployment blocker.</td>
               </tr>
               <tr>
                 <td>P8</td>
                 <td>Weekly Review</td>
-                <td>Generate weekly reports and patterns.</td>
-                <td>Weekly reflection report.</td>
+                <td>Roadmap after DevOps orchestration MVP.</td>
+                <td>Not a deployment blocker.</td>
               </tr>
               <tr>
                 <td>P9</td>
@@ -811,15 +818,15 @@
           </article>
           <article class="detail-card">
             <h3><span class="phase-id">P7</span> Communication Assistant</h3>
-            <p class="muted">Support better drafting for sensitive or important communication.</p>
+            <p class="muted">Roadmap item: support better drafting for sensitive or important communication after the current deployment is closed.</p>
             <p><strong>Modes:</strong> empathetic, direct, boundary-setting.</p>
-            <p><strong>Acceptance:</strong> scenario submitted, multiple draft styles generated, drafts reviewable and savable.</p>
+            <p><strong>Status:</strong> unfinished and intentionally non-blocking for DevOps orchestration MVP launch.</p>
           </article>
           <article class="detail-card">
             <h3><span class="phase-id">P8</span> Weekly Review</h3>
-            <p class="muted">Create weekly reflective summary across saved activity.</p>
+            <p class="muted">Roadmap item: create weekly reflective summary across saved activity after orchestration launch hardening.</p>
             <p><strong>Output:</strong> what progressed, what stalled, recurring patterns, next-week focus, improvement actions.</p>
-            <p><strong>Acceptance:</strong> report generated, saved, based on recent data, readable and actionable.</p>
+            <p><strong>Status:</strong> unfinished and intentionally non-blocking for DevOps orchestration MVP launch.</p>
           </article>
           <article class="detail-card">
             <h3><span class="phase-id">P9</span> Integrations Foundation</h3>
@@ -834,19 +841,19 @@
         <h2>Suggested Iteration Plan</h2>
         <div class="grid grid-3">
           <article class="card">
-            <h3>Iterations 1-2</h3>
-            <p><strong>Focus:</strong> P0, P1, P2</p>
-            <p class="muted">Target: project boots locally, app shells exist, daily plan works end to end.</p>
+            <h3>Foundation Iterations</h3>
+            <p><strong>Focus:</strong> P0-P6</p>
+            <p class="muted">Target: core app, planning/reflection/history, technical analysis, knowledge, and templates are usable foundations.</p>
           </article>
           <article class="card">
-            <h3>Iterations 3-4</h3>
-            <p><strong>Focus:</strong> P3, P4, P5</p>
-            <p class="muted">Target: daily summary works, history is usable, technical analysis workflow works.</p>
+            <h3>Current Iteration</h3>
+            <p><strong>Focus:</strong> DevOps orchestration MVP launch closure</p>
+            <p class="muted">Target: deterministic runs, step replay, partial success, queue lifecycle, entitlement gates, API/UI history, and deployment evidence.</p>
           </article>
           <article class="card">
-            <h3>Iterations 5-6</h3>
-            <p><strong>Focus:</strong> P6, P7, P8, P9</p>
-            <p class="muted">Target: reusable knowledge, communication support, weekly review, integration foundation.</p>
+            <h3>Roadmap Iterations</h3>
+            <p><strong>Focus:</strong> P7, P8, P9</p>
+            <p class="muted">Target: Communication Assistant, Weekly Review, and integration foundations after the MVP is deployable.</p>
           </article>
         </div>
       </section>
@@ -873,32 +880,32 @@
               <li>Weak differentiation between history, knowledge, and templates.</li>
               <li>Backend/frontend contract drift.</li>
               <li>Weak observability for agent runs.</li>
-              <li>No stable daily-use entry point.</li>
+              <li>Confusing roadmap features with deployment blockers.</li>
             </ul>
           </article>
           <article class="card">
             <h3>MVP Done When</h3>
             <ul class="check-list">
-              <li>Profile and preferences can be managed.</li>
-              <li>Daily plan and reflection can be generated and saved.</li>
-              <li>History can be reviewed.</li>
-              <li>Technical analysis can be generated and saved.</li>
-              <li>Communication drafts can be generated and saved.</li>
-              <li>Weekly review can be generated.</li>
-              <li>Core workflows have tests and setup docs are clear.</li>
+              <li>DevOps orchestration can run planner, analyzer, and reviewer deterministically.</li>
+              <li>Outputs preserve inspectable conclusion, evidence, risk, and next action fields.</li>
+              <li>Saved runs support history review and step replay integrity.</li>
+              <li>Partial-success behavior is explicit and test-covered.</li>
+              <li>Free vs pro/power tier boundaries are enforced with signed entitlement.</li>
+              <li>Queue states, retry, and cancel behavior are idempotent and test-covered.</li>
+              <li>API, UI, smoke, and deployment checks cover the orchestration launch path.</li>
             </ul>
           </article>
         </div>
       </section>
 
       <section>
-        <h2>Recommended Daily Entry Point</h2>
+        <h2>Recommended Launch Entry Point</h2>
         <article class="card">
-          <h3>Today Page</h3>
+          <h3>Orchestration Page</h3>
           <p class="muted">
-            The Today page connects work execution, meetings, blockers, task prioritization,
-            status generation, and evening reflection. It should become the most frequently used
-            page in the MVP.
+            The orchestration page should be the primary launch surface for DevOps workflows:
+            submit structured context, inspect planner/analyzer/reviewer outputs, review history,
+            replay steps, and track queued runs through retry or cancellation.
           </p>
         </article>
       </section>

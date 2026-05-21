@@ -24,6 +24,8 @@ export function OrchestrationsHistoryView() {
   const [selectedQueueJobId, setSelectedQueueJobId] = useState<number | null>(null);
   const [selectedQueueJob, setSelectedQueueJob] = useState<WorkflowQueueJob | null>(null);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [queueActionMessage, setQueueActionMessage] = useState<string | null>(null);
+  const [activeQueueActionJobId, setActiveQueueActionJobId] = useState<number | null>(null);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
   const [isLoadingQueueDetail, setIsLoadingQueueDetail] = useState(false);
 
@@ -103,6 +105,60 @@ export function OrchestrationsHistoryView() {
 
   const timeline = selectedQueueJob ? buildQueueTimelineReplay(selectedQueueJob) : null;
 
+  async function refreshQueueJobDetail(jobId: number) {
+    const detail = await apiClient.getWorkflowQueueJob(jobId);
+    setSelectedQueueJob(detail);
+    setQueueJobs((current) => current.map((item) => (item.id === detail.id ? detail : item)));
+    return detail;
+  }
+
+  async function onRetryQueueJob(job: WorkflowQueueJob) {
+    setQueueError(null);
+    setQueueActionMessage(null);
+    setActiveQueueActionJobId(job.id);
+    try {
+      const retried = await apiClient.retryWorkflowQueueJob(job.id);
+      setQueueJobs((current) =>
+        current.map((item) =>
+          item.id === job.id
+            ? {
+                ...item,
+                status: retried.status,
+                attempts: retried.attempts,
+                max_attempts: retried.max_attempts,
+                cancel_requested: false,
+                error_message: "",
+              }
+            : item
+        )
+      );
+      setSelectedQueueJobId(job.id);
+      setQueueActionMessage(`Queue job #${job.id} retry requested.`);
+      await refreshQueueJobDetail(job.id);
+    } catch (retryError) {
+      setQueueError(retryError instanceof Error ? retryError.message : "Failed to retry queue job.");
+    } finally {
+      setActiveQueueActionJobId(null);
+    }
+  }
+
+  async function onCancelQueueJob(job: WorkflowQueueJob) {
+    setQueueError(null);
+    setQueueActionMessage(null);
+    setActiveQueueActionJobId(job.id);
+    try {
+      const canceled = await apiClient.cancelWorkflowQueueJob(job.id);
+      setQueueJobs((current) => current.map((item) => (item.id === canceled.id ? canceled : item)));
+      setSelectedQueueJobId(job.id);
+      setSelectedQueueJob(canceled);
+      setQueueActionMessage(`Queue job #${job.id} cancel request accepted.`);
+    } catch (cancelError) {
+      setQueueError(cancelError instanceof Error ? cancelError.message : "Failed to cancel queue job.");
+    } finally {
+      setActiveQueueActionJobId(null);
+    }
+  }
+
   return (
     <PageCard title="Orchestration History" description="Filter, review, and audit multi-agent orchestration runs.">
       <section className="result-block">
@@ -175,6 +231,7 @@ export function OrchestrationsHistoryView() {
           </select>
         </label>
         {queueError ? <p className="status status-error">{queueError}</p> : null}
+        {queueActionMessage ? <p className="status status-success">{queueActionMessage}</p> : null}
         {isLoadingQueue ? <p className="muted">Loading queue jobs...</p> : null}
         {!isLoadingQueue && queueJobs.length === 0 ? <p className="muted">No queue jobs found.</p> : null}
 
@@ -189,9 +246,32 @@ export function OrchestrationsHistoryView() {
               {job.orchestration_id ? <a href={`#orchestration-run-${job.orchestration_id}`}>Run #{job.orchestration_id}</a> : "none"}
             </p>
             <p className="muted">updated={formatTimestamp(job.updated_at)}</p>
-            <button type="button" onClick={() => setSelectedQueueJobId(job.id)} disabled={selectedQueueJobId === job.id}>
-              {selectedQueueJobId === job.id ? "Selected" : "View Timeline Replay"}
-            </button>
+            <div className="button-row">
+              <button type="button" onClick={() => setSelectedQueueJobId(job.id)} disabled={selectedQueueJobId === job.id}>
+                {selectedQueueJobId === job.id ? "Selected" : "View Timeline Replay"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void onRetryQueueJob(job)}
+                disabled={
+                  activeQueueActionJobId === job.id || (job.status !== "failed" && job.status !== "canceled")
+                }
+              >
+                Retry Job
+              </button>
+              <button
+                type="button"
+                onClick={() => void onCancelQueueJob(job)}
+                disabled={
+                  activeQueueActionJobId === job.id ||
+                  job.status === "succeeded" ||
+                  job.status === "failed" ||
+                  job.status === "canceled"
+                }
+              >
+                Cancel Job
+              </button>
+            </div>
           </article>
         ))}
       </section>

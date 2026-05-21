@@ -6,16 +6,19 @@ Personal Agent Assistant
 ## Project Goal
 Build a personal AI agent assistant that helps the user turn context into action across work, learning, life planning, reflection, and communication.
 
-The system should first become a reliable daily-use MVP, then evolve into a reusable personal operating system.
+The long-term vision remains a reusable personal operating system for execution, reflection, and repeatable workflows.
+
+Current iteration goal: close out and ship the DevOps orchestration MVP. The current deployable product is centered on deterministic multi-agent orchestration for personal DevOps workflows, with inspectable step replay/history, queue lifecycle visibility, signed entitlement-aware tier gates, and reusable knowledge/templates. Communication Assistant and Weekly Review remain planned product modules, but they are not blockers for the current DevOps orchestration MVP deployment.
 
 ---
 
-# 0. Current Iteration Snapshot (2026-05-19)
+# 0. Current Iteration Snapshot (2026-05-21)
 
 ## Iteration Theme
-- product direction: deterministic personal DevOps orchestration with inspectable replay, queue lifecycle visibility, entitlement-aware tier gates, and reusable knowledge/templates
+- current iteration target: DevOps orchestration MVP launch closeout
+- product direction: deterministic personal DevOps orchestration with inspectable replay, queue lifecycle visibility, signed entitlement-aware tier gates, and reusable knowledge/templates
 - UI direction: Obsidian-like visual language remains the active baseline (dark canvas, violet accent, layered cards, knowledge graph feeling)
-- status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; next work is polish, canonical route cleanup, deeper history controls, and deployment evidence
+- status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; next work is launch-required validation, queue/history UX closeout, and deployment evidence
 
 ## Completed In This Iteration
 - added route-level cinematic transition layer
@@ -62,6 +65,7 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 - added signed entitlement verification path (`X-Entitlement`) with config switch for required mode
 - added production behavior that requires signed entitlement and disables legacy tier fallback
 - added non-production legacy `X-Subscription-Tier` fallback only when explicitly enabled
+- removed legacy `X-Subscription-Tier` emission from the `/orchestrate` frontend caller; the UI now uses signed entitlement token/default backend resolution
 - added local entitlement token helper and optional public bootstrap endpoint
 - added partial-success fallback strategy (step failure does not abort full workflow)
 - added reusable output persistence bridge from orchestration to knowledge/templates
@@ -81,22 +85,32 @@ The system should first become a reliable daily-use MVP, then evolve into a reus
 - aligned frontend monetization observability client with backend canonical route: `/api/observability/monetization`
 - upgraded `/orchestrate` UI with sync/async run mode, queue job status card, retry/cancel actions
 - upgraded `/orchestrations` UI with queue status filtering and timeline replay from `WorkflowQueueEvent`
+- connected retry/cancel controls into dedicated `/orchestrations` queue history view
 - upgraded dashboard orchestration KPI visualization with 7D/30D window switch
+- extended automated smoke checks to cover orchestration metrics, queue run/history, monetization observability, and monetization read APIs
+- verified extended local smoke checks against dev stack with signed entitlement token
+- verified local Kubernetes manifest rendering with `make k8s-render` (275 rendered lines); `make k8s-dry-run` still requires a reachable cluster context
 - recorded local timing proxy for CI split:
   - `make test` real time: `~2.21s`
   - `make qa-fast` real time: `~7.59s` (includes frontend production build)
 
 ## Still Pending / Next Tasks
-- migrate production callers fully to signed entitlement and keep legacy `X-Subscription-Tier` fallback limited to explicit non-production use
-- connect retry/cancel controls into dedicated `/orchestrations` history view (job list + timeline replay exists; actions still live in `/orchestrate`)
-- extend dashboard KPI trend from bar-only to line+delta insights with anomaly hinting
-- add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)
+
+### Launch Required
 - add E2E tests for `/orchestrate -> /orchestrations` full browser flow
 - run full k8s gate on a reachable cluster context (`make k8s-dry-run` currently blocked by cluster connectivity on local env)
-- add pixel-level screenshot baseline (Playwright) on top of current DOM snapshot baseline
-- extend automated smoke checks to orchestration APIs/pages after `make dev-up`
 - verify k3d deployment path on target server and capture rollout evidence in docs
 - verify simplified server deployment (`make server-deploy`) on target host and capture access URL
+
+### UX Closeout
+- add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)
+- extend dashboard KPI trend from bar-only to line+delta insights with anomaly hinting
+- add pixel-level screenshot baseline (Playwright) on top of current DOM snapshot baseline
+
+### Later Product Completion
+- complete P7 Communication Assistant (not a current deployment blocker)
+- complete P8 Weekly Review (not a current deployment blocker)
+- continue P9 integrations foundation after the orchestration MVP is deployed and audited
 
 ---
 
@@ -136,7 +150,7 @@ Turn scattered thoughts, tasks, and problems into:
 - reusable knowledge
 - reflective feedback loops
 
-## MVP North Star
+## Original MVP North Star
 A user can:
 1. define profile and preferences
 2. generate a daily plan
@@ -145,11 +159,14 @@ A user can:
 5. analyze a technical problem
 6. generate communication drafts
 
+## Current DevOps Orchestration MVP North Star
+A user can run a deterministic DevOps workflow, inspect every step and queue event, replay history, reuse templates/knowledge, and operate within clear free/pro/power entitlement boundaries.
+
 ---
 
 # 3. Current Scope
 
-## In Scope for MVP
+## In Scope for Current DevOps Orchestration MVP
 - repository scaffold
 - backend skeleton
 - frontend skeleton
@@ -158,14 +175,20 @@ A user can:
 - daily reflection workflow
 - persistence and retrieval
 - technical analysis workflow
-- communication draft workflow
 - basic history and knowledge storage
 - deterministic multi-agent orchestration workflow
 - orchestration step replay and history retrieval
 - orchestration template CRUD/import/export
 - lightweight SaaS tier boundary (free/pro/power gate for orchestration)
+- signed entitlement enforcement for production orchestration actions
+- queue lifecycle visibility for queued/running/succeeded/failed/canceled jobs
+- deployment-ready smoke/release validation for orchestration APIs and pages
 
-## Out of Scope for MVP
+## Planned but Not Blocking Current Deployment
+- communication draft workflow
+- weekly review workflow
+
+## Out of Scope for Current DevOps Orchestration MVP
 - autonomous external actions
 - autonomous multi-agent self-planning without user-provided context
 - advanced vector retrieval
@@ -202,6 +225,9 @@ This order ensures:
 ---
 
 # 5. Phase Plan Overview
+
+## Roadmap Status
+The P0-P9 roadmap remains the long-term product map. The current codebase has moved beyond the early daily-use MVP foundation and is now in DevOps orchestration MVP launch closeout. P7 Communication Assistant and P8 Weekly Review are still pending product modules, but they are not required before the current orchestration deployment.
 
 | Phase | Name | Goal | Demo Output |
 |------|------|------|-------------|
@@ -641,6 +667,8 @@ Do not implement broad integrations before core internal workflows are stable.
 
 # 7. Suggested Iteration Plan
 
+This is the preserved long-term phase sequencing. The current iteration has already advanced beyond the early MVP phases and is focused on DevOps orchestration launch closeout, not restarting at Iteration 1.
+
 ## Iteration 1
 Focus:
 - P0
@@ -746,9 +774,13 @@ Before marking a task done, verify:
 
 ---
 
-# 11. Recommended Daily Entry Point
+# 11. Recommended Entry Points
 
-## Primary Entry Point
+## Current Orchestration Entry Points
+- `/orchestrate` for running sync/async orchestration and operating queue actions
+- `/orchestrations` for history, filtering, queue status review, and timeline replay
+
+## Original Daily Entry Point
 Today page
 
 ## Why
@@ -760,32 +792,34 @@ The Today page connects:
 - status generation
 - evening reflection
 
-This should become the most frequently used page in the MVP.
+The Today page remains the daily planning/reflection entry point for the broader personal assistant vision. For the current DevOps orchestration MVP, `/orchestrate` and `/orchestrations` are the primary deployment validation surfaces.
 
 ---
 
-# 12. Definition of Done for MVP
+# 12. Definition of Done for Current DevOps Orchestration MVP
 
-The MVP is complete when all of the following are true:
+The current DevOps orchestration MVP is deployable when all of the following are true:
 
-- profile and preferences can be managed
-- daily plan can be generated and saved
-- daily reflection can be generated and saved
-- history can be reviewed
 - technical analysis can be generated and saved
-- communication drafts can be generated and saved
-- weekly review can be generated
-- core workflows have tests
+- orchestration runs are deterministic and persist inspectable step outputs
+- replay/history views show orchestration and queue lifecycle state clearly
+- partial-success behavior is tested and understandable
+- retry/cancel behavior is idempotent across queued/running/succeeded/failed/canceled states
+- free/pro/power tier boundaries are enforced through signed entitlement in production
+- legacy `X-Subscription-Tier` behavior is limited to explicitly enabled non-production paths
+- orchestration APIs/pages are covered by focused backend/frontend tests and smoke checks
+- deployment evidence is captured for the chosen server path
 - setup docs are clear
 - the app can run locally end to end
+- Communication Assistant and Weekly Review remain incomplete but are explicitly non-blocking for this deployment
 
 ---
 
 # 13. Immediate Next Action
 
 ## Recommended Next Step
-Start with:
-1. P0 Bootstrap
-2. P1 Core Backend and Frontend Skeleton
-
-Do not start multiple advanced phases in parallel before the core daily-use workflows are stable.
+Close the DevOps orchestration MVP launch gate in priority order:
+1. add `/orchestrate -> /orchestrations` E2E coverage
+2. run reachable-cluster/server deployment validation and capture rollout evidence
+3. verify extended smoke checks against the deployed gateway
+4. defer Communication Assistant and Weekly Review until after the orchestration MVP is deployed

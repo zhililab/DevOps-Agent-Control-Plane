@@ -3,7 +3,11 @@
 ## 1. Overview
 
 This project builds a personal AI agent assistant for a DevOps-oriented user.
-The assistant is not just a chatbot. It is a personal execution system that helps the user:
+The long-term product direction is a personal AI operating system: a durable layer for execution, reflection, knowledge, communication, and reusable workflows.
+
+The current MVP narrows that vision into a deterministic DevOps personal workflow orchestration product. It focuses on turning repeatable work patterns into inspectable, replayable, and tier-aware workflows rather than trying to deliver every personal assistant capability at once.
+
+The long-term assistant is not just a chatbot. It should help the user:
 
 - manage work tasks and priorities
 - convert ideas into actionable plans
@@ -18,7 +22,7 @@ The system must focus on practical execution, structured thinking, and continuou
 
 ## 2. Product Vision
 
-Build an agent that acts like a combination of:
+Build toward a personal AI operating system that acts like a combination of:
 
 - personal chief of staff
 - DevOps copilot
@@ -26,7 +30,18 @@ Build an agent that acts like a combination of:
 - knowledge organizer
 - execution tracker
 
-The assistant should help the user reduce cognitive load, improve follow-through, and continuously refine workflows.
+The long-term system should help the user reduce cognitive load, improve follow-through, and continuously refine work and life workflows.
+
+The current product layer is the DevOps workflow orchestration MVP. Its purpose is to provide a reliable execution substrate for personal DevOps workflows:
+
+- define workflow templates
+- create orchestration runs from templates or requests
+- execute steps deterministically
+- preserve structured outputs for replay, audit, and history
+- handle partial success, retries, cancellation, and queue lifecycle states
+- enforce subscription/tier boundaries for advanced orchestration actions
+
+Daily planning, reflection, knowledge capture, communication support, and weekly review remain part of the long-term operating-system vision. In the current MVP, only the parts directly connected to workflow planning, execution history, and inspectable orchestration outputs should be treated as landed.
 
 ---
 
@@ -56,7 +71,17 @@ Primary target user:
 
 ## 5. Product Goals
 
-### 5.1 Work Assistance
+### 5.1 Current MVP: DevOps Workflow Orchestration
+The current MVP should help the user:
+- turn recurring DevOps/platform workflows into structured templates
+- launch workflow orchestrations from explicit inputs
+- track orchestration and step state from queued through terminal outcomes
+- inspect deterministic step outputs with conclusion, evidence, risk, and next action
+- replay completed or partially completed workflows without losing step integrity
+- safely retry or cancel queued/running work with idempotent behavior
+- keep free vs pro/power behavior explicit for subscription-bound features
+
+### 5.2 Long-Term: Work Assistance
 The agent should help the user:
 - break down technical work into concrete tasks
 - draft implementation plans and review checklists
@@ -65,33 +90,53 @@ The agent should help the user:
 - support DevOps/platform engineering decision-making
 - identify reusable patterns from repeated work
 
-### 5.2 Learning Assistance
+Current status:
+- Landed / in progress: deterministic workflow orchestration, templates, queue jobs, run history, structured step outputs
+- Not yet fully landed: broad meeting briefs, incident retrospectives, external DevOps system integrations
+
+### 5.3 Long-Term: Learning Assistance
 The agent should help the user:
 - convert technical topics into structured learning plans
 - explain complex documents in simple language
 - build reusable prompt templates and note structures
 - extract transferable methods from specific cases
 
-### 5.3 Personal Planning
+Current status:
+- Partially supported when learning output is represented as a workflow or reusable template
+- Not yet a standalone learning companion product surface
+
+### 5.4 Long-Term: Personal Planning
 The agent should help the user:
 - create daily / weekly / monthly plans
 - generate reminders and summaries
 - track habits, routines, and priorities
 - support travel planning, packing, and scheduling
 
-### 5.4 Relationship / Communication Support
+Current status:
+- Preserved as product direction
+- Not yet fully landed as calendar-aware planning, reminders, habit tracking, or travel planning
+
+### 5.5 Long-Term: Relationship / Communication Support
 The agent should help the user:
 - prepare emotionally aware communication drafts
 - improve expression, empathy, and boundaries
 - reflect on conversation patterns
 - shift from “problem solving mode” to “connection mode” when needed
 
-### 5.5 Reflection and Growth
+Current status:
+- Preserved as long-term direction
+- Communication Assistant should not be described as complete in the current MVP
+
+### 5.6 Long-Term: Reflection and Growth
 The agent should help the user:
 - generate daily summary and suggested next steps
 - produce weekly reflection reports
 - detect recurring friction and bottlenecks
 - convert outcomes into workflow improvements
+
+Current status:
+- Partially supported through orchestration history, run outputs, and replay/audit data
+- Daily summary and Weekly Review are long-term goals unless explicitly backed by workflow templates and tested product flows
 
 ---
 
@@ -178,47 +223,50 @@ Output:
 
 ## 9. MVP Scope
 
-The MVP should support the following capabilities:
+The MVP scope is the DevOps personal workflow orchestration layer. It should support deterministic creation, execution, inspection, replay, retry, and cancellation of workflow runs.
+
+Capabilities outside that layer remain long-term product vision unless they are implemented as workflow templates on top of the orchestration system.
 
 ### 9.1 Input Layer
 - text input
-- optional file input
-- optional structured forms for planning and reflection
+- structured orchestration creation requests
+- workflow template selection and parameter input
+- optional file input only where implemented and validated by the workflow
 
-### 9.2 Memory Layer
-- user profile and persistent preferences
-- important long-term projects
-- reusable communication preferences
-- recurring work patterns
-- recurring reflection themes
+### 9.2 Orchestration Layer
+- `WorkflowTemplate` definitions for reusable work patterns
+- `WorkflowOrchestration` runs for a specific execution
+- `WorkflowStepRun` records for deterministic step state and outputs
+- `WorkflowQueueJob` records for asynchronous queue lifecycle tracking
+- replay/history APIs for inspectable prior execution
 
-### 9.3 Planning Layer
-- task decomposition
-- daily / weekly planning
-- priority ranking
-- next-step generation
+### 9.3 Execution and Queue Layer
+- queue jobs through `queued`, `running`, `succeeded`, `failed`, and `canceled`
+- retry and cancel behavior with idempotency
+- partial-success handling when some steps complete and later steps fail
+- deterministic validation errors for invalid or oversized requests
 
-### 9.4 Knowledge Layer
-- summarize notes / docs / logs
-- extract action items
-- build reusable templates
-- maintain categorized knowledge entries
+### 9.4 Output and Audit Layer
+- structured step outputs with `conclusion`, `evidence`, `risk`, and `next_action`
+- orchestration history views
+- replay-safe persisted outputs
+- sanitized audit payloads that avoid exposing secrets
 
-### 9.5 Output Layer
-- daily summary
-- weekly report
-- technical plan
-- meeting brief
-- travel plan
-- communication scripts
-- action checklist
+### 9.5 Long-Term Personal OS Layers
+- daily planning
+- reflection and weekly review
+- knowledge entries and retrieval
+- communication drafting
+- travel and life planning
+
+These layers remain important product directions, but they are not all current MVP deliverables.
 
 ---
 
 ## 10. Functional Requirements
 
 ### FR-1 User Profile Management
-The system shall store and use:
+The long-term system shall store and use:
 - preferred response language
 - preferred reasoning style
 - work role and domain
@@ -226,48 +274,80 @@ The system shall store and use:
 - long-term goals
 - communication preferences
 
-### FR-2 Context-Aware Planning
+Current MVP requirement:
+- store and use only the profile/preferences needed to make orchestration behavior deterministic and inspectable
+
+### FR-2 Workflow Template Management
 The system shall:
+- create and list reusable workflow templates
+- define ordered workflow steps
+- preserve template inputs and expected structured outputs
+- keep templates understandable enough to audit and reuse
+
+### FR-3 Workflow Orchestration Management
+The system shall:
+- create workflow orchestration runs
+- persist run-level state and metadata
+- persist step-level state and outputs
+- expose orchestration history and detail views through `/api/orchestrations/*`
+- support replay without mutating the original run history
+
+### FR-4 Queue Lifecycle and Control
+The system shall:
+- create queue jobs for asynchronous orchestration work
+- transition queue jobs through `queued`, `running`, `succeeded`, `failed`, and `canceled`
+- support retry for failed or retryable work without duplicate side effects
+- support cancel behavior for queued/running jobs with idempotent responses
+- expose clear errors for invalid transitions
+
+### FR-5 Deterministic Step Output
+The system shall:
+- return inspectable step outputs
+- preserve `conclusion`, `evidence`, `risk`, and `next_action`
+- sanitize secrets and sensitive strings from orchestration/audit payloads
+- avoid opaque free-form-only responses for core orchestration steps
+
+### FR-6 Tier and Entitlement Guardrails
+The system shall:
+- distinguish free vs pro/power orchestration behavior
+- prefer signed entitlement (`X-Entitlement`) for subscription-bound actions
+- return deterministic validation or authorization errors when limits are exceeded
+
+### FR-7 Long-Term Planning and Reflection
+The system should eventually:
 - generate daily plans
 - generate weekly focus suggestions
-- break down goals into tasks
-- identify blockers and dependencies
-
-### FR-3 Technical Work Assistant
-The system shall:
-- analyze technical problems
-- generate debugging plans
-- summarize root causes
-- generate solution design drafts
-- produce implementation task breakdowns
-
-### FR-4 Reflection Assistant
-The system shall:
-- generate end-of-day summary
-- generate weekly growth report
+- generate end-of-day summaries
+- generate weekly growth reports
 - highlight recurring patterns
 - suggest process improvements
 
-### FR-5 Template / Prompt Library
-The system shall:
-- maintain reusable prompt templates
-- support categorized templates
-- support editing and versioning
+Current MVP status:
+- supported only where these outputs are implemented as workflow templates or orchestration history summaries
+- Weekly Review should not be treated as a completed standalone module
 
-### FR-6 Personal Communication Assistant
-The system shall:
+### FR-8 Long-Term Personal Communication Assistant
+The system should eventually:
 - generate alternative message drafts
 - support empathy-oriented phrasing
 - help distinguish facts, feelings, needs, and requests
 
-### FR-7 Knowledge Base
-The system shall:
+Current MVP status:
+- preserved as a future product direction
+- not complete as a dedicated Communication Assistant
+
+### FR-9 Long-Term Knowledge Base
+The system should eventually:
 - save key outputs
 - group outputs by domain
 - support retrieval by topic
 - support “what changed recently” views
 
-### FR-8 Agent Task Workflow
+Current MVP status:
+- orchestration outputs and histories are saved for audit/replay
+- broad knowledge retrieval and knowledge management remain future scope
+
+### FR-10 Agent Task Workflow
 The system shall:
 - track open tasks
 - track completed tasks
@@ -308,16 +388,19 @@ The system must require confirmation before sending messages, creating external 
 ### 12.1 Frontend
 - React / Next.js
 - dashboard-oriented UI
-- quick input, daily plan, summary, and history views
+- orchestration dashboard, workflow template, queue, run detail, replay/history views
+- long-term daily plan, reflection, knowledge, and communication views
 
 ### 12.2 Backend
 - FastAPI
 - modular service structure
 - agent orchestration layer
-- memory service
-- task service
-- knowledge service
-- scheduling service
+- workflow template service
+- orchestration run service
+- step execution service
+- queue job service
+- entitlement and audit guardrails
+- future memory, task, knowledge, and scheduling services
 
 ### 12.3 Data Storage
 - PostgreSQL for structured data
@@ -325,12 +408,9 @@ The system must require confirmation before sending messages, creating external 
 - file storage for uploads and generated artifacts
 
 ### 12.4 AI Layer
-- orchestration for:
-  - planner
-  - summarizer
-  - reflective coach
-  - technical analyst
-  - communication assistant
+- current orchestration for deterministic DevOps workflow steps
+- structured output adapters for conclusion, evidence, risk, and next action
+- future specialized agents for planner, summarizer, reflective coach, technical analyst, and communication assistant
 
 ### 12.5 Integrations (future)
 - Gmail / email
@@ -344,28 +424,41 @@ The system must require confirmation before sending messages, creating external 
 
 ## 13. Initial Information Architecture
 
-Main modules:
+Current MVP modules:
 - Dashboard
+- Workflows
+- Workflow Templates
+- Orchestration Runs
+- Queue Jobs
+- Run History / Replay
+- Settings
+
+Long-term personal OS modules:
 - Today
 - Tasks
 - Memory
 - Knowledge
-- Workflows
 - Reflection
 - Communication
-- Settings
 
 ---
 
 ## 14. MVP Screens
 
-1. Dashboard
-2. Daily planning page
-3. Task board
-4. Reflection page
-5. Knowledge entries page
-6. Communication draft page
-7. Settings page
+1. Orchestration dashboard
+2. Workflow template list/detail page
+3. Start orchestration page
+4. Orchestration run detail page
+5. Queue jobs page
+6. Replay/history page
+7. Settings / entitlement page
+
+Future personal OS screens:
+- Daily planning page
+- Task board
+- Reflection page
+- Knowledge entries page
+- Communication draft page
 
 ---
 
@@ -430,14 +523,63 @@ Main modules:
 - status
 - created_at
 
+### WorkflowTemplate
+- id
+- name
+- description
+- category
+- input_schema_json
+- steps_json
+- required_tier
+- created_at
+- updated_at
+
+### WorkflowOrchestration
+- id
+- template_id
+- status
+- input_json
+- output_json
+- entitlement_tier
+- created_at
+- updated_at
+
+### WorkflowStepRun
+- id
+- orchestration_id
+- step_key
+- status
+- input_json
+- output_json
+- error_json
+- started_at
+- completed_at
+- created_at
+- updated_at
+
+### WorkflowQueueJob
+- id
+- orchestration_id
+- status
+- attempts
+- last_error_json
+- queued_at
+- started_at
+- completed_at
+- canceled_at
+- created_at
+- updated_at
+
 ---
 
 ## 16. MVP Success Metrics
 
 ### Product Metrics
-- daily summary generated successfully
-- weekly reflection generated successfully
-- task breakdown quality accepted by user
+- orchestration run can be created from a workflow template
+- step outputs are structured, persisted, and replayable
+- queue jobs move through expected lifecycle states
+- partial success, retry, and cancel paths behave deterministically
+- tier boundaries are enforced for subscription-bound orchestration actions
 - repeated useful workflows are saved and reused
 
 ### User Value Metrics
@@ -450,16 +592,25 @@ Main modules:
 
 ## 17. Acceptance Criteria for MVP
 
-The MVP is considered successful when the user can:
+The current orchestration MVP is considered successful when the user can:
 
-1. define personal profile and preferences
-2. create and manage daily / weekly plans
-3. save and retrieve important context
-4. generate a technical work plan from free text input
-5. generate a daily summary automatically
-6. generate a weekly reflection report
-7. generate communication drafts for sensitive conversations
-8. review a history of prior plans / summaries / outputs
+1. create or select a workflow template for a DevOps personal workflow
+2. start a workflow orchestration through `/api/orchestrations/*`
+3. inspect each step run, including state and structured output
+4. verify step replay integrity from persisted orchestration data
+5. observe partial-success behavior when some steps complete and a later step fails
+6. verify free vs pro/power tier boundary behavior for subscription-bound actions
+7. track queue lifecycle states: `queued`, `running`, `succeeded`, `failed`, and `canceled`
+8. retry failed or retryable work without duplicate side effects
+9. cancel queued/running work idempotently
+10. review a history of prior workflow runs and outputs
+
+The following remain long-term personal AI operating-system acceptance criteria, not current MVP completion claims:
+
+1. generate daily plans and summaries as a full standalone experience
+2. generate weekly reflection reports as a completed Weekly Review module
+3. generate communication drafts as a completed Communication Assistant module
+4. maintain a broad personal knowledge base with topic retrieval and change views
 
 ---
 

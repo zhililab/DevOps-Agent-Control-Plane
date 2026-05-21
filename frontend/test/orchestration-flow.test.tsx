@@ -62,6 +62,87 @@ describe("orchestration workflow", () => {
     });
     expect(screen.getByText(/Run #101/i)).toBeInTheDocument();
     expect(screen.getByText("Planner prioritized pipeline stabilization.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View Orchestration History" })).toHaveAttribute(
+      "href",
+      "/orchestrations"
+    );
+    const runCall = fetchMock.mock.calls.find(([input]) => input.toString().endsWith("/orchestrations/run"));
+    expect(runCall?.[1]?.headers).not.toHaveProperty("X-Subscription-Tier");
+  });
+
+  test("runs orchestration then verifies replay in history page", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const createdRun = {
+      id: 909,
+      status: "success",
+      duration_ms: 88,
+      entry_source: "web_ui",
+      subscription_tier: "pro",
+      summary: {
+        conclusion: "Planner created a deployable orchestration checklist.",
+        risks: ["Deployment evidence still needs capture."],
+        next_actions: ["Open orchestration history and verify replay."],
+      },
+      steps: [
+        {
+          id: 91,
+          step_name: "Plan The Day",
+          agent_type: "planner",
+          status: "success",
+          input_summary: "{}",
+          output_summary: "Planner produced launch validation steps.",
+          audit: {
+            conclusion: "Planner produced launch validation steps.",
+            evidence: "Input contained release closeout context.",
+            risk: "Skipping history verification weakens auditability.",
+            next_action: "Confirm the run appears in history.",
+          },
+          fallback_action: "",
+          started_at: "2026-05-21T00:00:00Z",
+          finished_at: "2026-05-21T00:00:01Z",
+          duration_ms: 88,
+        },
+      ],
+      created_at: "2026-05-21T00:00:00Z",
+      updated_at: "2026-05-21T00:00:01Z",
+    };
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("/orchestrations/templates")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (url.endsWith("/orchestrations/run")) {
+        return new Response(JSON.stringify(createdRun), { status: 200 });
+      }
+      if (url.includes("/orchestrations/history")) {
+        return new Response(JSON.stringify({ items: [createdRun] }), { status: 200 });
+      }
+      if (url.includes("/orchestrations/queue/history")) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    const { unmount } = render(<OrchestratePage />);
+    fireEvent.click(screen.getByRole("button", { name: "Run Orchestration" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Run #909/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("link", { name: "View Orchestration History" })).toHaveAttribute(
+      "href",
+      "/orchestrations"
+    );
+
+    unmount();
+    render(<OrchestrationsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Run #909 · success · pro")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Planner created a deployable orchestration checklist.")).toBeInTheDocument();
+    expect(screen.getByText("Planner produced launch validation steps.")).toBeInTheDocument();
   });
 
   test("renders orchestration history with filters", async () => {
@@ -126,6 +207,54 @@ describe("orchestration workflow", () => {
                 created_at: "2026-04-23T00:00:00Z",
                 updated_at: "2026-04-23T00:00:10Z",
               },
+              {
+                id: 402,
+                status: "running",
+                attempts: 1,
+                max_attempts: 3,
+                cancel_requested: false,
+                orchestration_id: null,
+                error_message: "",
+                created_at: "2026-04-23T00:01:00Z",
+                updated_at: "2026-04-23T00:01:10Z",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/queue/401/retry")) {
+        return new Response(
+          JSON.stringify({
+            job_id: 401,
+            status: "queued",
+            attempts: 2,
+            max_attempts: 3,
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/queue/402/cancel")) {
+        return new Response(
+          JSON.stringify({
+            id: 402,
+            status: "canceled",
+            attempts: 1,
+            max_attempts: 3,
+            cancel_requested: true,
+            orchestration_id: null,
+            error_message: "",
+            created_at: "2026-04-23T00:01:00Z",
+            updated_at: "2026-04-23T00:01:20Z",
+            events: [
+              {
+                id: 4,
+                queue_job_id: 402,
+                event_type: "cancel_requested",
+                status: "canceled",
+                detail: "Cancel requested while job is running.",
+                created_at: "2026-04-23T00:01:20Z",
+              },
             ],
           }),
           { status: 200 }
@@ -173,6 +302,32 @@ describe("orchestration workflow", () => {
           { status: 200 }
         );
       }
+      if (url.endsWith("/orchestrations/queue/402")) {
+        return new Response(
+          JSON.stringify({
+            id: 402,
+            status: "running",
+            attempts: 1,
+            max_attempts: 3,
+            cancel_requested: false,
+            orchestration_id: null,
+            error_message: "",
+            created_at: "2026-04-23T00:01:00Z",
+            updated_at: "2026-04-23T00:01:10Z",
+            events: [
+              {
+                id: 4,
+                queue_job_id: 402,
+                event_type: "started",
+                status: "running",
+                detail: "Execution started (attempt 1/3).",
+                created_at: "2026-04-23T00:01:10Z",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
       return new Response(JSON.stringify([]), { status: 200 });
     });
 
@@ -191,6 +346,17 @@ describe("orchestration workflow", () => {
       ).toBeInTheDocument();
       expect(screen.getByText(/Observed queue events/i)).toBeInTheDocument();
       expect(screen.getByText("Execution failed: Analyzer timeout")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Retry Job" })[0]);
+    await waitFor(() => {
+      expect(screen.getByText("Queue job #401 retry requested.")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Cancel Job" })[1]);
+    await waitFor(() => {
+      expect(screen.getByText("Queue job #402 cancel request accepted.")).toBeInTheDocument();
+      expect(screen.getByText(/Job #402 · latest status=canceled/i)).toBeInTheDocument();
     });
   });
 

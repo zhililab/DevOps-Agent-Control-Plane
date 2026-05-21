@@ -156,6 +156,35 @@ main() {
     "${API_BASE}/orchestrations/history?limit=1" \
     '"summary":{"conclusion"'
 
+  assert_api_get_json_contains \
+    "${API_BASE}/orchestrations/metrics?days=7" \
+    '"weekly_active_orchestrations"'
+
+  assert_api_json_contains_with_entitlement \
+    "${API_BASE}/orchestrations/queue/run" \
+    '{"entry_source":"smoke_check_queue","steps":[{"step_name":"Smoke planner","agent_type":"planner","enabled":true}],"daily_context":{"tasks":["Queued smoke task"],"meetings":[],"blockers":[],"priorities":["Queued smoke task"]},"persist_knowledge":false,"persist_template":false}' \
+    '"job_id"'
+
+  assert_api_get_json_contains \
+    "${API_BASE}/orchestrations/queue/history?limit=1" \
+    '"items":['
+
+  assert_api_get_json_contains \
+    "${API_BASE}/observability/monetization?days=7" \
+    '"active_subjects"'
+
+  assert_api_get_json_contains \
+    "${API_BASE}/monetization/profile?subject=smoke-check" \
+    '"profile"'
+
+  assert_api_get_json_contains \
+    "${API_BASE}/monetization/usage?subject=smoke-check" \
+    '"counters":['
+
+  assert_api_get_json_contains \
+    "${API_BASE}/monetization/events?limit=1" \
+    '"events":['
+
   log "checking knowledge/template list response shape"
   assert_api_get_is_array "${API_BASE}/knowledge"
   assert_api_get_is_array "${API_BASE}/templates"

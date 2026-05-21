@@ -1,6 +1,10 @@
-# Personal Agent Assistant MVP
+# Personal Agent Workflow Orchestration MVP
 
-Monorepo-style MVP with:
+Current product: a deployable DevOps personal workflow orchestration MVP. It focuses on deterministic multi-agent execution, replayable workflow history, queue lifecycle controls, entitlement-aware tier boundaries, and monetization observability.
+
+Long-term vision: a personal AI operating system for work, reflection, knowledge, planning, and communication. The current release keeps that vision grounded in a narrow, auditable orchestration surface that can be deployed and verified by one maintainer.
+
+Monorepo-style app with:
 - `frontend/`: Next.js + TypeScript UI
 - `backend/`: FastAPI + SQLAlchemy API
 - PostgreSQL scaffolding (optional for local via Docker), with SQLite default for fast boot
@@ -35,6 +39,16 @@ Documentation map: `docs/README.md`.
 ```
 
 ## MVP Features
+
+### Current MVP surface
+- DevOps-oriented workflow orchestration through Planner, Analyzer, and Reviewer steps.
+- Replayable orchestration history backed by persisted step records, not regenerated text.
+- Async queue lifecycle with status timeline, retry, and cancel behavior.
+- Workflow templates for reusable orchestration step definitions.
+- Signed entitlement token support for free/pro/power tier boundaries.
+- Monetization observability for capability checks, quota checks, usage events, upgrade blocks, queue health, and KPI aggregation.
+- Knowledge and prompt-template utilities that support reuse around orchestration workflows.
+- Existing daily plan, reflection, technical analysis, task, and profile routes remain available for compatibility and personal workflow support.
 
 ### Data models
 - `UserProfile`
@@ -164,6 +178,8 @@ From repo root, one command to start backend + frontend:
 make dev-up
 ```
 
+Local dev startup runs backend migrations and the same core table bootstrap check used by server deploy before starting `uvicorn`.
+
 Useful companion commands:
 
 ```bash
@@ -173,9 +189,9 @@ make dev-down     # stop both services
 make dev-restart  # restart both services
 ```
 
-## Simplified Server Deployment (Recommended)
+## Simplified Server Deployment (Recommended MVP Path)
 
-For quickest always-on access on a server (without Kubernetes), use Docker Compose:
+The recommended deploy entry for the current MVP is the Docker Compose server path. It gives one always-on host with PostgreSQL, FastAPI, Next.js, and an Nginx gateway on port `80`:
 
 ```bash
 DB_PASSWORD='replace-with-strong-password' make server-deploy
@@ -233,6 +249,7 @@ Effective auth behavior:
 - Signed token is authoritative when both headers are provided (`X-Entitlement` tier overrides mismatched legacy tier header).
 - Expired or signature-invalid tokens return deterministic `401` errors.
 - Free tier capability guard denies multi-step orchestration runs with `403`.
+- The `/orchestrate` frontend uses signed entitlement tokens and no longer emits `X-Subscription-Tier`; the legacy header remains an explicit non-production API fallback only.
 
 Observability and quota contract notes:
 
@@ -261,26 +278,43 @@ make server-down
 
 Detailed guide: `docs/deploy-simple-server.md`.
 
+### Deployment Verification
+
+After `make server-deploy`, verify the deployment through the gateway:
+
+```bash
+make server-status
+curl http://<server-host>/api/health
+```
+
+Then open the user-facing orchestration surfaces:
+
+- `http://<server-host>/orchestrate`
+- `http://<server-host>/orchestrations`
+- `http://<server-host>/dashboard`
+
+For API-level validation, run a signed pro/power orchestration request or use the entitlement token field on `/orchestrate`. Free tier should still reject multi-step orchestration with a deterministic `403`.
+
 ### Public Access Paths
 
-After `make server-deploy`, public routes are:
+After `make server-deploy`, public routes are served by the gateway. Replace `<server-host>` with the server IP or domain:
 
-- Home: `http://1.117.63.81/`
-- Dashboard: `http://1.117.63.81/dashboard`
-- Today Plan: `http://1.117.63.81/today`
-- Reflection: `http://1.117.63.81/reflection`
-- Technical Analysis: `http://1.117.63.81/technical-analysis`
-- Orchestrate: `http://1.117.63.81/orchestrate`
-- Orchestration History: `http://1.117.63.81/orchestrations`
-- Knowledge: `http://1.117.63.81/knowledge`
-- Templates: `http://1.117.63.81/templates`
-- API health: `http://1.117.63.81/api/health`
+- Home: `http://<server-host>/`
+- Dashboard: `http://<server-host>/dashboard`
+- Today Plan: `http://<server-host>/today`
+- Reflection: `http://<server-host>/reflection`
+- Technical Analysis: `http://<server-host>/technical-analysis`
+- Orchestrate: `http://<server-host>/orchestrate`
+- Orchestration History: `http://<server-host>/orchestrations`
+- Knowledge: `http://<server-host>/knowledge`
+- Templates: `http://<server-host>/templates`
+- API health: `http://<server-host>/api/health`
 
-If you deploy with `DOMAIN=1.117.63.81.nip.io`, equivalent paths are:
+If you deploy with `DOMAIN=<server-ip>.nip.io`, equivalent paths are:
 
-- `http://1.117.63.81.nip.io/`
-- `http://1.117.63.81.nip.io/dashboard`
-- `http://1.117.63.81.nip.io/api/health`
+- `http://<server-ip>.nip.io/`
+- `http://<server-ip>.nip.io/dashboard`
+- `http://<server-ip>.nip.io/api/health`
 
 ## Migration Commands
 
@@ -307,7 +341,7 @@ Current test coverage includes:
 - daily planning generation + persistence + history retrieval
 - daily reflection summary generation + persistence + history retrieval
 - technical analysis generation + request validation + persistence + history retrieval
-- smoke-check script coverage for UI routes and core APIs, including orchestration run/history
+- smoke-check script coverage for UI routes and core APIs, including orchestration run/history/metrics, queue run/history, monetization observability, and monetization read APIs
 - orchestration workflow run + step replay + partial failure fallback + history retrieval
 - free/pro/power tier boundary for orchestration (free single-step restriction)
 - orchestration template CRUD + import/export round-trip
@@ -417,6 +451,7 @@ This MVP intentionally keeps scope small. Current constraints:
 - No RBAC / multi-tenant separation in app layer yet.
 - Orchestration has a lightweight FastAPI background-task queue, but no separate durable worker process yet.
 - Technical analysis output is deterministic rules-based (inspectable), not model-generated ranking.
+- Communication assistant and Weekly Review are roadmap capabilities only; there are no current production UI pages or APIs for those workflows.
 - Kubernetes manifests are baseline production-ready for a single environment, but remain non-HA.
 - This release still avoids external integrations and autonomous external actions.
 

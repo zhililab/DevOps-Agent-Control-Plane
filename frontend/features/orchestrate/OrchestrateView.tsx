@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
@@ -23,7 +24,6 @@ const DEFAULT_PUBLIC_ENTITLEMENT_TOKEN = process.env.NEXT_PUBLIC_DEFAULT_ENTITLE
 export function OrchestrateView() {
   const [entrySource, setEntrySource] = useState("web_ui");
   const [runMode, setRunMode] = useState<"sync" | "async">("sync");
-  const [subscriptionTier, setSubscriptionTier] = useState<"free" | "pro" | "power">("pro");
   const [entitlementToken, setEntitlementToken] = useState(DEFAULT_PUBLIC_ENTITLEMENT_TOKEN);
   const [steps, setSteps] = useState<WorkflowStepDefinition[]>(DEFAULT_STEPS);
   const [templateName, setTemplateName] = useState("Default DevOps Loop");
@@ -127,9 +127,7 @@ export function OrchestrateView() {
   }
 
   function buildRunOptions() {
-    const options: { subscription_tier?: "free" | "pro" | "power"; entitlement_token?: string } = {
-      subscription_tier: subscriptionTier,
-    };
+    const options: { entitlement_token?: string } = {};
     if (entitlementToken.trim()) {
       options.entitlement_token = entitlementToken.trim();
     }
@@ -184,7 +182,7 @@ export function OrchestrateView() {
       if (typeof window !== "undefined") {
         window.localStorage.setItem("entitlement_token", entitlementToken.trim());
       }
-      const executeRun = async (options: { subscription_tier?: "free" | "pro" | "power"; entitlement_token?: string }) => {
+      const executeRun = async (options: { entitlement_token?: string }) => {
         if (runMode === "sync") {
           const record = await apiClient.runWorkflowOrchestration(buildPayload(), options);
           setLatest(record);
@@ -336,14 +334,6 @@ export function OrchestrateView() {
         <label>
           Entry Source
           <input value={entrySource} onChange={(event) => setEntrySource(event.target.value)} />
-        </label>
-        <label>
-          Subscription Tier
-          <select value={subscriptionTier} onChange={(event) => setSubscriptionTier(event.target.value as "free" | "pro" | "power")}>
-            <option value="free">Free</option>
-            <option value="pro">Pro</option>
-            <option value="power">Power</option>
-          </select>
         </label>
         <label>
           Run Mode
@@ -508,6 +498,11 @@ export function OrchestrateView() {
 
       {status ? <p className="status status-success">{status}</p> : null}
       {error ? <p className="status status-error">{error}</p> : null}
+      {latest || queueJob ? (
+        <p>
+          <Link href="/orchestrations">View Orchestration History</Link>
+        </p>
+      ) : null}
 
       {queueJob ? (
         <section className="reflection-section">

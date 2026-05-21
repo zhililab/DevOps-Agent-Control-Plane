@@ -83,6 +83,8 @@ start_backend() {
 
   echo "[backend] applying migrations..."
   (cd "$ROOT_DIR/backend" && ./.venv/bin/alembic upgrade head >/dev/null)
+  echo "[backend] verifying core tables..."
+  (cd "$ROOT_DIR/backend" && ./.venv/bin/python -m app.db_bootstrap >/dev/null)
 
   echo "[backend] starting on :$BACKEND_PORT ..."
   (
