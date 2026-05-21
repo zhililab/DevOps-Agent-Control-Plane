@@ -187,4 +187,4 @@ fi
 
 log "deployment completed"
 log "open: http://${PUBLIC_HOST}"
-log "api:  http://${PUBLIC_HOST}/api/health"
+log "health: http://${PUBLIC_HOST}/health"

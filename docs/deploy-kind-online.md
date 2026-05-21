@@ -50,7 +50,7 @@ What this script does:
 ```bash
 kubectl -n personal-agent get pods,svc,ingress
 curl -I http://$DOMAIN
-curl -s http://$DOMAIN/api/health
+curl -s http://$DOMAIN/health
 ```
 
 ## 5) Update deployment after code changes

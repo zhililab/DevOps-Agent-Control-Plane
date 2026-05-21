@@ -84,4 +84,4 @@ ssh -x "$REMOTE_SSH" "$remote_cmd"
 
 log "remote deployment completed"
 log "open: http://$PUBLIC_HOST"
-log "health: http://$PUBLIC_HOST/api/health"
+log "health: http://$PUBLIC_HOST/health"

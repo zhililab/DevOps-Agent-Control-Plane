@@ -305,7 +305,7 @@ After `make server-deploy`, verify the deployment through the gateway:
 
 ```bash
 make server-status
-curl http://<server-host>/api/health
+curl http://<server-host>/health
 ```
 
 Then open the user-facing orchestration surfaces:
@@ -329,13 +329,13 @@ After `make server-deploy`, public routes are served by the gateway. Replace `<s
 - Orchestration History: `http://<server-host>/orchestrations`
 - Knowledge: `http://<server-host>/knowledge`
 - Templates: `http://<server-host>/templates`
-- API health: `http://<server-host>/api/health`
+- API health: `http://<server-host>/health`
 
 If you deploy with `DOMAIN=<server-ip>.nip.io`, equivalent paths are:
 
 - `http://<server-ip>.nip.io/`
 - `http://<server-ip>.nip.io/dashboard`
-- `http://<server-ip>.nip.io/api/health`
+- `http://<server-ip>.nip.io/health`
 
 ## Migration Commands
 

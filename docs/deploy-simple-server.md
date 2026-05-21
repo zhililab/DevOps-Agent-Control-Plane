@@ -24,7 +24,7 @@ DB_PASSWORD='replace-with-strong-password' make server-deploy
 ## 3) Access
 
 - Home: `http://<server-public-ip>/`
-- API health: `http://<server-public-ip>/api/health`
+- API health: `http://<server-public-ip>/health`
 
 ## 4) Operations
 
