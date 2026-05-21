@@ -19,6 +19,7 @@ This document records the current product target and the minimum functionality t
 - Review dashboard orchestration KPIs and monetization observability fallback states.
 - Generate and persist daily plans, daily reflections, and technical analysis records.
 - Browse reusable knowledge entries, prompt templates, and workflow templates.
+- Verify orchestration history ledger integrity for a run and confirm event count/status.
 
 ## Core API Surface
 
@@ -29,6 +30,7 @@ This document records the current product target and the minimum functionality t
 - `POST /api/orchestrations/run`
 - `GET /api/orchestrations/history`
 - `GET /api/orchestrations/{id}`
+- `GET /api/orchestrations/{id}/history-events`
 - `GET /api/orchestrations/metrics?days=...`
 - `POST /api/orchestrations/queue/run`
 - `GET /api/orchestrations/queue/history`
@@ -49,6 +51,8 @@ This document records the current product target and the minimum functionality t
 - Gateway responses must include baseline security headers.
 - `X-Powered-By` must not be exposed by the frontend.
 - `/api/health` must not become a second health route; `/health` remains canonical.
+- Orchestration ledger payload hashes must verify against canonical JSON snapshots.
+- Backfill of historical orchestration records must be idempotent.
 
 ## Non-Blocking Product Modules
 

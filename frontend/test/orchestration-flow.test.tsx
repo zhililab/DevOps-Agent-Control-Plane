@@ -121,6 +121,18 @@ describe("orchestration workflow", () => {
       if (url.includes("/orchestrations/queue/history")) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
+      if (url.endsWith("/orchestrations/909/history-events")) {
+        return new Response(
+          JSON.stringify({
+            entity_type: "orchestration",
+            entity_id: "909",
+            integrity_status: "valid",
+            event_count: 3,
+            events: [],
+          }),
+          { status: 200 }
+        );
+      }
       return new Response(JSON.stringify({ items: [] }), { status: 200 });
     });
 
@@ -143,6 +155,11 @@ describe("orchestration workflow", () => {
     });
     expect(screen.getByText("Planner created a deployable orchestration checklist.")).toBeInTheDocument();
     expect(screen.getByText("Planner produced launch validation steps.")).toBeInTheDocument();
+    expect(screen.getByText(/History Ledger: not checked/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Verify History Ledger" }));
+    await waitFor(() => {
+      expect(screen.getByText(/History Ledger: valid · 3 event\(s\)/i)).toBeInTheDocument();
+    });
   });
 
   test("renders orchestration history with filters", async () => {

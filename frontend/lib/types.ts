@@ -215,6 +215,33 @@ export type WorkflowOrchestrationMetrics = {
   average_duration_ms: number;
 };
 
+export type HistoryEvent = {
+  id: number;
+  event_uid: string;
+  entity_type: string;
+  entity_id: string;
+  event_type: string;
+  event_version: number;
+  source_table: string;
+  source_id: string;
+  correlation_id: string;
+  payload: Record<string, unknown>;
+  payload_sha256: string;
+  previous_event_sha256: string;
+  occurred_at: string;
+  created_at: string;
+  integrity_status: "valid" | "invalid" | string;
+  integrity_error: string;
+};
+
+export type HistoryIntegrityResponse = {
+  entity_type: string;
+  entity_id: string;
+  integrity_status: "valid" | "invalid" | string;
+  event_count: number;
+  events: HistoryEvent[];
+};
+
 export type EntitlementBootstrap = {
   token: string;
   tier: SubscriptionTier;

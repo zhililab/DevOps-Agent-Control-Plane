@@ -95,6 +95,12 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - added security hardening and robustness gate: `make security-check`
 - added gateway security headers, report-only CSP, configurable production CORS, and hidden frontend `X-Powered-By`
 - upgraded frontend security patch dependencies: Next `15.5.18`, React/ReactDOM `19.2.6`, Vitest `2.1.9`
+- added immutable orchestration history ledger for accuracy-first audit storage:
+  - `history_events` table with canonical JSON payloads, SHA-256 verification, source references, and previous-event hash pointer
+  - orchestration accepted/completed, step success/failure/skipped, queue lifecycle, and monetization policy/usage events write ledger snapshots
+  - idempotent backfill from existing orchestration, step, queue, queue event, and monetization agent-log records
+  - read-only integrity API: `GET /api/orchestrations/{id}/history-events`
+  - `/orchestrations` UI can verify and display ledger integrity status/event count per run
 - updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, `make security-check`, and `make k8s-render`
 - verified simplified server deployment on target host with `make server-deploy`
   - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`
@@ -112,6 +118,7 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 ### Launch Required
 - keep `make qa-all`, `make e2e-orchestration`, `make security-check`, and server smoke checks green before each release
 - capture any future production deployment run in `docs/deployment-evidence.md`
+- keep orchestration history ledger backfill idempotent and integrity checks valid before production deploys
 
 ### UX Closeout
 - add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)

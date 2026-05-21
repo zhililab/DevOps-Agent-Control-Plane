@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.schemas import (
     EntitlementBootstrapResponse,
+    HistoryIntegrityResponse,
     WorkflowOrchestrationHistoryResponse,
     WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
@@ -22,6 +23,7 @@ from app.schemas import (
     WorkflowTemplateRead,
     WorkflowTemplateUpdate,
 )
+from app.services.history_ledger import verify_orchestration_history
 from app.services.entitlement_service import (
     normalize_tier,
     resolve_entitlement_context,
@@ -209,6 +211,15 @@ def cancel_queue_job_endpoint(
     db: Session = Depends(get_db),
 ) -> WorkflowQueueJobRead:
     return cancel_queue_job(db, job_id)
+
+
+@router.get("/{orchestration_id}/history-events", response_model=HistoryIntegrityResponse)
+def get_orchestration_history_events_endpoint(
+    orchestration_id: int,
+    db: Session = Depends(get_db),
+) -> HistoryIntegrityResponse:
+    get_orchestration(db, orchestration_id)
+    return HistoryIntegrityResponse.model_validate(verify_orchestration_history(db, orchestration_id))
 
 
 @router.post("/templates", response_model=WorkflowTemplateRead)

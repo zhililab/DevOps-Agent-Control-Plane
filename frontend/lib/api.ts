@@ -6,6 +6,7 @@ import type {
   DailyReflectionInput,
   DailyReflectionRecord,
   EntitlementBootstrap,
+  HistoryIntegrityResponse,
   MonetizationObservability,
   NoteEntry,
   PromptTemplate,
@@ -315,6 +316,10 @@ export const apiClient = {
 
   getWorkflowOrchestration(orchestrationId: number) {
     return request<WorkflowOrchestrationRecord>(`/orchestrations/${orchestrationId}`);
+  },
+
+  getWorkflowOrchestrationHistoryEvents(orchestrationId: number) {
+    return request<HistoryIntegrityResponse>(`/orchestrations/${orchestrationId}/history-events`);
   },
 
   getWorkflowOrchestrationMetrics(days = 7) {

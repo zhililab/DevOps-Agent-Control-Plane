@@ -15,6 +15,7 @@ from app.schemas import (
     WorkflowQueueJobRead,
     WorkflowQueueRunResponse,
 )
+from app.services.history_ledger import append_queue_event_ledger
 from app.services.orchestration_service import run_orchestration
 
 logger = logging.getLogger(__name__)
@@ -276,14 +277,15 @@ def _append_queue_event(
     status: QueueJobStatus,
     detail: str,
 ) -> None:
-    db.add(
-        WorkflowQueueEvent(
-            queue_job_id=job_id,
-            event_type=event_type,
-            status=status,
-            detail=detail,
-        )
+    event = WorkflowQueueEvent(
+        queue_job_id=job_id,
+        event_type=event_type,
+        status=status,
+        detail=detail,
     )
+    db.add(event)
+    db.flush()
+    append_queue_event_ledger(db, event)
 
 
 def _get_queue_events(db: Session, job_id: int) -> list[WorkflowQueueEventRead]:

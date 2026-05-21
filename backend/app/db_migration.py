@@ -8,6 +8,7 @@ from sqlalchemy.engine import Connection
 
 from app.database import engine
 from app.db_bootstrap import CORE_TABLES, ensure_core_tables
+from app.services.history_ledger import backfill_history_events
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ def run_startup_migrations() -> None:
     from alembic import command
     command.upgrade(config, "head")
     ensure_core_tables()
+    backfill_history_events()
 
 
 if __name__ == "__main__":

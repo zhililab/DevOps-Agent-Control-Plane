@@ -24,6 +24,7 @@ CORE_TABLES = (
     "subscription_profiles",
     "usage_counters",
     "monetization_events",
+    "history_events",
 )
 
 

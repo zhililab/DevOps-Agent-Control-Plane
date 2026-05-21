@@ -465,6 +465,33 @@ class WorkflowOrchestrationMetricsResponse(BaseModel):
     average_duration_ms: int
 
 
+class HistoryEventRead(BaseModel):
+    id: int
+    event_uid: str
+    entity_type: str
+    entity_id: str
+    event_type: str
+    event_version: int
+    source_table: str
+    source_id: str
+    correlation_id: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    payload_sha256: str
+    previous_event_sha256: str
+    occurred_at: datetime
+    created_at: datetime
+    integrity_status: str
+    integrity_error: str
+
+
+class HistoryIntegrityResponse(BaseModel):
+    entity_type: str
+    entity_id: str
+    integrity_status: str
+    event_count: int
+    events: list[HistoryEventRead]
+
+
 class EntitlementBootstrapResponse(BaseModel):
     token: str
     tier: SubscriptionTier

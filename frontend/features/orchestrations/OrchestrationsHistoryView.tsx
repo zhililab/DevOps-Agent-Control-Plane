@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { PageCard } from "@/components/ui/PageCard";
 import { buildQueueTimelineReplay } from "@/features/orchestrations/queueTimeline";
 import { apiClient } from "@/lib/api";
-import type { WorkflowOrchestrationRecord, WorkflowQueueJob, WorkflowQueueJobStatus } from "@/lib/types";
+import type { HistoryIntegrityResponse, WorkflowOrchestrationRecord, WorkflowQueueJob, WorkflowQueueJobStatus } from "@/lib/types";
 
 function formatTimestamp(value: string): string {
   const parsed = new Date(value);
@@ -28,6 +28,8 @@ export function OrchestrationsHistoryView() {
   const [activeQueueActionJobId, setActiveQueueActionJobId] = useState<number | null>(null);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
   const [isLoadingQueueDetail, setIsLoadingQueueDetail] = useState(false);
+  const [historyIntegrityByRunId, setHistoryIntegrityByRunId] = useState<Record<number, HistoryIntegrityResponse>>({});
+  const [activeHistoryCheckRunId, setActiveHistoryCheckRunId] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -159,6 +161,22 @@ export function OrchestrationsHistoryView() {
     }
   }
 
+  async function onVerifyHistory(runId: number) {
+    setError(null);
+    setActiveHistoryCheckRunId(runId);
+    try {
+      const integrity = await apiClient.getWorkflowOrchestrationHistoryEvents(runId);
+      setHistoryIntegrityByRunId((current) => ({
+        ...current,
+        [runId]: integrity,
+      }));
+    } catch (verifyError) {
+      setError(verifyError instanceof Error ? verifyError.message : "Failed to verify history ledger.");
+    } finally {
+      setActiveHistoryCheckRunId(null);
+    }
+  }
+
   return (
     <PageCard title="Orchestration History" description="Filter, review, and audit multi-agent orchestration runs.">
       <section className="result-block">
@@ -191,6 +209,26 @@ export function OrchestrationsHistoryView() {
 
       {items.map((item) => (
         <section key={item.id} id={`orchestration-run-${item.id}`} className="history-plan">
+          {(() => {
+            const integrity = historyIntegrityByRunId[item.id];
+            return (
+              <div className="button-row">
+                <p className={`status ${integrity?.integrity_status === "invalid" ? "status-error" : "status-success"}`}>
+                  History Ledger:{" "}
+                  {integrity
+                    ? `${integrity.integrity_status} · ${integrity.event_count} event(s)`
+                    : "not checked"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void onVerifyHistory(item.id)}
+                  disabled={activeHistoryCheckRunId === item.id}
+                >
+                  {activeHistoryCheckRunId === item.id ? "Checking Ledger..." : "Verify History Ledger"}
+                </button>
+              </div>
+            );
+          })()}
           <h3>
             Run #{item.id} · {item.status} · {item.subscription_tier}
           </h3>

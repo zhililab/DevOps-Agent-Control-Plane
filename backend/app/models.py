@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from enum import Enum
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -274,3 +274,27 @@ class MonetizationEvent(Base):
     )
     event_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class HistoryEvent(Base):
+    __tablename__ = "history_events"
+    __table_args__ = (
+        UniqueConstraint("event_uid", name="uq_history_events_event_uid"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    event_uid: Mapped[str] = mapped_column(String(128), index=True)
+    entity_type: Mapped[str] = mapped_column(String(64), index=True)
+    entity_id: Mapped[str] = mapped_column(String(120), index=True)
+    event_type: Mapped[str] = mapped_column(String(120), index=True)
+    event_version: Mapped[int] = mapped_column(Integer, default=1)
+    source_table: Mapped[str] = mapped_column(String(120), index=True)
+    source_id: Mapped[str] = mapped_column(String(120), index=True)
+    correlation_id: Mapped[str] = mapped_column(String(120), default="", index=True)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    payload_sha256: Mapped[str] = mapped_column(String(64))
+    previous_event_sha256: Mapped[str] = mapped_column(String(64), default="")
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    integrity_status: Mapped[str] = mapped_column(String(32), default="valid", index=True)
+    integrity_error: Mapped[str] = mapped_column(Text, default="")

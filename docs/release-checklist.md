@@ -28,6 +28,7 @@ Expected:
 - `/orchestrate` submits a signed entitlement orchestration run
 - run replay is visible after submission
 - `/orchestrations` shows the created run and persisted step replay
+- `/orchestrations` can verify the run history ledger and show valid integrity status
 - browser request includes `X-Entitlement` and does not emit legacy `X-Subscription-Tier`
 
 ## 3) Security Gate
@@ -102,6 +103,7 @@ This command verifies:
 - frontend routes (`/dashboard`, `/today`, `/reflection`, `/technical-analysis`, `/orchestrate`, `/orchestrations`, `/knowledge`, `/templates`)
 - backend health (`/health`)
 - core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, and monetization read APIs
+- history ledger integrity and idempotent backfill tests are covered by the local release gate
 
 ## 8) Rollback Trigger
 

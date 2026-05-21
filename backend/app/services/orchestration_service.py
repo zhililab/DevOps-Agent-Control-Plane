@@ -32,6 +32,12 @@ from app.schemas import (
 )
 from app.services.agent_log_service import log_agent_action
 from app.services.entitlement_service import capability_policy_for_tier, quota_policy_for_tier
+from app.services.history_ledger import (
+    append_monetization_event,
+    append_orchestration_accepted_event,
+    append_orchestration_completed_event,
+    append_step_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +97,7 @@ def run_orchestration(
     db.add(record)
     db.commit()
     db.refresh(record)
+    append_orchestration_accepted_event(db, record, request_dump)
 
     log_agent_action(
         db,
@@ -131,6 +138,7 @@ def run_orchestration(
             db.add(step_record)
             db.commit()
             db.refresh(step_record)
+            append_step_event(db, step_record)
             step_records.append(step_record)
             previous_audits.append(canceled_audit)
             break
@@ -159,6 +167,7 @@ def run_orchestration(
         db.add(step_record)
         db.commit()
         db.refresh(step_record)
+        append_step_event(db, step_record)
         step_records.append(step_record)
         previous_audits.append(audit)
 
@@ -172,6 +181,12 @@ def run_orchestration(
     db.add(record)
     db.commit()
     db.refresh(record)
+    append_orchestration_completed_event(
+        db,
+        record,
+        summary=summary.model_dump(mode="json"),
+        step_count=len(step_records),
+    )
 
     _persist_reusable_assets(db, record, summary, payload)
     log_agent_action(
@@ -744,12 +759,20 @@ def _write_monetization_event(
     payload: dict[str, object],
     outcome: str,
 ) -> None:
-    log_agent_action(
+    log = log_agent_action(
         db,
         task_type=event_name,
         input_summary=json.dumps(payload, separators=(",", ":"), ensure_ascii=True),
         output_summary=outcome,
         status=status,
+    )
+    append_monetization_event(
+        db,
+        log,
+        event_name=event_name,
+        status=status,
+        payload=payload,
+        outcome=outcome,
     )
 
 

@@ -43,6 +43,7 @@ Documentation map: `docs/README.md`.
 ### Current MVP surface
 - DevOps-oriented workflow orchestration through Planner, Analyzer, and Reviewer steps.
 - Replayable orchestration history backed by persisted step records, not regenerated text.
+- Accuracy-first orchestration history ledger with canonical JSON payload hashes and integrity verification.
 - Async queue lifecycle with status timeline, retry, and cancel behavior.
 - Workflow templates for reusable orchestration step definitions.
 - Signed entitlement token support for free/pro/power tier boundaries.
@@ -91,6 +92,7 @@ Documentation map: `docs/README.md`.
 - `POST /api/orchestrations/run`: run deterministic multi-agent orchestration (Planner/Analyzer/Reviewer)
 - `GET /api/orchestrations/history`: list orchestration runs with status/tier filters
 - `GET /api/orchestrations/{id}`: get orchestration run detail with step replay
+- `GET /api/orchestrations/{id}/history-events`: inspect immutable ledger events and integrity status for a run
 - `GET /api/orchestrations/metrics`: orchestration KPI metrics (`days=7|30|...`)
 - `POST /api/orchestrations/queue/run`: enqueue orchestration run (async)
 - `GET /api/orchestrations/queue/history`: list queue jobs (status/attempts snapshot)
@@ -364,6 +366,7 @@ Current test coverage includes:
 - technical analysis generation + request validation + persistence + history retrieval
 - smoke-check script coverage for UI routes and core APIs, including orchestration run/history/metrics, queue run/history, monetization observability, and monetization read APIs
 - orchestration workflow run + step replay + partial failure fallback + history retrieval
+- history ledger event creation, idempotent backfill, canonical payload hash verification, and tamper detection
 - free/pro/power tier boundary for orchestration (free single-step restriction)
 - orchestration template CRUD + import/export round-trip
 - knowledge entry CRUD + filtering + ordering/validation edge cases
