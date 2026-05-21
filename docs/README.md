@@ -21,10 +21,11 @@ Use the simplest path that fits the target environment:
 - `deploy-k3d-online.md`: Kubernetes-on-Docker path for servers where Kind is blocked by old kernel capabilities.
 - `deploy-kind-online.md`: Kind-based single-server Kubernetes deployment.
 - `k8s-deploy.md`: generic Kubernetes deployment guide for an existing cluster and image registry.
+- `deployment-evidence.md`: current server release evidence, public routes, commits, and smoke-check status.
 
 ## Release
 
-- `release-checklist.md`: local quality gates, manifest dry run, deployment verification, smoke checks, and rollback triggers.
+- `release-checklist.md`: local quality gates, browser E2E, server deployment verification, smoke checks, and rollback triggers.
 
 ## Current Organization Notes
 

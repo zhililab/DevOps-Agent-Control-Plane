@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:visual": "vitest run ./test/visual-baseline.test.tsx"
+    "test:visual": "vitest run ./test/visual-baseline.test.tsx",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "next": "^15.5.9",
@@ -16,6 +17,7 @@
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "6.7.0",
     "@testing-library/react": "16.1.0",
     "@types/node": "22.10.2",

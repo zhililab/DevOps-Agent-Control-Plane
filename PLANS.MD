@@ -18,7 +18,7 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - current iteration target: DevOps orchestration MVP launch closeout
 - product direction: deterministic personal DevOps orchestration with inspectable replay, queue lifecycle visibility, signed entitlement-aware tier gates, and reusable knowledge/templates
 - UI direction: Obsidian-like visual language remains the active baseline (dark canvas, violet accent, layered cards, knowledge graph feeling)
-- status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; next work is launch-required validation, queue/history UX closeout, and deployment evidence
+- status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; the Docker Compose server deployment path is the current MVP release path, with k3d/k8s retained as follow-up deployment options
 
 ## Completed In This Iteration
 - added route-level cinematic transition layer
@@ -90,6 +90,15 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - extended automated smoke checks to cover orchestration metrics, queue run/history, monetization observability, and monetization read APIs
 - verified extended local smoke checks against dev stack with signed entitlement token
 - verified local Kubernetes manifest rendering with `make k8s-render` (275 rendered lines); `make k8s-dry-run` still requires a reachable cluster context
+- added real-browser orchestration E2E coverage for `/orchestrate -> /orchestrations` with Playwright and an isolated local test stack
+- updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, and `make k8s-render`
+- verified simplified server deployment on target host with `make server-deploy`
+  - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`
+  - follow-up docs/script health-path commit: `eb32a17 docs: align deployment health check path`
+  - server: `http://1.117.63.81`
+  - health: `http://1.117.63.81/health`
+  - verified public routes: `/dashboard`, `/orchestrate`, `/orchestrations`
+  - remote smoke checks passed for core pages, core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, and monetization read APIs
 - recorded local timing proxy for CI split:
   - `make test` real time: `~2.21s`
   - `make qa-fast` real time: `~7.59s` (includes frontend production build)
@@ -97,15 +106,15 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 ## Still Pending / Next Tasks
 
 ### Launch Required
-- add E2E tests for `/orchestrate -> /orchestrations` full browser flow
-- run full k8s gate on a reachable cluster context (`make k8s-dry-run` currently blocked by cluster connectivity on local env)
-- verify k3d deployment path on target server and capture rollout evidence in docs
-- verify simplified server deployment (`make server-deploy`) on target host and capture access URL
+- keep `make qa-all`, `make e2e-orchestration`, and server smoke checks green before each release
+- capture any future production deployment run in `docs/deployment-evidence.md`
 
 ### UX Closeout
 - add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)
 - extend dashboard KPI trend from bar-only to line+delta insights with anomaly hinting
 - add pixel-level screenshot baseline (Playwright) on top of current DOM snapshot baseline
+- verify k3d deployment path on target server and capture rollout evidence in docs
+- run full k8s gate on a reachable cluster context when a Kubernetes deployment becomes the selected release path
 
 ### Later Product Completion
 - complete P7 Communication Assistant (not a current deployment blocker)
@@ -819,7 +828,7 @@ The current DevOps orchestration MVP is deployable when all of the following are
 
 ## Recommended Next Step
 Close the DevOps orchestration MVP launch gate in priority order:
-1. add `/orchestrate -> /orchestrations` E2E coverage
-2. run reachable-cluster/server deployment validation and capture rollout evidence
+1. keep `/orchestrate -> /orchestrations` E2E coverage green
+2. keep server deployment evidence current after each `make release-deploy`
 3. verify extended smoke checks against the deployed gateway
 4. defer Communication Assistant and Weekly Review until after the orchestration MVP is deployed
