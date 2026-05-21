@@ -84,6 +84,42 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - `curl http://1.117.63.81/health` returned `{"status":"ok"}`
   - `curl http://1.117.63.81/api/orchestrations/12/history-events` returned `integrity_status: valid` with 6 ledger events
 
+## 2026-05-22 History Time Accuracy Release Verification
+
+- Deployed implementation commit: `c5e5d17 fix: correct history business time storage`
+- Deployed migration fix commit: `38783bc fix: commit startup migrations before upgrade`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Remote backups captured before migration rollout:
+  - `deploy/backups/personal_agent-20260522-010954.sql`
+  - `deploy/backups/personal_agent-20260522-011452-pre-migration-fix.sql`
+- Release fixes included:
+  - `APP_BUSINESS_TIMEZONE=Asia/Shanghai` business-date derivation
+  - UTC-marked public datetime serialization for API responses
+  - `record_source` and `business_timezone` metadata for daily plan, reflection, and technical analysis records
+  - safe backfill of historical business dates from existing UTC `created_at`
+  - default filtering of smoke/system records from user history, with `include_system=true` audit access
+  - read-only history endpoints no longer writing `agent_run_logs`
+  - Alembic startup transaction fix so PostgreSQL migrations commit before app startup
+- Verified on local gates:
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make e2e-orchestration` passed
+  - `make security-check` passed
+  - `make release-check` passed
+- Verified on remote:
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - `alembic_version` is `0011_add_business_time_metadata`
+  - `daily_plans` includes `record_source` and `business_timezone`
+  - default `GET /api/plans/history` returned no smoke records
+  - `GET /api/plans/history?include_system=true` returned smoke records tagged `record_source=smoke_check`
+  - records created after `2026-05-21T16:00:00Z` were backfilled to business date `2026-05-22`
+  - `curl http://1.117.63.81/health` returned `{"status":"ok"}`
+  - `http://1.117.63.81/history` returned `200`
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
