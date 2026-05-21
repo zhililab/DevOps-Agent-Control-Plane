@@ -158,6 +158,7 @@ cd "$ROOT_DIR"
 
 log "checking static security configuration"
 assert_file_contains "deploy/nginx/default.conf" "server_tokens off"
+assert_file_contains "deploy/nginx/default.conf" "proxy_hide_header X-Powered-By"
 assert_file_contains "deploy/nginx/default.conf" "X-Content-Type-Options"
 assert_file_contains "deploy/nginx/default.conf" "X-Frame-Options"
 assert_file_contains "deploy/nginx/default.conf" "Referrer-Policy"
