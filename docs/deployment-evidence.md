@@ -2,6 +2,33 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-05-23 Commercial Metrics V2 Release Verification
+
+- Implementation commit: `3a2075b feat: add commercial metrics v2`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release features included:
+  - explicit Policy Authoring UI controls on `/orchestrate` for required tier, risk level, approval requirement, allowed tool scopes, billable work units, and enabled state
+  - read-only Commercial Metrics V2 API: `GET /api/monetization/commercial-metrics?days=7|30&subject=...`
+  - `/monetization` Commercial Metrics panel with 7D/30D windowing, billable work units, policy blocks, top templates, commercial events, and anomaly hints
+  - dashboard Commercial Work Units and Commercial Policy Blocks cards plus line/delta/anomaly signals
+  - stable pixel-level Playwright baselines for `/dashboard`, `/orchestrate`, `/orchestrations`, and `/monetization`
+  - smoke coverage for the new commercial metrics API
+- Verified on local gates:
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make e2e-orchestration` passed with commercial plan flow, orchestration replay, and commercial screenshot baselines
+  - `make security-check` passed; remaining npm audit findings are moderate severity and below the configured high-severity release gate
+  - `make release-check` passed, including `qa-fast`, visual baseline, Playwright E2E, security check, and k8s render
+- Verified on remote:
+  - remote smoke checks passed, including `/api/monetization/commercial-metrics?days=7&subject=smoke-check`
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `200` with `{"status":"ok"}` in about `0.071s`
+  - public `/dashboard`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` returned `200`
+  - public `GET /api/monetization/commercial-metrics?days=7` returned `200` in about `0.088s` with subscription summary, usage summary, commercial events, policy blocks, and billable work units
+
 ## 2026-05-22 Commercial Site Repositioning Release
 
 - Deployed implementation commit: `2131367 feat: reposition commercial control plane site`
