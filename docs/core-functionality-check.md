@@ -5,6 +5,7 @@ This document records the current product target and the minimum functionality t
 ## Current Product Target
 
 - Current release target: deterministic DevOps personal workflow orchestration MVP.
+- Commercial wedge: personal DevOps agent control plane for trusted, replayable, policy-gated workflow execution.
 - Primary surfaces: `/orchestrate`, `/orchestrations`, and `/dashboard`.
 - Release path: Docker Compose server deployment through `make release-deploy`.
 - Public entrypoint: `http://1.117.63.81`.
@@ -21,6 +22,7 @@ This document records the current product target and the minimum functionality t
 - Review daily history with accurate `Asia/Shanghai` business dates while preserving UTC audit timestamps.
 - Browse reusable knowledge entries, prompt templates, and workflow templates.
 - Import or refresh curated orchestration workflow templates for the current DevOps operating loop.
+- Confirm selected workflow templates expose their orchestration pattern metadata (`pattern:sequential`, `pattern:maker-checker`, or `pattern:handoff`).
 - Verify orchestration history ledger integrity for a run and confirm event count/status.
 
 ## Core API Surface

@@ -29,6 +29,37 @@ const REFRESHABLE_ENTITLEMENT_ERRORS = new Set([
   "malformed entitlement payload.",
   "entitlement tier is missing.",
 ]);
+const WORKFLOW_TEMPLATE_PATTERN_LABELS = {
+  sequential: "Sequential",
+  concurrent: "Concurrent",
+  "maker-checker": "Maker-checker",
+  handoff: "Handoff",
+  "magentic-ready": "Magentic-ready",
+  custom: "Custom",
+} as const;
+
+type WorkflowTemplatePattern = keyof typeof WORKFLOW_TEMPLATE_PATTERN_LABELS;
+
+function isWorkflowTemplatePattern(value: string): value is WorkflowTemplatePattern {
+  return value in WORKFLOW_TEMPLATE_PATTERN_LABELS;
+}
+
+function getWorkflowTemplatePattern(template: Pick<WorkflowTemplate, "tags">): WorkflowTemplatePattern {
+  const patternTag = template.tags.find((tag) => tag.toLowerCase().startsWith("pattern:"));
+  const pattern = patternTag?.split(":", 2)[1]?.trim().toLowerCase();
+  if (pattern && isWorkflowTemplatePattern(pattern)) {
+    return pattern;
+  }
+  return "custom";
+}
+
+function formatWorkflowTemplatePattern(template: Pick<WorkflowTemplate, "tags">): string {
+  return WORKFLOW_TEMPLATE_PATTERN_LABELS[getWorkflowTemplatePattern(template)];
+}
+
+function formatWorkflowTemplateTags(template: Pick<WorkflowTemplate, "tags">): string {
+  return template.tags.filter((tag) => !tag.toLowerCase().startsWith("pattern:")).join(", ");
+}
 
 export function OrchestrateView() {
   const [entrySource, setEntrySource] = useState("web_ui");
@@ -65,6 +96,7 @@ export function OrchestrateView() {
   const [queueJob, setQueueJob] = useState<WorkflowQueueJob | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
@@ -95,6 +127,10 @@ export function OrchestrateView() {
   }, [queueJob]);
 
   const activeStepCount = useMemo(() => steps.filter((step) => step.enabled).length, [steps]);
+  const selectedWorkflowTemplate = useMemo(
+    () => templates.find((template) => String(template.id) === selectedTemplateId) ?? null,
+    [selectedTemplateId, templates]
+  );
 
   function buildPayload() {
     return {
@@ -353,6 +389,8 @@ export function OrchestrateView() {
   }
 
   function applyTemplate(templateId: string) {
+    setSelectedTemplateId(templateId);
+    if (!templateId) return;
     const id = Number(templateId);
     const matched = templates.find((template) => template.id === id);
     if (!matched) return;
@@ -419,7 +457,7 @@ export function OrchestrateView() {
         <p className="muted">Save current step configuration as reusable orchestration template.</p>
         <label>
           Apply Existing Template
-          <select defaultValue="" onChange={(event) => applyTemplate(event.target.value)}>
+          <select value={selectedTemplateId} onChange={(event) => applyTemplate(event.target.value)}>
             <option value="">Select template</option>
             {templates.map((template) => (
               <option key={template.id} value={template.id}>
@@ -428,6 +466,14 @@ export function OrchestrateView() {
             ))}
           </select>
         </label>
+        {selectedWorkflowTemplate ? (
+          <p className="muted">
+            Pattern: {formatWorkflowTemplatePattern(selectedWorkflowTemplate)}
+            {formatWorkflowTemplateTags(selectedWorkflowTemplate)
+              ? ` · Tags: ${formatWorkflowTemplateTags(selectedWorkflowTemplate)}`
+              : ""}
+          </p>
+        ) : null}
         <label>
           Template Name
           <input value={templateName} onChange={(event) => setTemplateName(event.target.value)} />

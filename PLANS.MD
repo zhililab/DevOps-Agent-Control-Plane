@@ -17,6 +17,7 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 ## Iteration Theme
 - current iteration target: DevOps orchestration MVP launch closeout
 - product direction: deterministic personal DevOps orchestration with inspectable replay, queue lifecycle visibility, signed entitlement-aware tier gates, and reusable knowledge/templates
+- commercial direction: personal DevOps agent control plane; sell trusted, replayable, policy-gated workflow execution before broad assistant breadth
 - UI direction: Obsidian-like visual language remains the active baseline (dark canvas, violet accent, layered cards, knowledge graph feeling)
 - status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; the Docker Compose server deployment path is the current MVP release path, with k3d/k8s retained as follow-up deployment options
 
@@ -117,6 +118,11 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - added expanded orchestration workflow template pack:
   - built-in templates for release gates, production incident triage, history accuracy audit, security hardening, query performance, entitlement recovery, queue lifecycle audit, ledger integrity, database migration readiness, visual QA, Kubernetes readiness, and free-tier smoke checks
   - migration seeding for existing deployments and API/UI import path for refreshing curated workflow templates
+- added orchestration commercial strategy and pattern registry pass:
+  - documented the current DevOps control-plane wedge, market signals, pricing direction, and next capability priorities
+  - tagged built-in workflow templates with `pattern:sequential`, `pattern:maker-checker`, and `pattern:handoff`
+  - surfaced selected template pattern metadata in `/orchestrate`
+  - added migration refresh so existing deployments receive pattern-tagged workflow templates
 - fixed `/orchestrations` history ledger status recovery:
   - history list responses include ledger integrity summaries from persisted ledger data
   - page reloads and redeploys no longer reset verified runs to `History Ledger: not checked`
@@ -153,6 +159,10 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - run full k8s gate on a reachable cluster context when a Kubernetes deployment becomes the selected release path
 
 ### Later Product Completion
+- add Policy Layer V2 for per-template tier requirements, approval requirements, and allowed tool scopes
+- add State & Checkpoint V2 for resumable queue jobs and explicit step checkpoint snapshots
+- add Human Approval Gate for risky deployment, migration, or external action templates
+- add commercial work-unit counters tied to template, tier, duration, and successful outcomes
 - complete P7 Communication Assistant (not a current deployment blocker)
 - complete P8 Weekly Review (not a current deployment blocker)
 - continue P9 integrations foundation after the orchestration MVP is deployed and audited

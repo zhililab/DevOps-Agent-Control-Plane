@@ -55,6 +55,11 @@ def test_workflow_template_builtin_import_upserts(client) -> None:
     assert "Release Gate And Remote Deploy" in names
     assert "Query Performance Optimization" in names
     assert "Free Tier Smoke Check" in names
+    allowed_patterns = {"sequential", "maker-checker", "handoff", "concurrent", "magentic-ready"}
+    for item in templates:
+        pattern_tags = [tag for tag in item["tags"] if tag.startswith("pattern:")]
+        assert len(pattern_tags) == 1
+        assert pattern_tags[0].split(":", 1)[1] in allowed_patterns
 
     first = client.post("/api/orchestrations/templates/import/builtin")
     assert first.status_code == 200
@@ -75,3 +80,5 @@ def test_workflow_template_builtin_import_upserts(client) -> None:
     assert names.issubset(listed_names)
     free_tier = next(item for item in listed_items if item["name"] == "Free Tier Smoke Check")
     assert len([step for step in free_tier["steps"] if step["enabled"]]) == 1
+    history_audit = next(item for item in listed_items if item["name"] == "History Accuracy Audit")
+    assert "pattern:maker-checker" in history_audit["tags"]

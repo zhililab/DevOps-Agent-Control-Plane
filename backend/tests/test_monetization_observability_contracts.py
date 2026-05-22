@@ -53,6 +53,12 @@ def _sign_raw_entitlement_token(*, secret: str, tier: str, exp_epoch: int, user_
     return f"{encoded_payload}.{signature}"
 
 
+def _tamper_token_signature(token: str) -> str:
+    payload_part, signature_part = token.split(".", 1)
+    replacement = "0" if signature_part[-1] != "0" else "1"
+    return f"{payload_part}.{signature_part[:-1]}{replacement}"
+
+
 def _single_step_run_payload() -> dict:
     payload = _default_run_payload()
     payload["steps"] = [payload["steps"][0]]
@@ -92,8 +98,7 @@ def test_entitlement_signature_mismatch_rejected(client) -> None:
         settings.entitlement_secret = "signature-secret"
         settings.entitlement_required = True
         valid_token = sign_entitlement_token(secret="signature-secret", tier="power", ttl_seconds=600)
-        payload_part, signature_part = valid_token.split(".", 1)
-        tampered = f"{payload_part}.{signature_part[:-1]}0"
+        tampered = _tamper_token_signature(valid_token)
 
         response = client.post(
             "/api/orchestrations/run",

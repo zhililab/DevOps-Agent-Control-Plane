@@ -7,7 +7,7 @@
       { "step_name": "Analyze Deploy Risk", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Remote Evidence", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["release", "deploy", "qa", "server"],
+    "tags": ["pattern:sequential", "release", "deploy", "qa", "server"],
     "enabled": true
   },
   {
@@ -18,7 +18,7 @@
       { "step_name": "Analyze Incident Signals", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Containment Plan", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["incident", "sre", "devops", "triage"],
+    "tags": ["pattern:sequential", "incident", "sre", "devops", "triage"],
     "enabled": true
   },
   {
@@ -29,7 +29,7 @@
       { "step_name": "Analyze Historical Records", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Accuracy Evidence", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["history", "data", "timezone", "audit"],
+    "tags": ["pattern:maker-checker", "history", "data", "timezone", "audit"],
     "enabled": true
   },
   {
@@ -40,7 +40,7 @@
       { "step_name": "Analyze Security Signals", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Hardening Evidence", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["security", "headers", "entitlement", "robustness"],
+    "tags": ["pattern:maker-checker", "security", "headers", "entitlement", "robustness"],
     "enabled": true
   },
   {
@@ -51,7 +51,7 @@
       { "step_name": "Analyze Query Plan", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Performance Evidence", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["performance", "database", "history", "dashboard"],
+    "tags": ["pattern:sequential", "performance", "database", "history", "dashboard"],
     "enabled": true
   },
   {
@@ -62,7 +62,7 @@
       { "step_name": "Analyze Entitlement Failure", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Recovery Flow", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["entitlement", "auth", "browser", "recovery"],
+    "tags": ["pattern:sequential", "entitlement", "auth", "browser", "recovery"],
     "enabled": true
   },
   {
@@ -73,7 +73,7 @@
       { "step_name": "Analyze Queue Events", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Retry Cancel Semantics", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["queue", "timeline", "retry", "audit"],
+    "tags": ["pattern:sequential", "queue", "timeline", "retry", "audit"],
     "enabled": true
   },
   {
@@ -84,7 +84,7 @@
       { "step_name": "Analyze Event Chain", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Integrity Result", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["ledger", "integrity", "audit", "history"],
+    "tags": ["pattern:maker-checker", "ledger", "integrity", "audit", "history"],
     "enabled": true
   },
   {
@@ -95,7 +95,7 @@
       { "step_name": "Analyze Schema Change Risk", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Migration Evidence", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["migration", "backup", "database", "release"],
+    "tags": ["pattern:sequential", "migration", "backup", "database", "release"],
     "enabled": true
   },
   {
@@ -106,7 +106,7 @@
       { "step_name": "Analyze UI Regression Signals", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Visual Baseline", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["ui", "visual", "obsidian", "qa"],
+    "tags": ["pattern:maker-checker", "ui", "visual", "obsidian", "qa"],
     "enabled": true
   },
   {
@@ -117,7 +117,7 @@
       { "step_name": "Analyze Manifest Risk", "agent_type": "analyzer", "enabled": true },
       { "step_name": "Review Deployment Path", "agent_type": "reviewer", "enabled": true }
     ],
-    "tags": ["kubernetes", "k3d", "infra", "follow-up"],
+    "tags": ["pattern:handoff", "kubernetes", "k3d", "infra", "follow-up"],
     "enabled": true
   },
   {
@@ -128,7 +128,7 @@
       { "step_name": "Analyzer Disabled For Free Tier", "agent_type": "analyzer", "enabled": false },
       { "step_name": "Reviewer Disabled For Free Tier", "agent_type": "reviewer", "enabled": false }
     ],
-    "tags": ["smoke", "free-tier", "qa", "fast"],
+    "tags": ["pattern:sequential", "smoke", "free-tier", "qa", "fast"],
     "enabled": true
   }
 ]

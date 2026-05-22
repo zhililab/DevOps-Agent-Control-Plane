@@ -1,6 +1,6 @@
 # Personal Agent Workflow Orchestration MVP
 
-Current product: a deployable DevOps personal workflow orchestration MVP. It focuses on deterministic multi-agent execution, replayable workflow history, queue lifecycle controls, entitlement-aware tier boundaries, and monetization observability.
+Current product: a deployable DevOps personal workflow orchestration MVP. It focuses on deterministic multi-agent execution, replayable workflow history, queue lifecycle controls, entitlement-aware tier boundaries, and monetization observability. Commercially, this is best framed as a personal DevOps agent control plane: trusted workflow execution before broad assistant breadth.
 
 Long-term vision: a personal AI operating system for work, reflection, knowledge, planning, and communication. The current release keeps that vision grounded in a narrow, auditable orchestration surface that can be deployed and verified by one maintainer.
 
@@ -9,7 +9,7 @@ Monorepo-style app with:
 - `backend/`: FastAPI + SQLAlchemy API
 - PostgreSQL scaffolding (optional for local via Docker), with SQLite default for fast boot
 
-Documentation map: `docs/README.md`.
+Documentation map: `docs/README.md`. Current commercial strategy and orchestration pattern registry notes: `docs/agent-orchestration-commercial-strategy.md`.
 
 ## Project Structure
 
@@ -47,7 +47,7 @@ Documentation map: `docs/README.md`.
 - UTC audit timestamps with `Asia/Shanghai` business-date derivation for daily history accuracy.
 - Smoke/system records are tagged by `record_source` and hidden from default personal history views.
 - Async queue lifecycle with status timeline, retry, and cancel behavior.
-- Workflow templates for reusable orchestration step definitions.
+- Workflow templates for reusable orchestration step definitions, with `pattern:*` tags for sequential, maker-checker, and handoff-style orchestration templates.
 - Signed entitlement token support for free/pro/power tier boundaries.
 - Monetization observability for capability checks, quota checks, usage events, upgrade blocks, queue health, and KPI aggregation.
 - Knowledge and prompt-template utilities that support reuse around orchestration workflows.

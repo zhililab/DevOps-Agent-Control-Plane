@@ -196,7 +196,7 @@ describe("orchestration workflow", () => {
                     { step_name: "Analyze Deploy Risk", agent_type: "analyzer", enabled: true },
                     { step_name: "Review Remote Evidence", agent_type: "reviewer", enabled: true },
                   ],
-                  tags: ["release", "deploy"],
+                  tags: ["pattern:sequential", "release", "deploy"],
                   enabled: true,
                   created_at: "2026-05-22T00:00:00Z",
                   updated_at: "2026-05-22T00:00:00Z",
@@ -214,6 +214,8 @@ describe("orchestration workflow", () => {
       expect(screen.getByText("Curated templates imported: imported=12, updated=0.")).toBeInTheDocument();
     });
     expect(screen.getByRole("option", { name: "Release Gate And Remote Deploy" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Apply Existing Template"), { target: { value: "501" } });
+    expect(screen.getByText("Pattern: Sequential · Tags: release, deploy")).toBeInTheDocument();
   });
 
   test("runs orchestration then verifies replay in history page", async () => {
