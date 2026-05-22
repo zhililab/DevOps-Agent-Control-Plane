@@ -2,6 +2,40 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-05-23 Billing Entitlement Workflow Fix Verification
+
+- Implementation commit: `b2d3de7 fix: connect billing entitlement to orchestration`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- User-facing issue fixed:
+  - `/monetization` could show an active Pro manual subscription while `/orchestrate` still used an old/default entitlement token
+  - Pro users could select a Power-only template and only discover the tier mismatch after attempting to run
+- Release fixes included:
+  - active Manual Billing subjects can fetch a signed orchestration token through `GET /api/monetization/entitlement?subject=...`
+  - `/orchestrate` stores and reuses the same Billing Subject as `/monetization`
+  - `/orchestrate` loads the subscription entitlement before falling back to the public bootstrap token
+  - Power-only templates are blocked in the UI for Pro entitlement before submit, with a `Use PRO-compatible template` recovery action
+  - subject-scoped Commercial Metrics V2 matches both raw billing subjects and entitlement-derived subject IDs
+  - smoke coverage now includes the billing entitlement endpoint
+- Verified on local gates:
+  - focused backend monetization/orchestration tests passed
+  - focused frontend orchestration/monetization tests passed
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make e2e-orchestration` passed
+  - `make security-check` passed; remaining npm audit findings are moderate severity and below the configured high-severity release gate
+  - `make release-check` passed
+- Verified on remote:
+  - remote smoke checks passed, including `GET /api/monetization/entitlement?subject=smoke-check`
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `200` with `{"status":"ok"}` in about `0.076s`
+  - public `/orchestrate` returned `200` in about `0.133s`
+  - public `/monetization` returned `200` in about `0.119s`
+  - public `GET /api/monetization/entitlement?subject=demo-user` returned `200`, `tier=pro`, and a signed token
+  - headless browser check loaded `demo-user` as `PRO · active`, loaded `Current entitlement: PRO` on `/orchestrate`, disabled a Power-only template for Pro, switched to a Pro-compatible template, and completed a run with `Run Replay` visible
+
 ## 2026-05-23 Commercial Metrics V2 Release Verification
 
 - Implementation commit: `3a2075b feat: add commercial metrics v2`
