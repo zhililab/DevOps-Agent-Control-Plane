@@ -52,6 +52,12 @@ def test_orchestration_run_success_and_history_and_get(client) -> None:
     history = history_response.json()["items"]
     assert len(history) == 1
     assert history[0]["id"] == created["id"]
+    assert history[0]["ledger_integrity"] == {
+        "entity_type": "orchestration",
+        "entity_id": str(created["id"]),
+        "integrity_status": "valid",
+        "event_count": 5,
+    }
 
     detail_response = client.get(f"/api/orchestrations/{created['id']}")
     assert detail_response.status_code == 200

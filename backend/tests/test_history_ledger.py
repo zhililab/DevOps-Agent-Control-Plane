@@ -169,3 +169,9 @@ def test_queue_history_events_are_available_after_async_run(client) -> None:
             .all()
         )
     assert [event.event_type for event in ledger_events][:2] == ["queue.queued", "queue.started"]
+
+    history_response = client.get("/api/orchestrations/history?limit=1")
+    assert history_response.status_code == 200
+    ledger_integrity = history_response.json()["items"][0]["ledger_integrity"]
+    assert ledger_integrity["integrity_status"] == "valid"
+    assert ledger_integrity["event_count"] >= len(ledger_events)

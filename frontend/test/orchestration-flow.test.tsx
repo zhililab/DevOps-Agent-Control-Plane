@@ -262,7 +262,22 @@ describe("orchestration workflow", () => {
         return new Response(JSON.stringify(createdRun), { status: 200 });
       }
       if (url.includes("/orchestrations/history")) {
-        return new Response(JSON.stringify({ items: [createdRun] }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                ...createdRun,
+                ledger_integrity: {
+                  entity_type: "orchestration",
+                  entity_id: "909",
+                  integrity_status: "valid",
+                  event_count: 3,
+                },
+              },
+            ],
+          }),
+          { status: 200 }
+        );
       }
       if (url.includes("/orchestrations/queue/history")) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
@@ -301,7 +316,7 @@ describe("orchestration workflow", () => {
     });
     expect(screen.getByText("Planner created a deployable orchestration checklist.")).toBeInTheDocument();
     expect(screen.getByText("Planner produced launch validation steps.")).toBeInTheDocument();
-    expect(screen.getByText(/History Ledger: not checked/i)).toBeInTheDocument();
+    expect(screen.getByText(/History Ledger: valid · 3 event\(s\)/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Verify History Ledger" }));
     await waitFor(() => {
       expect(screen.getByText(/History Ledger: valid · 3 event\(s\)/i)).toBeInTheDocument();

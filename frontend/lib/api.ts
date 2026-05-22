@@ -310,12 +310,14 @@ export const apiClient = {
     subscription_tier?: string;
     limit?: number;
     include_steps?: boolean;
+    include_integrity?: boolean;
   }) {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
     if (params?.subscription_tier) search.set("subscription_tier", params.subscription_tier);
     if (params?.limit) search.set("limit", String(params.limit));
     if (params?.include_steps !== undefined) search.set("include_steps", String(params.include_steps));
+    if (params?.include_integrity !== undefined) search.set("include_integrity", String(params.include_integrity));
     const suffix = search.toString() ? `?${search.toString()}` : "";
     return request<WorkflowOrchestrationHistoryResponse>(`/orchestrations/history${suffix}`);
   },

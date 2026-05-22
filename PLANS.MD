@@ -117,6 +117,10 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - added expanded orchestration workflow template pack:
   - built-in templates for release gates, production incident triage, history accuracy audit, security hardening, query performance, entitlement recovery, queue lifecycle audit, ledger integrity, database migration readiness, visual QA, Kubernetes readiness, and free-tier smoke checks
   - migration seeding for existing deployments and API/UI import path for refreshing curated workflow templates
+- fixed `/orchestrations` history ledger status recovery:
+  - history list responses include ledger integrity summaries from persisted ledger data
+  - page reloads and redeploys no longer reset verified runs to `History Ledger: not checked`
+  - dashboard lightweight history reads opt out of integrity summaries for query performance
 - updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, `make security-check`, and `make k8s-render`
 - verified simplified server deployment on target host with `make server-deploy`
   - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`

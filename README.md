@@ -92,7 +92,7 @@ Documentation map: `docs/README.md`.
 - `PUT /api/templates/{id}`: update template
 - `DELETE /api/templates/{id}`: delete template
 - `POST /api/orchestrations/run`: run deterministic multi-agent orchestration (Planner/Analyzer/Reviewer)
-- `GET /api/orchestrations/history`: list orchestration runs with status/tier filters
+- `GET /api/orchestrations/history`: list orchestration runs with status/tier filters and ledger integrity summaries
 - `GET /api/orchestrations/{id}`: get orchestration run detail with step replay
 - `GET /api/orchestrations/{id}/history-events`: inspect immutable ledger events and integrity status for a run
 - `GET /api/orchestrations/metrics`: orchestration KPI metrics (`days=7|30|...`)
@@ -261,7 +261,7 @@ Observability and quota contract notes:
 
 - `GET /api/orchestrations/metrics` response fields are stable and ordered as:
   `period_days`, `total_runs`, `weekly_active_orchestrations`, `partial_success_rate`, `average_duration_ms`.
-- `GET /api/orchestrations/history` is returned newest-first for deterministic dashboard aggregation. Use `include_steps=false` for lightweight dashboard/trend reads that do not need replay step details.
+- `GET /api/orchestrations/history` is returned newest-first for deterministic dashboard aggregation. Use `include_steps=false&include_integrity=false` for lightweight dashboard/trend reads that do not need replay or ledger status details.
 - Orchestration history, queue history, ledger, and monetization audit queries are backed by composite indexes for stable filtering and newest-first paging as data grows.
 - Global request quota/rate-limit boundary returns `429 Too many requests. Please retry later.` once configured per window limit is exceeded.
 - Dashboard contract note: monetization observability backend route is `GET /api/observability/monetization`; the frontend API client uses this canonical route.

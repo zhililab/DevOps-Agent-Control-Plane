@@ -16,6 +16,7 @@ from app.models import AgentRunLog, NoteEntry, PromptTemplate, WorkflowOrchestra
 from app.schemas import (
     DailyContextInput,
     DailyReflectionInput,
+    HistoryIntegritySummary,
     StepStatus,
     SubscriptionTier,
     TechnicalAnalysisInput,
@@ -40,6 +41,7 @@ from app.services.history_ledger import (
     append_orchestration_accepted_event,
     append_orchestration_completed_event,
     append_step_event,
+    summarize_orchestration_histories,
 )
 from app.time_utils import utcnow_naive
 
@@ -322,6 +324,7 @@ def list_orchestrations(
     subscription_tier: str | None = None,
     limit: int = 50,
     include_steps: bool = True,
+    include_integrity: bool = True,
 ) -> WorkflowOrchestrationHistoryResponse:
     safe_limit = max(1, min(limit, 200))
     query = db.query(WorkflowOrchestration).options(
@@ -358,11 +361,26 @@ def list_orchestrations(
         for step in step_records:
             steps_by_orchestration_id[step.orchestration_id].append(step)
 
+    integrity_by_orchestration_id: dict[int, HistoryIntegritySummary] = {}
+    if include_integrity and records:
+        raw_integrity = summarize_orchestration_histories(db, [record.id for record in records])
+        integrity_by_orchestration_id = {
+            orchestration_id: HistoryIntegritySummary.model_validate(summary)
+            for orchestration_id, summary in raw_integrity.items()
+        }
+
     items = []
     for record in records:
         steps = steps_by_orchestration_id.get(record.id, [])
         summary = _safe_orchestration_summary(record)
-        items.append(_to_orchestration_read(record, steps, summary))
+        items.append(
+            _to_orchestration_read(
+                record,
+                steps,
+                summary,
+                ledger_integrity=integrity_by_orchestration_id.get(record.id),
+            )
+        )
     return WorkflowOrchestrationHistoryResponse(items=items)
 
 
@@ -750,6 +768,8 @@ def _to_orchestration_read(
     record: WorkflowOrchestration,
     step_records: list[WorkflowStepRun],
     summary: WorkflowOrchestrationSummary,
+    *,
+    ledger_integrity: HistoryIntegritySummary | None = None,
 ) -> WorkflowOrchestrationRead:
     steps = [
         WorkflowStepRunRead(
@@ -775,6 +795,7 @@ def _to_orchestration_read(
         subscription_tier=normalize_tier(record.subscription_tier),
         summary=summary,
         steps=steps,
+        ledger_integrity=ledger_integrity,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )

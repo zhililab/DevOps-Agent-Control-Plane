@@ -63,7 +63,7 @@ This document records the current product target and the minimum functionality t
 ## Query Performance Baseline
 
 - `/api/orchestrations/history` must load step replay records in a single batched query for the page of runs.
-- Dashboard trend reads should use `/api/orchestrations/history?include_steps=false` when step replay details are not rendered.
+- Dashboard trend reads should use `/api/orchestrations/history?include_steps=false&include_integrity=false` when step replay and ledger status details are not rendered.
 - Orchestration metrics should use database aggregate queries instead of Python-side full-window scans.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 

@@ -163,6 +163,56 @@ def verify_orchestration_history(db: Session, orchestration_id: int) -> dict[str
     }
 
 
+def summarize_orchestration_histories(db: Session, orchestration_ids: list[int]) -> dict[int, dict[str, Any]]:
+    if not orchestration_ids:
+        return {}
+
+    unique_ids = list(dict.fromkeys(orchestration_ids))
+    id_texts = [str(orchestration_id) for orchestration_id in unique_ids]
+    events_by_orchestration_id: dict[int, list[HistoryEvent]] = {orchestration_id: [] for orchestration_id in unique_ids}
+
+    orchestration_events = (
+        db.query(HistoryEvent)
+        .filter(HistoryEvent.entity_type == "orchestration", HistoryEvent.entity_id.in_(id_texts))
+        .all()
+    )
+    for event in orchestration_events:
+        try:
+            events_by_orchestration_id[int(event.entity_id)].append(event)
+        except ValueError:
+            continue
+
+    queue_jobs = (
+        db.query(WorkflowQueueJob.id, WorkflowQueueJob.orchestration_id)
+        .filter(WorkflowQueueJob.orchestration_id.in_(unique_ids))
+        .all()
+    )
+    queue_job_to_orchestration_id = {str(job.id): job.orchestration_id for job in queue_jobs}
+    if queue_job_to_orchestration_id:
+        queue_events = (
+            db.query(HistoryEvent)
+            .filter(HistoryEvent.entity_type == "queue_job", HistoryEvent.entity_id.in_(queue_job_to_orchestration_id.keys()))
+            .all()
+        )
+        for event in queue_events:
+            orchestration_id = queue_job_to_orchestration_id.get(event.entity_id)
+            if orchestration_id is not None:
+                events_by_orchestration_id[orchestration_id].append(event)
+
+    summaries: dict[int, dict[str, Any]] = {}
+    for orchestration_id, events in events_by_orchestration_id.items():
+        ordered_events = sorted(events, key=lambda event: (event.occurred_at, event.id), reverse=True)
+        event_results = [_verify_event(event) for event in ordered_events]
+        status = "valid" if all(item["integrity_status"] == "valid" for item in event_results) else "invalid"
+        summaries[orchestration_id] = {
+            "entity_type": "orchestration",
+            "entity_id": str(orchestration_id),
+            "integrity_status": status,
+            "event_count": len(event_results),
+        }
+    return summaries
+
+
 def backfill_history_events(db: Session | None = None) -> int:
     owns_session = db is None
     session = db or SessionLocal()

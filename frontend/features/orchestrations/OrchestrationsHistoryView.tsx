@@ -210,7 +210,7 @@ export function OrchestrationsHistoryView() {
       {items.map((item) => (
         <section key={item.id} id={`orchestration-run-${item.id}`} className="history-plan">
           {(() => {
-            const integrity = historyIntegrityByRunId[item.id];
+            const integrity = historyIntegrityByRunId[item.id] ?? item.ledger_integrity;
             return (
               <div className="button-row">
                 <p className={`status ${integrity?.integrity_status === "invalid" ? "status-error" : "status-success"}`}>

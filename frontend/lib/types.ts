@@ -205,6 +205,7 @@ export type WorkflowOrchestrationRecord = {
   subscription_tier: SubscriptionTier;
   summary: WorkflowOrchestrationSummary;
   steps: WorkflowStepRun[];
+  ledger_integrity?: HistoryIntegritySummary | null;
   created_at: string;
   updated_at: string;
 };
@@ -247,6 +248,8 @@ export type HistoryIntegrityResponse = {
   event_count: number;
   events: HistoryEvent[];
 };
+
+export type HistoryIntegritySummary = Omit<HistoryIntegrityResponse, "events">;
 
 export type EntitlementBootstrap = {
   token: string;

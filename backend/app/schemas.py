@@ -439,6 +439,13 @@ class WorkflowOrchestrationSummary(BaseModel):
     next_actions: list[str]
 
 
+class HistoryIntegritySummary(BaseModel):
+    entity_type: str
+    entity_id: str
+    integrity_status: str
+    event_count: int
+
+
 class WorkflowOrchestrationRunRequest(BaseModel):
     entry_source: str = "manual"
     template_id: int | None = None
@@ -466,6 +473,7 @@ class WorkflowOrchestrationRead(BaseModel):
     subscription_tier: SubscriptionTier
     summary: WorkflowOrchestrationSummary
     steps: list[WorkflowStepRunRead]
+    ledger_integrity: HistoryIntegritySummary | None = None
     created_at: datetime
     updated_at: datetime
 
