@@ -2,6 +2,40 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-05-23 Commercial Usage Normalization Release Verification
+
+- Implementation commit: `e0d5ad4 fix: normalize commercial usage accounting`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- User-facing issue fixed:
+  - `/monetization` showed monthly `Usage Counters` as `0 / 300` while the 7D commercial metric showed `3 / 300`
+  - buyers could not tell whether the numbers represented billing-period quota or recent workflow activity
+- Release fixes included:
+  - successful sync orchestration runs increment billing-period `workflow_runs`
+  - accepted queue runs increment billing-period `queued_runs`
+  - startup backfill reconciles existing `monetization.usage_recorded` logs into current `usage_counters` without double counting
+  - Manual Billing Pro/Power quota enforcement now prefers current billing-period counters
+  - `GET /api/monetization/commercial-metrics` now includes `plan_usage` for the billing-period source of truth
+  - `/monetization` now separates `Plan Usage` from 7D/30D `Commercial Signal`
+- Verified on local gates:
+  - focused backend monetization/orchestration tests passed
+  - focused frontend monetization/dashboard tests passed
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make e2e-orchestration` passed
+  - `make security-check` passed; remaining npm audit findings are moderate severity and below the configured high-severity release gate
+  - `make release-check` passed
+- Verified on remote:
+  - remote smoke checks passed, including `GET /api/monetization/commercial-metrics?days=7&subject=smoke-check` with `plan_usage`
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `200` with `{"status":"ok"}` in about `0.071s`
+  - public `/monetization` returned `200` in about `0.114s`
+  - public `GET /api/monetization/usage?subject=demo-user` returned `workflow_runs: 3 / 300` and `queued_runs: 0 / 300`
+  - public `GET /api/monetization/commercial-metrics?days=7&subject=demo-user` returned matching `plan_usage.workflow_runs_used=3`, `usage_summary.workflow_runs_used=3`, and `billable_work_units.total=9`
+  - headless browser check confirmed `/monetization` renders `Plan Usage`, `Commercial Signal`, `Workflow Runs 3 / 300`, and no `Commercial Metrics V2` label
+
 ## 2026-05-23 Billing Entitlement Workflow Fix Verification
 
 - Implementation commit: `b2d3de7 fix: connect billing entitlement to orchestration`
