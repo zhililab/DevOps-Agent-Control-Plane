@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from app.database import get_db
 from app.main import app
 from app.models import (
+    AgentRunLog,
     MonetizationEvent,
     MonetizationEventKind,
     SubscriptionProfile,
@@ -11,6 +12,8 @@ from app.models import (
     SubscriptionTier,
     UsageCounter,
     UsageMetric,
+    WorkflowOrchestration,
+    WorkflowTemplate,
 )
 
 
@@ -373,3 +376,204 @@ def test_manual_checkout_rejects_invalid_tier_and_empty_subject(client) -> None:
 
     assert invalid_tier.status_code == 422
     assert empty_subject.status_code == 422
+
+
+def test_commercial_metrics_aggregates_subject_scoped_usage_policy_blocks_and_templates(client) -> None:
+    _ = client
+    db_generator = app.dependency_overrides[get_db]()
+    db = next(db_generator)
+    now = _now()
+    try:
+        profile = SubscriptionProfile(
+            subject="metrics-subject",
+            tier=SubscriptionTier.power,
+            status=SubscriptionStatus.active,
+            billing_provider="manual",
+            entitlements_json=json.dumps({"workflow_runs": 2000, "queued_runs": 2000}),
+            created_at=now,
+            updated_at=now,
+        )
+        other_profile = SubscriptionProfile(
+            subject="other-metrics-subject",
+            tier=SubscriptionTier.pro,
+            status=SubscriptionStatus.active,
+            billing_provider="manual",
+            entitlements_json=json.dumps({"workflow_runs": 300, "queued_runs": 300}),
+            created_at=now,
+            updated_at=now,
+        )
+        template = WorkflowTemplate(
+            name="Power Release Gate",
+            description="Audited release gate",
+            steps_json=json.dumps([{"step_name": "Approve", "agent_type": "planner", "enabled": True}]),
+            tags_json=json.dumps(
+                ["tier:power", "risk:high", "approval:required", "work-units:7", "tool:server-deploy"]
+            ),
+            enabled=True,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add_all([profile, other_profile, template])
+        db.flush()
+        db.add_all(
+            [
+                UsageCounter(
+                    subscription_profile_id=profile.id,
+                    metric=UsageMetric.workflow_runs,
+                    period_start=date(2026, 5, 1),
+                    period_end=date(2026, 5, 31),
+                    used=0,
+                    limit=2000,
+                    created_at=now,
+                    updated_at=now,
+                ),
+                UsageCounter(
+                    subscription_profile_id=profile.id,
+                    metric=UsageMetric.queued_runs,
+                    period_start=date(2026, 5, 1),
+                    period_end=date(2026, 5, 31),
+                    used=0,
+                    limit=2000,
+                    created_at=now,
+                    updated_at=now,
+                ),
+                MonetizationEvent(
+                    subscription_profile_id=profile.id,
+                    usage_counter_id=None,
+                    event_kind=MonetizationEventKind.subscription_changed,
+                    event_json=json.dumps({"action": "checkout_completed", "token": "should-not-leak"}),
+                    created_at=now,
+                ),
+                MonetizationEvent(
+                    subscription_profile_id=other_profile.id,
+                    usage_counter_id=None,
+                    event_kind=MonetizationEventKind.subscription_changed,
+                    event_json=json.dumps({"action": "checkout_completed"}),
+                    created_at=now,
+                ),
+            ]
+        )
+        db.flush()
+        orchestration = WorkflowOrchestration(
+            status="success",
+            duration_ms=42,
+            entry_source="test",
+            subscription_tier="power",
+            team_subject="platform-team",
+            requested_by="sre",
+            approval_actor="manager",
+            approval_note="approved",
+            request_json=json.dumps({"template_id": template.id}),
+            result_json="{}",
+            created_at=now,
+            updated_at=now,
+        )
+        other_orchestration = WorkflowOrchestration(
+            status="success",
+            duration_ms=30,
+            entry_source="test",
+            subscription_tier="pro",
+            request_json=json.dumps({"steps": [{"enabled": True}, {"enabled": True}]}),
+            result_json="{}",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add_all([orchestration, other_orchestration])
+        db.flush()
+        db.add_all(
+            [
+                AgentRunLog(
+                    task_type="monetization.usage_recorded",
+                    input_summary=json.dumps(
+                        {
+                            "endpoint": "/api/orchestrations/run",
+                            "subject_id": "metrics-subject",
+                            "orchestration_id": orchestration.id,
+                            "token": "secret-value",
+                        },
+                        separators=(",", ":"),
+                    ),
+                    output_summary="usage recorded",
+                    status="success",
+                    created_at=now,
+                ),
+                AgentRunLog(
+                    task_type="monetization.usage_recorded",
+                    input_summary=json.dumps(
+                        {
+                            "endpoint": "/api/orchestrations/run",
+                            "subject_id": "other-metrics-subject",
+                            "orchestration_id": other_orchestration.id,
+                        },
+                        separators=(",", ":"),
+                    ),
+                    output_summary="usage recorded",
+                    status="success",
+                    created_at=now,
+                ),
+                AgentRunLog(
+                    task_type="monetization.approval_required_blocked",
+                    input_summary=json.dumps(
+                        {"endpoint": "/api/orchestrations/run", "subject_id": "metrics-subject"},
+                        separators=(",", ":"),
+                    ),
+                    output_summary="blocked",
+                    status="blocked",
+                    created_at=now,
+                ),
+            ]
+        )
+        db.commit()
+
+        response = client.get("/api/monetization/commercial-metrics?days=7&subject=metrics-subject")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["subject"] == "metrics-subject"
+        assert payload["subscription_summary"]["tier_distribution"]["power"] == 1
+        assert payload["subscription_summary"]["active_subjects"] == 1
+        assert payload["usage_summary"]["workflow_runs_used"] == 1
+        assert payload["usage_summary"]["workflow_runs_limit"] == 2000
+        assert payload["policy_blocks"]["approval_required"] == 1
+        assert payload["policy_blocks"]["total"] == 1
+        assert payload["billable_work_units"]["total"] == 7
+        assert payload["billable_work_units"]["audited_workflows"] == 1
+        assert payload["top_templates"][0]["template_name"] == "Power Release Gate"
+        assert payload["top_templates"][0]["billable_work_units"] == 7
+        assert payload["commercial_events"] == [{"action": "checkout completed", "count": 1}]
+        serialized = json.dumps(payload)
+        assert "secret-value" not in serialized
+        assert "should-not-leak" not in serialized
+    finally:
+        db_generator.close()
+
+
+def test_commercial_metrics_global_view_counts_multiple_tiers_and_stable_template_order(client) -> None:
+    first_response = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "global-free", "target_tier": "free"},
+    )
+    second_response = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "global-pro", "target_tier": "pro"},
+    )
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+
+    response = client.get("/api/monetization/commercial-metrics?days=30")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["window_days"] == 30
+    assert payload["subscription_summary"]["tier_distribution"]["free"] >= 1
+    assert payload["subscription_summary"]["tier_distribution"]["pro"] >= 1
+    assert set(payload["usage_summary"]) == {
+        "workflow_runs_used",
+        "workflow_runs_limit",
+        "queued_runs_used",
+        "queued_runs_limit",
+        "usage_subjects",
+    }
+    assert isinstance(payload["top_templates"], list)
+    assert isinstance(payload["trend"], list)
+    assert len(payload["trend"]) == 30

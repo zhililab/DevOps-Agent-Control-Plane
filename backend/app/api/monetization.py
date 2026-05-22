@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas import (
+    CommercialMetricsResponse,
     ManualCheckoutRequest,
     MonetizationEventRead,
     SubscriptionCancelRequest,
@@ -12,6 +13,7 @@ from app.schemas import (
 )
 from app.services.monetization_service import (
     cancel_subscription,
+    get_commercial_metrics,
     get_subscription_profile,
     list_monetization_events,
     list_usage_counters,
@@ -45,6 +47,15 @@ def get_monetization_events(
     db: Session = Depends(get_db),
 ) -> dict[str, list[MonetizationEventRead]]:
     return {"events": list_monetization_events(db, limit=limit, subject=subject)}
+
+
+@router.get("/commercial-metrics", response_model=CommercialMetricsResponse)
+def get_commercial_metrics_endpoint(
+    days: int = Query(default=7, ge=1, le=30),
+    subject: str | None = Query(default=None, min_length=1, max_length=120),
+    db: Session = Depends(get_db),
+) -> CommercialMetricsResponse:
+    return get_commercial_metrics(db, days=days, subject=subject)
 
 
 @router.post("/checkout/manual", response_model=SubscriptionLifecycleResponse)

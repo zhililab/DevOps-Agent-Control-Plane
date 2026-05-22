@@ -44,6 +44,50 @@ const counters = [
   },
 ];
 
+const commercialMetrics = {
+  window_days: 7,
+  generated_at: "2026-05-22T00:00:00Z",
+  subject: "demo-user",
+  subscription_summary: {
+    active_subjects: 1,
+    profile_count: 1,
+    tier_distribution: { free: 0, pro: 1, power: 0 },
+    status_distribution: { inactive: 0, active: 1, past_due: 0, canceled: 0 },
+  },
+  usage_summary: {
+    workflow_runs_used: 4,
+    workflow_runs_limit: 300,
+    queued_runs_used: 1,
+    queued_runs_limit: 300,
+    usage_subjects: 1,
+  },
+  commercial_events: [{ action: "checkout completed", count: 1 }],
+  policy_blocks: {
+    approval_required: 1,
+    upgrade_required: 2,
+    quota_exceeded: 0,
+    total: 3,
+  },
+  billable_work_units: {
+    total: 21,
+    audited_workflows: 4,
+    average_per_run: 5.25,
+  },
+  top_templates: [
+    {
+      template_id: 7,
+      template_name: "Release Gate And Remote Deploy",
+      runs: 3,
+      billable_work_units: 15,
+      required_tier: "power",
+      risk_level: "high",
+      approval_required: true,
+    },
+  ],
+  trend: [{ date: "2026-05-22", billable_work_units: 21, audited_workflows: 4, policy_blocks: 3 }],
+  anomaly_hints: [],
+};
+
 function event(action: string, tier = "pro") {
   return {
     id: action === "cancel_requested" ? 22 : 21,
@@ -79,6 +123,9 @@ describe("monetization flow", () => {
       if (url.includes("/monetization/events")) {
         return new Response(JSON.stringify({ events: [event("checkout_completed")] }), { status: 200 });
       }
+      if (url.includes("/monetization/commercial-metrics")) {
+        return new Response(JSON.stringify(commercialMetrics), { status: 200 });
+      }
       if (url.endsWith("/monetization/checkout/manual")) {
         return new Response(JSON.stringify({ profile, counters, event: event("tier_changed", "power") }), {
           status: 200,
@@ -96,9 +143,12 @@ describe("monetization flow", () => {
     expect(screen.getByText("COMMERCIAL MVP")).toBeInTheDocument();
     expect(screen.getByText("Turn trusted DevOps runs into metered plans.")).toBeInTheDocument();
     expect(screen.getByText("Workflow Runs")).toBeInTheDocument();
-    expect(screen.getByText("4 / 300")).toBeInTheDocument();
-    expect(screen.getByText("checkout completed")).toBeInTheDocument();
+    expect(screen.getAllByText("4 / 300").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("checkout completed").length).toBeGreaterThan(0);
     expect(screen.getByText("Commercial Audit Feed")).toBeInTheDocument();
+    expect(screen.getByText("Commercial Metrics V2")).toBeInTheDocument();
+    expect(screen.getByText("Release Gate And Remote Deploy")).toBeInTheDocument();
+    expect(screen.getAllByText("21").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Activate Power" }));
 
@@ -122,6 +172,9 @@ describe("monetization flow", () => {
       if (url.includes("/monetization/events")) {
         return Promise.reject(abortError());
       }
+      if (url.includes("/monetization/commercial-metrics")) {
+        return new Response(JSON.stringify(commercialMetrics), { status: 200 });
+      }
       return new Response(JSON.stringify({}), { status: 200 });
     });
 
@@ -130,7 +183,7 @@ describe("monetization flow", () => {
     await waitFor(() => {
       expect(screen.getAllByText(/PRO · active/).length).toBeGreaterThan(0);
     });
-    expect(screen.getByText("4 / 300")).toBeInTheDocument();
+    expect(screen.getAllByText("4 / 300").length).toBeGreaterThan(0);
     expect(screen.getByText(/missing: commercial audit feed/)).toBeInTheDocument();
     expect(screen.queryByText("Request timed out. Please retry.")).not.toBeInTheDocument();
     expect(screen.queryByText("No subscription profile")).not.toBeInTheDocument();
@@ -157,6 +210,9 @@ describe("monetization flow", () => {
       if (url.includes("/monetization/events")) {
         return new Response(JSON.stringify({ events: [] }), { status: 200 });
       }
+      if (url.includes("/monetization/commercial-metrics")) {
+        return new Response(JSON.stringify(commercialMetrics), { status: 200 });
+      }
       return new Response(JSON.stringify({}), { status: 200 });
     });
 
@@ -171,7 +227,7 @@ describe("monetization flow", () => {
       expect(screen.getByText("PRO subscription is active.")).toBeInTheDocument();
     });
     expect(screen.getAllByText(/PRO · active/).length).toBeGreaterThan(0);
-    expect(screen.getByText("4 / 300")).toBeInTheDocument();
+    expect(screen.getAllByText("4 / 300").length).toBeGreaterThan(0);
     expect(screen.getByText("Commercial data could not refresh. Showing the latest subscription update when available.")).toBeInTheDocument();
     expect(screen.queryByText("Request timed out. Please retry.")).not.toBeInTheDocument();
   });
@@ -192,6 +248,9 @@ describe("monetization flow", () => {
         return new Response(JSON.stringify({ events: [event(cancelPending ? "cancel_requested" : "reactivated")] }), {
           status: 200,
         });
+      }
+      if (url.includes("/monetization/commercial-metrics")) {
+        return new Response(JSON.stringify(commercialMetrics), { status: 200 });
       }
       if (url.endsWith("/monetization/cancel")) {
         cancelPending = true;

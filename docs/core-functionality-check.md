@@ -21,6 +21,8 @@ This document records the current product target and the minimum functionality t
 - Submit queued orchestration work, then inspect queue job state, retry/cancel controls, and timeline replay.
 - Review dashboard orchestration KPIs and monetization observability fallback states.
 - Activate or change a manual subscription on `/monetization`, then confirm usage counters and subject-scoped audit events update.
+- Review Commercial Metrics V2 on `/monetization`: billable work units, policy blocks, top value templates, and anomaly hints should load independently from subscription/profile refreshes.
+- Confirm `/dashboard` shows Commercial Work Units and Commercial Policy Blocks from the canonical commercial metrics API.
 - Confirm `/monetization` keeps the active subscription visible if usage or audit-feed refreshes are slow or partially unavailable.
 - Use `/tutorial` to explain the commercial path from workflow run to replay evidence to plan upgrade.
 - Generate and persist daily plans, daily reflections, and technical analysis records.
@@ -54,6 +56,7 @@ This document records the current product target and the minimum functionality t
 - `POST /api/orchestrations/templates/import/builtin`
 - `GET /api/observability/monetization?days=...`
 - `GET /api/monetization/profile|usage|events`
+- `GET /api/monetization/commercial-metrics?days=7|30&subject=...`
 - `POST /api/monetization/checkout/manual`
 - `POST /api/monetization/cancel`
 - `POST /api/monetization/reactivate`
@@ -88,6 +91,7 @@ This document records the current product target and the minimum functionality t
 - Orchestration metrics must include Team Trust KPIs: approved runs, checkpointed runs, and failed jobs needing owner.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 - Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.
+- Commercial Metrics V2 reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view.
 - Global route transition and header preview animations should avoid continuous idle work and respect `prefers-reduced-motion`.
 
 ## Non-Blocking Product Modules

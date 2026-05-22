@@ -9,6 +9,7 @@ import { MiniLineTrend } from "@/components/charts/MiniLineTrend";
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
 import type {
+  CommercialMetricsResponse,
   DailyPlanRecord,
   DailyReflectionRecord,
   MonetizationHealthStatus,
@@ -26,6 +27,7 @@ type DashboardState = {
   orchestrations: WorkflowOrchestrationRecord[];
   orchestrationMetrics: WorkflowOrchestrationMetrics;
   monetizationObservability: MonetizationObservability;
+  commercialMetrics: CommercialMetricsResponse;
 };
 
 const DEFAULT_ORCHESTRATION_METRICS: WorkflowOrchestrationMetrics = {
@@ -57,6 +59,40 @@ const DEFAULT_MONETIZATION_OBSERVABILITY: MonetizationObservability = {
     summary: "No monetization health incidents in the selected window.",
     incidents: [],
   },
+};
+
+const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
+  window_days: 7,
+  generated_at: "",
+  subject: null,
+  subscription_summary: {
+    active_subjects: 0,
+    profile_count: 0,
+    tier_distribution: { free: 0, pro: 0, power: 0 },
+    status_distribution: { inactive: 0, active: 0, past_due: 0, canceled: 0 },
+  },
+  usage_summary: {
+    workflow_runs_used: 0,
+    workflow_runs_limit: 0,
+    queued_runs_used: 0,
+    queued_runs_limit: 0,
+    usage_subjects: 0,
+  },
+  commercial_events: [],
+  policy_blocks: {
+    approval_required: 0,
+    upgrade_required: 0,
+    quota_exceeded: 0,
+    total: 0,
+  },
+  billable_work_units: {
+    total: 0,
+    audited_workflows: 0,
+    average_per_run: 0,
+  },
+  top_templates: [],
+  trend: [],
+  anomaly_hints: [],
 };
 
 const DASHBOARD_WINDOW_OPTIONS = [7, 30] as const;
@@ -212,6 +248,20 @@ function normalizeMonetizationObservability(
   return { data: parsed, valid };
 }
 
+function hasCommercialMetricsPayload(value: unknown): value is CommercialMetricsResponse {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.window_days === "number" &&
+    isRecord(value.subscription_summary) &&
+    isRecord(value.usage_summary) &&
+    isRecord(value.policy_blocks) &&
+    isRecord(value.billable_work_units) &&
+    Array.isArray(value.top_templates) &&
+    Array.isArray(value.trend) &&
+    Array.isArray(value.anomaly_hints)
+  );
+}
+
 type OrchestrationWindowStats = {
   runs: number;
   partialSuccessCount: number;
@@ -325,6 +375,7 @@ export function DashboardView() {
     orchestrations: [],
     orchestrationMetrics: DEFAULT_ORCHESTRATION_METRICS,
     monetizationObservability: DEFAULT_MONETIZATION_OBSERVABILITY,
+    commercialMetrics: DEFAULT_COMMERCIAL_METRICS,
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -358,6 +409,7 @@ export function DashboardView() {
         orchestrations: [],
         orchestrationMetrics: { ...DEFAULT_ORCHESTRATION_METRICS },
         monetizationObservability: { ...DEFAULT_MONETIZATION_OBSERVABILITY },
+        commercialMetrics: { ...DEFAULT_COMMERCIAL_METRICS },
       };
       setState(nextState);
 
@@ -392,10 +444,11 @@ export function DashboardView() {
     async function loadOrchestrationWindow() {
       setOrchestrationLoading(true);
 
-      const [metricsResult, historyResult, monetizationResult] = await Promise.allSettled([
+      const [metricsResult, historyResult, monetizationResult, commercialMetricsResult] = await Promise.allSettled([
         apiClient.getWorkflowOrchestrationMetrics(orchestrationWindowDays),
         apiClient.listWorkflowOrchestrations({ limit: 200, include_steps: false, include_integrity: false }),
         apiClient.getMonetizationObservability(orchestrationWindowDays),
+        apiClient.getCommercialMetrics(orchestrationWindowDays),
       ]);
 
       const metrics =
@@ -410,12 +463,17 @@ export function DashboardView() {
         monetizationResult.status === "fulfilled" ? monetizationResult.value : null,
         orchestrationWindowDays
       );
+      const commercialMetrics =
+        commercialMetricsResult.status === "fulfilled" && hasCommercialMetricsPayload(commercialMetricsResult.value)
+          ? commercialMetricsResult.value
+          : { ...DEFAULT_COMMERCIAL_METRICS, window_days: orchestrationWindowDays };
 
       setState((prev) => ({
         ...prev,
         orchestrationMetrics: metrics,
         orchestrations,
         monetizationObservability: monetization.data,
+        commercialMetrics,
       }));
 
       const failedEndpoints: string[] = [];
@@ -424,6 +482,12 @@ export function DashboardView() {
       }
       if (historyResult.status === "rejected" || (historyResult.status === "fulfilled" && !hasItemsPayload(historyResult.value))) {
         failedEndpoints.push("orchestration history");
+      }
+      if (
+        commercialMetricsResult.status === "rejected" ||
+        (commercialMetricsResult.status === "fulfilled" && !hasCommercialMetricsPayload(commercialMetricsResult.value))
+      ) {
+        failedEndpoints.push("commercial metrics");
       }
       if (failedEndpoints.length > 0) {
         setOrchestrationError(`Some dashboard data is unavailable: ${failedEndpoints.join(", ")}.`);
@@ -512,6 +576,17 @@ export function DashboardView() {
       value: revenueByDate.get(dateKey) ?? 0,
     }));
   }, [orchestrationDateKeys, state.monetizationObservability.trend]);
+  const commercialWorkUnitTrend = useMemo(() => {
+    const workUnitsByDate = new Map<string, number>();
+    state.commercialMetrics.trend.forEach((item) => {
+      workUnitsByDate.set(item.date.slice(0, 10), item.billable_work_units);
+    });
+    return orchestrationDateKeys.map((dateKey) => ({
+      label: dateKey.slice(5),
+      value: workUnitsByDate.get(dateKey) ?? 0,
+    }));
+  }, [orchestrationDateKeys, state.commercialMetrics.trend]);
+  const commercialAnomalyHints = state.commercialMetrics.anomaly_hints.map((hint) => hint.message);
 
   const mergedError = [error, orchestrationError].filter(Boolean).join(" ") || null;
 
@@ -638,6 +713,16 @@ export function DashboardView() {
           <p className="muted">Last {orchestrationWindowDays} days</p>
           <p className="kpi-value">{formatPercent(state.monetizationObservability.kpis.failed_payment_rate)}</p>
         </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Commercial Work Units</p>
+          <p className="muted">Commercial Metrics V2</p>
+          <p className="kpi-value">{state.commercialMetrics.billable_work_units.total}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Commercial Policy Blocks</p>
+          <p className="muted">Approvals + upgrades + quota</p>
+          <p className="kpi-value">{state.commercialMetrics.policy_blocks.total}</p>
+        </article>
       </section>
 
       <section className="graph-filter-row" aria-label="orchestration-window-switcher">
@@ -660,8 +745,8 @@ export function DashboardView() {
       </section>
       {orchestrationLoading ? <p className="muted">Updating orchestration window...</p> : null}
       <section className="anomaly-hints" aria-label="orchestration-anomaly-hints">
-        {anomalyHints.length > 0 ? (
-          anomalyHints.map((hint, index) => (
+        {[...anomalyHints, ...commercialAnomalyHints].length > 0 ? (
+          [...anomalyHints, ...commercialAnomalyHints].map((hint, index) => (
             <p key={`${hint}-${index}`} className="status status-error">
               Anomaly hint: {hint}
             </p>
@@ -694,6 +779,12 @@ export function DashboardView() {
           title="Monetization Revenue"
           subtitle={`Revenue trend in last ${orchestrationWindowDays} days`}
           data={monetizationRevenueTrend}
+        />
+        <MiniLineTrend
+          title="Commercial Work Units"
+          subtitle={`Billable workflow units in last ${orchestrationWindowDays} days`}
+          data={commercialWorkUnitTrend}
+          tone="success"
         />
         <article className="chart-card animate-enter" aria-label="monetization-health">
           <h3>Monetization Health</h3>

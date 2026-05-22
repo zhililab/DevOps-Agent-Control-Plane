@@ -274,8 +274,13 @@ describe("orchestration workflow", () => {
     fireEvent.change(screen.getByLabelText("Apply Existing Template"), { target: { value: "501" } });
     expect(screen.getByText("Pattern: Sequential · Tags: release, deploy")).toBeInTheDocument();
     expect(
-      screen.getByText("Policy: tier=power · risk high · approval required · work units 5 · tools server-deploy")
-    ).toBeInTheDocument();
+      screen.getAllByText("Policy: tier=power · risk high · approval required · work units 5 · tools server-deploy")
+        .length
+    ).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Required Tier")).toHaveValue("power");
+    expect(screen.getByLabelText("Risk Level")).toHaveValue("high");
+    expect(screen.getByLabelText("Billable Work Units")).toHaveValue(5);
+    expect(screen.getByLabelText("Allowed Tool Scopes")).toHaveValue("server-deploy");
     fireEvent.click(screen.getByLabelText("Human Approval Confirmed"));
     fireEvent.click(screen.getByRole("button", { name: "Run Orchestration" }));
     await waitFor(() => {
@@ -287,6 +292,69 @@ describe("orchestration workflow", () => {
       team_subject: "platform-team",
       requested_by: "sre-lead",
       approval_actor: "release-manager",
+    });
+  });
+
+  test("saves workflow templates with explicit commercial policy controls", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    let createBody: Record<string, unknown> | null = null;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url.endsWith("/orchestrations/templates") && init?.method === "POST") {
+        createBody = JSON.parse(String(init.body ?? "{}"));
+        return new Response(
+          JSON.stringify({
+            id: 771,
+            name: "Policy Authored Template",
+            description: "Explicit commercial policy.",
+            steps: [{ step_name: "Plan The Day", agent_type: "planner", enabled: true }],
+            tags: ["tier:power", "risk:critical", "approval:required", "tool:server-deploy", "work-units:9"],
+            policy: {
+              required_tier: "power",
+              risk_level: "critical",
+              approval_required: true,
+              allowed_tool_scopes: ["server-deploy"],
+              billable_work_units: 9,
+            },
+            enabled: true,
+            created_at: "2026-05-22T00:00:00Z",
+            updated_at: "2026-05-22T00:00:00Z",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/templates")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (url.endsWith("/orchestrations/entitlement/bootstrap")) {
+        return new Response(JSON.stringify({ detail: "Not found." }), { status: 404 });
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestratePage />);
+    fireEvent.change(screen.getByLabelText("Template Name"), { target: { value: "Policy Authored Template" } });
+    fireEvent.change(screen.getByLabelText("Required Tier"), { target: { value: "power" } });
+    fireEvent.change(screen.getByLabelText("Risk Level"), { target: { value: "critical" } });
+    fireEvent.change(screen.getByLabelText("Billable Work Units"), { target: { value: "9" } });
+    fireEvent.change(screen.getByLabelText("Allowed Tool Scopes"), { target: { value: "server-deploy" } });
+    fireEvent.click(screen.getByLabelText("Approval Required"));
+    fireEvent.click(screen.getByRole("button", { name: "Save Template" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Template 'Policy Authored Template' saved.")).toBeInTheDocument();
+    });
+    expect(createBody).toMatchObject({
+      name: "Policy Authored Template",
+      policy: {
+        required_tier: "power",
+        risk_level: "critical",
+        approval_required: true,
+        allowed_tool_scopes: ["server-deploy"],
+        billable_work_units: 9,
+      },
+      enabled: true,
     });
   });
 

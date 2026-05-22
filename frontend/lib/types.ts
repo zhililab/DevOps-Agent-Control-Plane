@@ -370,6 +370,60 @@ export type MonetizationEvent = {
   created_at: string;
 };
 
+export type CommercialMetricsResponse = {
+  window_days: number;
+  generated_at: string;
+  subject: string | null;
+  subscription_summary: {
+    active_subjects: number;
+    profile_count: number;
+    tier_distribution: Record<SubscriptionTier, number>;
+    status_distribution: Record<MonetizationSubscriptionStatus, number>;
+  };
+  usage_summary: {
+    workflow_runs_used: number;
+    workflow_runs_limit: number;
+    queued_runs_used: number;
+    queued_runs_limit: number;
+    usage_subjects: number;
+  };
+  commercial_events: Array<{
+    action: string;
+    count: number;
+  }>;
+  policy_blocks: {
+    approval_required: number;
+    upgrade_required: number;
+    quota_exceeded: number;
+    total: number;
+  };
+  billable_work_units: {
+    total: number;
+    audited_workflows: number;
+    average_per_run: number;
+  };
+  top_templates: Array<{
+    template_id: number | null;
+    template_name: string;
+    runs: number;
+    billable_work_units: number;
+    required_tier: SubscriptionTier;
+    risk_level: WorkflowTemplatePolicy["risk_level"];
+    approval_required: boolean;
+  }>;
+  trend: Array<{
+    date: string;
+    billable_work_units: number;
+    audited_workflows: number;
+    policy_blocks: number;
+  }>;
+  anomaly_hints: Array<{
+    code: string;
+    severity: "info" | "warning" | "critical";
+    message: string;
+  }>;
+};
+
 export type SubscriptionLifecycleResponse = {
   profile: SubscriptionProfile;
   counters: UsageCounter[];

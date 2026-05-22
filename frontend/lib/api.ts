@@ -7,6 +7,7 @@ import type {
   DailyReflectionRecord,
   EntitlementBootstrap,
   HistoryIntegrityResponse,
+  CommercialMetricsResponse,
   MonetizationObservability,
   MonetizationEvent,
   NoteEntry,
@@ -441,6 +442,16 @@ export const apiClient = {
       search.set("subject", subject.trim());
     }
     return request<{ events: MonetizationEvent[] }>(`/monetization/events?${search.toString()}`);
+  },
+
+  getCommercialMetrics(days = 7, subject?: string) {
+    const search = new URLSearchParams({ days: String(days) });
+    if (subject?.trim()) {
+      search.set("subject", subject.trim());
+    }
+    return request<CommercialMetricsResponse>(`/monetization/commercial-metrics?${search.toString()}`, {
+      retries: 2,
+    });
   },
 
   startManualCheckout(payload: { subject: string; target_tier: SubscriptionTier }) {

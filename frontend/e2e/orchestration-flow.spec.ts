@@ -13,6 +13,8 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
 
   await expect(page.getByRole("heading", { name: "Workflow Orchestrator" })).toBeVisible();
   await expect(page.getByLabel("Apply Existing Template")).toBeVisible();
+  await expect(page.getByLabel("Required Tier")).toBeVisible();
+  await expect(page.getByLabel("Billable Work Units")).toBeVisible();
   await expect(page.getByText("Loading templates...")).toHaveCount(0);
   await expect(page.getByText("Request timed out. Please retry.")).toHaveCount(0);
   await page.getByLabel("Entry Source").fill(`e2e_browser_${Date.now()}`);

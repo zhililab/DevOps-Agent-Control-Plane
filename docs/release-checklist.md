@@ -15,6 +15,7 @@ Expected:
 - frontend tests pass
 - frontend production build passes
 - visual baseline tests pass
+- Playwright commercial page screenshot baselines pass for `/dashboard`, `/orchestrate`, `/orchestrations`, and `/monetization`
 
 ## 2) Browser E2E Gate
 
@@ -30,6 +31,7 @@ Expected:
 - `/orchestrations` shows the created run and persisted step replay
 - `/orchestrations` can verify the run history ledger and show valid integrity status
 - browser request includes `X-Entitlement` and does not emit legacy `X-Subscription-Tier`
+- `/monetization` commercial plan activation and Commercial Metrics V2 stay free of timeout regressions
 
 ## 3) Security Gate
 
@@ -109,7 +111,7 @@ make smoke-check
 This command verifies:
 - frontend routes (`/dashboard`, `/today`, `/reflection`, `/technical-analysis`, `/orchestrate`, `/orchestrations`, `/monetization`, `/tutorial`, `/knowledge`, `/templates`)
 - backend health (`/health`)
-- core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, monetization read APIs, and Manual Billing V1 lifecycle APIs
+- core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, monetization read APIs, Commercial Metrics V2, and Manual Billing V1 lifecycle APIs
 - browser E2E for orchestration replay and commercial plan activation
 - history ledger integrity and idempotent backfill tests are covered by the local release gate
 - smoke-created daily/reflection/analysis records are tagged with `X-Record-Source: smoke_check`

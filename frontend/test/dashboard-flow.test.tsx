@@ -10,6 +10,31 @@ function toIsoDay(daysAgo: number, hour = 8): string {
   return `${day}T${String(hour).padStart(2, "0")}:00:00Z`;
 }
 
+const commercialMetricsPayload = {
+  window_days: 7,
+  generated_at: "2026-05-22T00:00:00Z",
+  subject: null,
+  subscription_summary: {
+    active_subjects: 0,
+    profile_count: 0,
+    tier_distribution: { free: 0, pro: 0, power: 0 },
+    status_distribution: { inactive: 0, active: 0, past_due: 0, canceled: 0 },
+  },
+  usage_summary: {
+    workflow_runs_used: 0,
+    workflow_runs_limit: 0,
+    queued_runs_used: 0,
+    queued_runs_limit: 0,
+    usage_subjects: 0,
+  },
+  commercial_events: [],
+  policy_blocks: { approval_required: 0, upgrade_required: 0, quota_exceeded: 0, total: 0 },
+  billable_work_units: { total: 0, audited_workflows: 0, average_per_run: 0 },
+  top_templates: [],
+  trend: [],
+  anomaly_hints: [],
+};
+
 describe("dashboard flow", () => {
   test("shows partial data and friendly error when one endpoint fails", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
@@ -302,6 +327,10 @@ describe("dashboard flow", () => {
         );
       }
 
+      if (url.includes("/monetization/commercial-metrics")) {
+        return new Response(JSON.stringify(commercialMetricsPayload), { status: 200 });
+      }
+
       return new Response(JSON.stringify({ detail: `Unhandled mock url: ${url}` }), { status: 500 });
     });
 
@@ -376,6 +405,10 @@ describe("dashboard flow", () => {
 
       if (url.includes("/orchestrations/history")) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+
+      if (url.includes("/monetization/commercial-metrics")) {
+        return new Response(JSON.stringify(commercialMetricsPayload), { status: 200 });
       }
 
       return new Response(JSON.stringify({ detail: `Unhandled mock url: ${url}` }), { status: 500 });

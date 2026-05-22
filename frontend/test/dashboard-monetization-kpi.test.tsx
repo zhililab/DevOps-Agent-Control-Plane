@@ -60,6 +60,45 @@ describe("dashboard monetization kpi", () => {
         );
       }
 
+      if (url.includes("/monetization/commercial-metrics")) {
+        return new Response(
+          JSON.stringify({
+            window_days: 7,
+            generated_at: "2026-05-22T00:00:00Z",
+            subject: null,
+            subscription_summary: {
+              active_subjects: 2,
+              profile_count: 2,
+              tier_distribution: { free: 0, pro: 1, power: 1 },
+              status_distribution: { inactive: 0, active: 2, past_due: 0, canceled: 0 },
+            },
+            usage_summary: {
+              workflow_runs_used: 9,
+              workflow_runs_limit: 2300,
+              queued_runs_used: 2,
+              queued_runs_limit: 2300,
+              usage_subjects: 2,
+            },
+            commercial_events: [{ action: "checkout completed", count: 2 }],
+            policy_blocks: {
+              approval_required: 1,
+              upgrade_required: 2,
+              quota_exceeded: 0,
+              total: 3,
+            },
+            billable_work_units: {
+              total: 31,
+              audited_workflows: 8,
+              average_per_run: 3.88,
+            },
+            top_templates: [],
+            trend: [{ date: "2026-05-22", billable_work_units: 31, audited_workflows: 8, policy_blocks: 3 }],
+            anomaly_hints: [{ code: "policy_blocks_high", severity: "warning", message: "3 policy block(s) appeared in this window." }],
+          }),
+          { status: 200 }
+        );
+      }
+
       return new Response(JSON.stringify({ detail: `Unhandled mock url: ${url}` }), { status: 500 });
     });
 
@@ -101,6 +140,11 @@ describe("dashboard monetization kpi", () => {
     expect(within(paidRunsCard!).getByText("14")).toBeInTheDocument();
     expect(within(conversionCard!).getByText("28.0%")).toBeInTheDocument();
     expect(within(failedPaymentCard!).getByText("4.0%")).toBeInTheDocument();
+    const commercialWorkUnitsCard = screen.getAllByText("Commercial Work Units")[0].closest("article");
+    const commercialPolicyBlocksCard = screen.getByText("Commercial Policy Blocks").closest("article");
+    expect(within(commercialWorkUnitsCard!).getByText("31")).toBeInTheDocument();
+    expect(within(commercialPolicyBlocksCard!).getByText("3")).toBeInTheDocument();
+    expect(screen.getByText(/3 policy block\(s\) appeared/)).toBeInTheDocument();
   });
 
   test("falls back to zero-value monetization kpis when metrics payload shape is invalid", async () => {
@@ -147,6 +191,10 @@ describe("dashboard monetization kpi", () => {
           }),
           { status: 200 }
         );
+      }
+
+      if (url.includes("/monetization/commercial-metrics")) {
+        return new Response(JSON.stringify({ invalid: true }), { status: 200 });
       }
 
       return new Response(JSON.stringify({ detail: `Unhandled mock url: ${url}` }), { status: 500 });

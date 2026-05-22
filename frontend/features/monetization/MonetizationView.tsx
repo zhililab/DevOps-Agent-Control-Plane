@@ -6,7 +6,13 @@ import { PageCard } from "@/components/ui/PageCard";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { apiClient } from "@/lib/api";
 import { formatBusinessTimestamp } from "@/lib/time";
-import type { MonetizationEvent, SubscriptionProfile, SubscriptionTier, UsageCounter } from "@/lib/types";
+import type {
+  CommercialMetricsResponse,
+  MonetizationEvent,
+  SubscriptionProfile,
+  SubscriptionTier,
+  UsageCounter,
+} from "@/lib/types";
 
 type Plan = {
   tier: SubscriptionTier;
@@ -41,9 +47,48 @@ const PLANS: Plan[] = [
 ];
 
 const DEFAULT_SUBJECT = "demo-user";
+const METRICS_WINDOW_OPTIONS = [7, 30] as const;
+
+const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
+  window_days: 7,
+  generated_at: "",
+  subject: null,
+  subscription_summary: {
+    active_subjects: 0,
+    profile_count: 0,
+    tier_distribution: { free: 0, pro: 0, power: 0 },
+    status_distribution: { inactive: 0, active: 0, past_due: 0, canceled: 0 },
+  },
+  usage_summary: {
+    workflow_runs_used: 0,
+    workflow_runs_limit: 0,
+    queued_runs_used: 0,
+    queued_runs_limit: 0,
+    usage_subjects: 0,
+  },
+  commercial_events: [],
+  policy_blocks: {
+    approval_required: 0,
+    upgrade_required: 0,
+    quota_exceeded: 0,
+    total: 0,
+  },
+  billable_work_units: {
+    total: 0,
+    audited_workflows: 0,
+    average_per_run: 0,
+  },
+  top_templates: [],
+  trend: [],
+  anomaly_hints: [],
+};
 
 function metricLabel(metric: string): string {
   return metric === "queued_runs" ? "Queued Runs" : "Workflow Runs";
+}
+
+function formatLimit(used: number, limit: number): string {
+  return limit > 0 ? `${used} / ${limit}` : `${used}`;
 }
 
 function eventAction(event: MonetizationEvent): string {
@@ -65,6 +110,8 @@ export function MonetizationView() {
   const [profile, setProfile] = useState<SubscriptionProfile | null>(null);
   const [counters, setCounters] = useState<UsageCounter[]>([]);
   const [events, setEvents] = useState<MonetizationEvent[]>([]);
+  const [commercialMetrics, setCommercialMetrics] = useState<CommercialMetricsResponse>(DEFAULT_COMMERCIAL_METRICS);
+  const [metricsWindowDays, setMetricsWindowDays] = useState<7 | 30>(7);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadNotice, setLoadNotice] = useState<string | null>(null);
@@ -88,7 +135,7 @@ export function MonetizationView() {
 
   function loadFailureMessage(failures: string[]): string {
     if (failures.length === 0) return "";
-    if (failures.length === 3) {
+    if (failures.length >= 4) {
       return "Commercial data could not refresh. Showing the latest subscription update when available.";
     }
     return `Commercial refresh partially completed. Showing latest available data; missing: ${failures.join(", ")}.`;
@@ -100,6 +147,7 @@ export function MonetizationView() {
       fallbackProfile?: SubscriptionProfile | null;
       fallbackCounters?: UsageCounter[];
       fallbackEvent?: MonetizationEvent;
+      fallbackMetrics?: CommercialMetricsResponse;
     } = {}
   ) {
     const normalizedSubject = currentSubject.trim() || DEFAULT_SUBJECT;
@@ -107,10 +155,11 @@ export function MonetizationView() {
     setError(null);
     setLoadNotice(null);
     try {
-      const [profileResult, usageResult, eventsResult] = await Promise.allSettled([
+      const [profileResult, usageResult, eventsResult, metricsResult] = await Promise.allSettled([
         apiClient.getSubscriptionProfile(normalizedSubject),
         apiClient.listUsageCounters(normalizedSubject),
         apiClient.listMonetizationEvents(25, normalizedSubject),
+        apiClient.getCommercialMetrics(metricsWindowDays, normalizedSubject),
       ]);
 
       const failures: string[] = [];
@@ -141,6 +190,13 @@ export function MonetizationView() {
         failures.push("commercial audit feed");
       }
 
+      if (metricsResult.status === "fulfilled") {
+        setCommercialMetrics(metricsResult.value);
+      } else {
+        setCommercialMetrics(options.fallbackMetrics ?? commercialMetrics);
+        failures.push("commercial metrics");
+      }
+
       if (failures.length > 0) {
         const hasDisplayableProfile = Boolean(options.fallbackProfile || profile?.subject === normalizedSubject);
         const message = loadFailureMessage(failures);
@@ -158,9 +214,9 @@ export function MonetizationView() {
   }
 
   useEffect(() => {
-    void loadMonetization(DEFAULT_SUBJECT);
+    void loadMonetization(subject);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [metricsWindowDays]);
 
   async function onSubjectSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -188,6 +244,7 @@ export function MonetizationView() {
         fallbackProfile: response.profile,
         fallbackCounters: response.counters,
         fallbackEvent: response.event,
+        fallbackMetrics: commercialMetrics,
       });
       setStatus(successMessage);
     } catch (actionError) {
@@ -311,6 +368,117 @@ export function MonetizationView() {
             <p className="muted">No counters yet.</p>
           )}
         </article>
+      </section>
+
+      <section className="commercial-metrics-panel" aria-label="commercial-metrics">
+        <div className="section-heading-row">
+          <div>
+            <p className="eyebrow">Commercial Metrics V2</p>
+            <h3>Paid workflow signal</h3>
+          </div>
+          <div className="graph-filter-row compact-controls" aria-label="commercial-metrics-window">
+            {METRICS_WINDOW_OPTIONS.map((days) => {
+              const active = metricsWindowDays === days;
+              return (
+                <button
+                  key={days}
+                  type="button"
+                  className={active ? "graph-filter-active" : undefined}
+                  onClick={() => setMetricsWindowDays(days)}
+                  aria-pressed={active}
+                >
+                  {days}D
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="commercial-metric-grid">
+          <article className="result-block">
+            <p className="eyebrow">Billable Work Units</p>
+            <h3>{commercialMetrics.billable_work_units.total}</h3>
+            <p className="muted">
+              {commercialMetrics.billable_work_units.audited_workflows} audited workflow(s) · avg{" "}
+              {commercialMetrics.billable_work_units.average_per_run}
+            </p>
+          </article>
+          <article className="result-block">
+            <p className="eyebrow">Usage</p>
+            <h3>{formatLimit(commercialMetrics.usage_summary.workflow_runs_used, commercialMetrics.usage_summary.workflow_runs_limit)}</h3>
+            <p className="muted">
+              Workflow runs · queued{" "}
+              {formatLimit(commercialMetrics.usage_summary.queued_runs_used, commercialMetrics.usage_summary.queued_runs_limit)}
+            </p>
+          </article>
+          <article className="result-block">
+            <p className="eyebrow">Policy Blocks</p>
+            <h3>{commercialMetrics.policy_blocks.total}</h3>
+            <p className="muted">
+              approvals {commercialMetrics.policy_blocks.approval_required} · upgrades{" "}
+              {commercialMetrics.policy_blocks.upgrade_required}
+            </p>
+          </article>
+          <article className="result-block">
+            <p className="eyebrow">Active Subjects</p>
+            <h3>{commercialMetrics.subscription_summary.active_subjects}</h3>
+            <p className="muted">
+              Free {commercialMetrics.subscription_summary.tier_distribution.free} · Pro{" "}
+              {commercialMetrics.subscription_summary.tier_distribution.pro} · Power{" "}
+              {commercialMetrics.subscription_summary.tier_distribution.power}
+            </p>
+          </article>
+        </div>
+        {commercialMetrics.anomaly_hints.length > 0 ? (
+          <div className="status-stack">
+            {commercialMetrics.anomaly_hints.map((hint) => (
+              <StatusMessage
+                key={`${hint.code}-${hint.message}`}
+                tone={hint.severity === "critical" ? "error" : undefined}
+                message={hint.message}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No commercial anomalies detected in this window.</p>
+        )}
+        <div className="commercial-summary">
+          <article className="result-block">
+            <h3>Top Value Templates</h3>
+            {commercialMetrics.top_templates.length > 0 ? (
+              <div className="event-feed">
+                {commercialMetrics.top_templates.map((template) => (
+                  <article className="event-row" key={`${template.template_id ?? "adhoc"}-${template.template_name}`}>
+                    <div>
+                      <strong>{template.template_name}</strong>
+                      <p className="muted">
+                        {template.required_tier} · {template.risk_level} ·{" "}
+                        {template.approval_required ? "approval required" : "approval optional"}
+                      </p>
+                    </div>
+                    <span>{template.billable_work_units} wu</span>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">No billable workflow templates yet.</p>
+            )}
+          </article>
+          <article className="result-block">
+            <h3>Commercial Events</h3>
+            {commercialMetrics.commercial_events.length > 0 ? (
+              <div className="usage-counter-grid">
+                {commercialMetrics.commercial_events.map((event) => (
+                  <div className="usage-counter" key={event.action}>
+                    <strong>{event.action}</strong>
+                    <span>{event.count}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">No commercial lifecycle events in this window.</p>
+            )}
+          </article>
+        </div>
       </section>
 
       <section className="pricing-grid" aria-label="pricing-plans">

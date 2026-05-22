@@ -83,11 +83,17 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
   - `GET /api/monetization/profile?subject=...`
   - `GET /api/monetization/usage?subject=...`
   - `GET /api/monetization/events?limit=...&subject=...`
+  - `GET /api/monetization/commercial-metrics?days=7|30&subject=...`
 - added Manual Billing V1 subscription lifecycle APIs:
   - `POST /api/monetization/checkout/manual`
   - `POST /api/monetization/cancel`
   - `POST /api/monetization/reactivate`
 - added `/monetization` UI for plan activation, subscription status, usage counters, and commercial audit feed
+- added Commercial Metrics V2:
+  - subject/global commercial reporting for subscription tier distribution, usage logs, policy blocks, billable work units, top templates, event summaries, anomaly hints, and daily work-unit trend
+  - `/monetization` commercial metrics cockpit with 7D/30D switch, top value templates, and partial-failure resilience
+  - `/dashboard` commercial work-unit line trend, policy block KPI, and commercial anomaly hints
+- added Policy Authoring UI V1 on `/orchestrate` so template tier, risk, approval, tool scopes, billable work units, and enabled state are editable without policy tag edits
 - repositioned frontend title/header to `DevOps Agent Control Plane`
 - added categorized navigation: Operate, Commercial, Learn, Assets, and Personal Loops
 - added animated workflow preview to the global header
@@ -158,6 +164,7 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
   - clearer run headers, fixed ledger status strip, queue job metadata grouping, and timeline replay status treatment
   - mobile layout guardrails for ledger/run/queue status rows
 - updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, `make security-check`, and `make k8s-render`
+- added Playwright pixel screenshot baselines for core commercial MVP pages: `/dashboard`, `/orchestrate`, `/orchestrations`, and `/monetization`
 - verified simplified server deployment on target host with `make server-deploy`
   - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`
   - follow-up docs/script health-path commit: `eb32a17 docs: align deployment health check path`
@@ -179,14 +186,11 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 
 ### UX Closeout
 - add orchestration replay UX V2 (timeline/diff view + richer failure drill-down)
-- extend dashboard KPI trend from bar-only to line+delta insights with anomaly hinting
-- add pixel-level screenshot baseline (Playwright) on top of current DOM snapshot baseline
 - verify k3d deployment path on target server and capture rollout evidence in docs
 - run full k8s gate on a reachable cluster context when a Kubernetes deployment becomes the selected release path
 
 ### Later Product Completion
 - extend State & Checkpoint V2 from inspectable snapshots to resumable queue restore controls
-- add first-class policy authoring controls so users do not need to edit policy tags directly
 - add real billing-provider integration and cohort reporting around commercial work units after Manual Billing V1 proves the flow
 - complete P7 Communication Assistant (not a current deployment blocker)
 - complete P8 Weekly Review (not a current deployment blocker)

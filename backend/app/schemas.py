@@ -686,6 +686,76 @@ class MonetizationEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CommercialMetricsSubscriptionSummary(BaseModel):
+    active_subjects: int
+    profile_count: int
+    tier_distribution: dict[MonetizationTier, int]
+    status_distribution: dict[MonetizationSubscriptionStatus, int]
+
+
+class CommercialMetricsUsageSummary(BaseModel):
+    workflow_runs_used: int
+    workflow_runs_limit: int
+    queued_runs_used: int
+    queued_runs_limit: int
+    usage_subjects: int
+
+
+class CommercialMetricsEventSummary(BaseModel):
+    action: str
+    count: int
+
+
+class CommercialMetricsPolicyBlocks(BaseModel):
+    approval_required: int
+    upgrade_required: int
+    quota_exceeded: int
+    total: int
+
+
+class CommercialMetricsBillableWorkUnits(BaseModel):
+    total: int
+    audited_workflows: int
+    average_per_run: float
+
+
+class CommercialMetricsTopTemplate(BaseModel):
+    template_id: int | None = None
+    template_name: str
+    runs: int
+    billable_work_units: int
+    required_tier: MonetizationTier
+    risk_level: WorkflowTemplateRiskLevel
+    approval_required: bool
+
+
+class CommercialMetricsTrendPoint(BaseModel):
+    date: str
+    billable_work_units: int
+    audited_workflows: int
+    policy_blocks: int
+
+
+class CommercialMetricsAnomalyHint(BaseModel):
+    code: str
+    severity: Literal["info", "warning", "critical"] = "info"
+    message: str
+
+
+class CommercialMetricsResponse(BaseModel):
+    window_days: int
+    generated_at: datetime
+    subject: str | None = None
+    subscription_summary: CommercialMetricsSubscriptionSummary
+    usage_summary: CommercialMetricsUsageSummary
+    commercial_events: list[CommercialMetricsEventSummary] = Field(default_factory=list)
+    policy_blocks: CommercialMetricsPolicyBlocks
+    billable_work_units: CommercialMetricsBillableWorkUnits
+    top_templates: list[CommercialMetricsTopTemplate] = Field(default_factory=list)
+    trend: list[CommercialMetricsTrendPoint] = Field(default_factory=list)
+    anomaly_hints: list[CommercialMetricsAnomalyHint] = Field(default_factory=list)
+
+
 class ManualCheckoutRequest(BaseModel):
     subject: str = Field(..., min_length=1, max_length=120)
     target_tier: MonetizationTier

@@ -5,7 +5,14 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
-import type { WorkflowOrchestrationRecord, WorkflowQueueJob, WorkflowStepDefinition, WorkflowTemplate } from "@/lib/types";
+import type {
+  SubscriptionTier,
+  WorkflowOrchestrationRecord,
+  WorkflowQueueJob,
+  WorkflowStepDefinition,
+  WorkflowTemplate,
+  WorkflowTemplatePolicy,
+} from "@/lib/types";
 
 function splitLines(value: string): string[] {
   return value
@@ -37,6 +44,15 @@ const WORKFLOW_TEMPLATE_PATTERN_LABELS = {
   "magentic-ready": "Magentic-ready",
   custom: "Custom",
 } as const;
+const TEMPLATE_RISK_OPTIONS: WorkflowTemplatePolicy["risk_level"][] = ["low", "medium", "high", "critical"];
+const TEMPLATE_TIER_OPTIONS: SubscriptionTier[] = ["free", "pro", "power"];
+const DEFAULT_TEMPLATE_POLICY: WorkflowTemplatePolicy = {
+  required_tier: "pro",
+  risk_level: "medium",
+  approval_required: false,
+  allowed_tool_scopes: ["none"],
+  billable_work_units: 3,
+};
 
 type WorkflowTemplatePattern = keyof typeof WORKFLOW_TEMPLATE_PATTERN_LABELS;
 
@@ -74,13 +90,24 @@ function formatWorkflowTemplateTags(template: Pick<WorkflowTemplate, "tags">): s
 }
 
 function formatWorkflowTemplatePolicy(template: WorkflowTemplate): string {
-  const policy = template.policy;
+  return formatTemplatePolicy(template.policy ?? null);
+}
+
+function formatTemplatePolicy(policy: WorkflowTemplatePolicy | null): string {
   if (!policy) {
     return "Policy: tier=pro · risk medium · approval optional · work units 1";
   }
   const approval = policy.approval_required ? "approval required" : "approval optional";
   const scopes = policy.allowed_tool_scopes.join(", ");
   return `Policy: tier=${policy.required_tier} · risk ${policy.risk_level} · ${approval} · work units ${policy.billable_work_units} · tools ${scopes}`;
+}
+
+function normalizeToolScopes(value: string): string[] {
+  const scopes = value
+    .split(",")
+    .map((scope) => scope.trim().toLowerCase())
+    .filter(Boolean);
+  return scopes.length > 0 ? Array.from(new Set(scopes)) : ["none"];
 }
 
 export function OrchestrateView() {
@@ -97,6 +124,14 @@ export function OrchestrateView() {
     "Plan -> Analyze -> Review deterministic orchestration for daily DevOps execution."
   );
   const [templateTags, setTemplateTags] = useState("orchestration,devops,daily");
+  const [templateRequiredTier, setTemplateRequiredTier] = useState<SubscriptionTier>(DEFAULT_TEMPLATE_POLICY.required_tier);
+  const [templateRiskLevel, setTemplateRiskLevel] = useState<WorkflowTemplatePolicy["risk_level"]>(
+    DEFAULT_TEMPLATE_POLICY.risk_level
+  );
+  const [templateApprovalRequired, setTemplateApprovalRequired] = useState(DEFAULT_TEMPLATE_POLICY.approval_required);
+  const [templateToolScopes, setTemplateToolScopes] = useState(DEFAULT_TEMPLATE_POLICY.allowed_tool_scopes.join(","));
+  const [templateBillableWorkUnits, setTemplateBillableWorkUnits] = useState(String(DEFAULT_TEMPLATE_POLICY.billable_work_units));
+  const [templateEnabled, setTemplateEnabled] = useState(true);
 
   const [tasksText, setTasksText] = useState("Stabilize release pipeline\nPrepare deployment checklist");
   const [meetingsText, setMeetingsText] = useState("10:30 Platform sync");
@@ -157,6 +192,16 @@ export function OrchestrateView() {
   const selectedWorkflowTemplate = useMemo(
     () => templates.find((template) => String(template.id) === selectedTemplateId) ?? null,
     [selectedTemplateId, templates]
+  );
+  const currentTemplatePolicy = useMemo<WorkflowTemplatePolicy>(
+    () => ({
+      required_tier: templateRequiredTier,
+      risk_level: templateRiskLevel,
+      approval_required: templateApprovalRequired,
+      allowed_tool_scopes: normalizeToolScopes(templateToolScopes),
+      billable_work_units: Math.max(1, Math.min(100, Number.parseInt(templateBillableWorkUnits, 10) || activeStepCount || 1)),
+    }),
+    [activeStepCount, templateApprovalRequired, templateBillableWorkUnits, templateRequiredTier, templateRiskLevel, templateToolScopes]
   );
 
   function buildPayload() {
@@ -404,7 +449,8 @@ export function OrchestrateView() {
         description: templateDescription.trim(),
         steps,
         tags: splitLines(templateTags.replaceAll(",", "\n")),
-        enabled: true,
+        policy: currentTemplatePolicy,
+        enabled: templateEnabled,
       });
       setTemplates((current) => [created, ...current.filter((item) => item.id !== created.id)]);
       setStatus(`Template '${created.name}' saved.`);
@@ -434,6 +480,7 @@ export function OrchestrateView() {
           description: template.description,
           steps: template.steps,
           tags: template.tags,
+          policy: template.policy,
           enabled: template.enabled,
         })),
       });
@@ -467,7 +514,14 @@ export function OrchestrateView() {
     setSteps(matched.steps);
     setTemplateName(matched.name);
     setTemplateDescription(matched.description);
-    setTemplateTags(matched.tags.join(","));
+    setTemplateTags(formatWorkflowTemplateTags(matched));
+    const policy = matched.policy ?? DEFAULT_TEMPLATE_POLICY;
+    setTemplateRequiredTier(policy.required_tier);
+    setTemplateRiskLevel(policy.risk_level);
+    setTemplateApprovalRequired(policy.approval_required);
+    setTemplateToolScopes(policy.allowed_tool_scopes.join(","));
+    setTemplateBillableWorkUnits(String(policy.billable_work_units));
+    setTemplateEnabled(matched.enabled);
   }
 
   return (
@@ -587,6 +641,73 @@ export function OrchestrateView() {
           Template Tags (comma separated)
           <input value={templateTags} onChange={(event) => setTemplateTags(event.target.value)} />
         </label>
+        <section className="policy-authoring-panel" aria-label="template-policy-controls">
+          <div>
+            <p className="eyebrow">Template Policy</p>
+            <h4>Commercial Gate</h4>
+            <p className="muted">{formatTemplatePolicy(currentTemplatePolicy)}</p>
+          </div>
+          <div className="trust-grid">
+            <label>
+              Required Tier
+              <select
+                value={templateRequiredTier}
+                onChange={(event) => setTemplateRequiredTier(event.target.value as SubscriptionTier)}
+              >
+                {TEMPLATE_TIER_OPTIONS.map((tier) => (
+                  <option key={tier} value={tier}>
+                    {tier}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Risk Level
+              <select
+                value={templateRiskLevel}
+                onChange={(event) => setTemplateRiskLevel(event.target.value as WorkflowTemplatePolicy["risk_level"])}
+              >
+                {TEMPLATE_RISK_OPTIONS.map((risk) => (
+                  <option key={risk} value={risk}>
+                    {risk}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Billable Work Units
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={templateBillableWorkUnits}
+                onChange={(event) => setTemplateBillableWorkUnits(event.target.value)}
+              />
+            </label>
+            <label>
+              Allowed Tool Scopes
+              <input value={templateToolScopes} onChange={(event) => setTemplateToolScopes(event.target.value)} />
+            </label>
+          </div>
+          <div className="button-row compact-controls">
+            <label>
+              Approval Required
+              <input
+                type="checkbox"
+                checked={templateApprovalRequired}
+                onChange={(event) => setTemplateApprovalRequired(event.target.checked)}
+              />
+            </label>
+            <label>
+              Template Enabled
+              <input
+                type="checkbox"
+                checked={templateEnabled}
+                onChange={(event) => setTemplateEnabled(event.target.checked)}
+              />
+            </label>
+          </div>
+        </section>
         <div className="button-row">
           <button type="button" onClick={onSaveTemplate}>
             Save Template

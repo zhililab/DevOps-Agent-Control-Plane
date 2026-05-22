@@ -18,7 +18,9 @@ test("activates a commercial plan and shows usage plus scoped audit feed", async
   await expect(page.getByText(/PRO · active/).first()).toBeVisible();
   await expect(page.getByText("Workflow Runs", { exact: true })).toBeVisible();
   await expect(page.getByText("0 / 300").first()).toBeVisible();
+  await expect(page.getByText("Commercial Metrics V2")).toBeVisible();
+  await expect(page.getByText("Paid workflow signal")).toBeVisible();
   await expect(page.getByText("Commercial Audit Feed")).toBeVisible();
-  await expect(page.getByText("checkout completed")).toBeVisible();
+  await expect(page.getByLabel("monetization-event-feed").getByText("checkout completed")).toBeVisible();
   await expect(page.getByText("Request timed out. Please retry.")).toHaveCount(0);
 });

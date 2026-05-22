@@ -191,6 +191,10 @@ main() {
     "${API_BASE}/monetization/events?limit=1" \
     '"events":['
 
+  assert_api_get_json_contains \
+    "${API_BASE}/monetization/commercial-metrics?days=7&subject=smoke-check" \
+    '"billable_work_units"'
+
   assert_api_json_contains \
     "${API_BASE}/monetization/checkout/manual" \
     '{"subject":"smoke-check","target_tier":"pro"}' \
