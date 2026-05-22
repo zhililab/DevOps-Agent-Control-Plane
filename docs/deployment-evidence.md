@@ -141,6 +141,37 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - `http://1.117.63.81/orchestrations` returned `200`
   - `GET /api/orchestrations/history?limit=3` returned persisted `ledger_integrity` summaries for the latest runs
 
+## 2026-05-22 Policy Layer V2 And Approval Gate Verification
+
+- Implementation commit: `30ec782 feat: add template policy approval gate`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Remote backup captured before migration rollout:
+  - `deploy/backups/personal_agent-20260522-131634-pre-policy-layer-v2.sql`
+- Release fixes included:
+  - workflow template policy metadata for required tier, risk level, approval requirement, allowed tool scopes, and billable work units
+  - template-backed sync and queued orchestration policy enforcement
+  - human approval gate for approval-required templates
+  - orchestration metrics fields for billable work units, successful audited workflows, approval blocks, and template policy upgrade blocks
+  - `/orchestrate` template policy display and human approval confirmation control
+  - dashboard KPI cards for billable work units, audited workflows, and policy blocks
+- Verified on local gates:
+  - focused backend policy/template/metrics tests passed
+  - focused frontend orchestration/dashboard tests passed
+  - empty SQLite Alembic upgrade reached `0015_refresh_workflow_template_policies`
+  - `make release-check` passed, including `qa-fast`, visual baseline, Playwright E2E, security check, and k8s render
+- Verified on remote:
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - remote repo head was `30ec782`
+  - remote `alembic_version` was `0015_refresh_workflow_template_policies`
+  - `curl http://1.117.63.81/health` returned `{"status":"ok"}`
+  - `GET /api/orchestrations/templates` returned `Release Gate And Remote Deploy` with `required_tier=power`, `risk_level=high`, `approval_required=true`, `allowed_tool_scopes=["server-deploy"]`, and `billable_work_units=5`
+  - `GET /api/orchestrations/metrics?days=7` returned billable work unit and policy block fields
+  - unapproved `Release Gate And Remote Deploy` run with a power entitlement returned `409` with `detail.code=approval_required`
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
