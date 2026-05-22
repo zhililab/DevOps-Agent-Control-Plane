@@ -52,6 +52,7 @@ export function AppNav() {
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={false}
                 className={`nav-link ${pathname === link.href ? "nav-link-active" : ""}`}
               >
                 {link.label}

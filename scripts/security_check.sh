@@ -167,6 +167,7 @@ assert_file_contains "deploy/nginx/default.conf" "X-Permitted-Cross-Domain-Polic
 assert_file_contains "deploy/nginx/default.conf" "Content-Security-Policy-Report-Only"
 assert_file_contains "deploy/nginx/default.conf" "client_body_timeout"
 assert_file_contains "deploy/nginx/default.conf" "proxy_read_timeout"
+assert_file_contains "deploy/nginx/default.conf" "gzip on"
 assert_file_contains "frontend/next.config.ts" "poweredByHeader: false"
 
 if [[ "$SECURITY_RUNTIME_ONLY" != "1" ]]; then
