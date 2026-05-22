@@ -178,7 +178,10 @@ export function OrchestrationsHistoryView() {
   }
 
   return (
-    <PageCard title="Orchestration History" description="Filter, review, and audit multi-agent orchestration runs.">
+    <PageCard
+      title="Orchestration History"
+      description="Replay runs, verify ledger integrity, and inspect queue lifecycle."
+    >
       <section className="result-block">
         <h3>Filters</h3>
         <label>

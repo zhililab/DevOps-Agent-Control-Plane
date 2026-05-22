@@ -119,6 +119,7 @@ main() {
   assert_route_ok "/orchestrate"
   assert_route_ok "/orchestrations"
   assert_route_ok "/monetization"
+  assert_route_ok "/tutorial"
   assert_route_ok "/knowledge"
   assert_route_ok "/templates"
 

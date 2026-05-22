@@ -457,7 +457,7 @@ export function OrchestrateView() {
   return (
     <PageCard
       title="Workflow Orchestrator"
-      description="Run deterministic multi-agent orchestration across planning, analysis, and reflection."
+      description="Run deterministic DevOps workflows with signed entitlement, policy checks, and replayable output."
     >
       <section className="result-block">
         <h3>Orchestration Controls</h3>

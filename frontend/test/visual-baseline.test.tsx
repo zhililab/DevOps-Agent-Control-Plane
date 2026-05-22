@@ -24,6 +24,9 @@ describe("visual baseline", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Knowledge" })).toBeInTheDocument();
     });
+    await waitFor(() => {
+      expect(screen.getByText("No entries found.")).toBeInTheDocument();
+    });
 
     const root = screen.getByRole("heading", { name: "Knowledge" }).closest("section");
     expect(root).not.toBeNull();

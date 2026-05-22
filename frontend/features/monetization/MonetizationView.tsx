@@ -21,22 +21,22 @@ const PLANS: Plan[] = [
     tier: "free",
     name: "Free",
     price: "$0",
-    description: "Basic single-step orchestration for evaluation.",
-    features: ["25 workflow runs", "25 queued runs", "Single enabled step", "Core replay history"],
+    description: "Evaluate single-step agent workflows with replay evidence.",
+    features: ["Try single-step workflows", "25 workflow runs", "25 queued runs", "Core replay history"],
   },
   {
     tier: "pro",
     name: "Pro",
     price: "$29",
-    description: "Multi-step DevOps agent workflows for daily use.",
-    features: ["300 workflow runs", "300 queued runs", "Planner/Analyzer/Reviewer", "Template policy metadata"],
+    description: "Run multi-step DevOps workflows for daily operations.",
+    features: ["Planner/Analyzer/Reviewer", "300 workflow runs", "300 queued runs", "Template policy metadata"],
   },
   {
     tier: "power",
     name: "Power",
     price: "$99",
     description: "Audited control-plane workflows with approval gates.",
-    features: ["2000 workflow runs", "2000 queued runs", "Policy approval gates", "Commercial work-unit reporting"],
+    features: ["Approval gates", "Audit evidence", "2000 workflow runs", "Commercial work-unit reporting"],
   },
 ];
 
@@ -148,13 +148,31 @@ export function MonetizationView() {
   }
 
   return (
-    <PageCard title="Monetization" description="Subscription, usage, and billing audit controls for the DevOps agent control plane.">
+    <PageCard title="Plans & Usage" description="Commercial plans, usage counters, and audit controls for the DevOps agent control plane.">
       {status ? <StatusMessage message={status} tone="success" /> : null}
       {error ? <StatusMessage message={error} tone="error" /> : null}
       {isLoading ? <p className="muted">Loading monetization data...</p> : null}
 
+      <section className="commercial-value-strip" aria-label="commercial-value-summary">
+        <article>
+          <p className="eyebrow">Free</p>
+          <strong>Evaluate</strong>
+          <span>Single-step replayable workflows.</span>
+        </article>
+        <article>
+          <p className="eyebrow">Pro</p>
+          <strong>Operate</strong>
+          <span>Multi-step DevOps loops for daily execution.</span>
+        </article>
+        <article>
+          <p className="eyebrow">Power</p>
+          <strong>Govern</strong>
+          <span>Approval gates, audit evidence, and higher limits.</span>
+        </article>
+      </section>
+
       <form className="monetization-subject-form" onSubmit={onSubjectSubmit}>
-        <label htmlFor="subject">Billing Subject</label>
+        <label htmlFor="subject">Account Subject</label>
         <div className="inline-form-row">
           <input id="subject" value={subject} onChange={(event) => setSubject(event.target.value)} />
           <button type="submit">Load Account</button>
@@ -183,7 +201,7 @@ export function MonetizationView() {
           ) : (
             <>
               <h3>No subscription profile</h3>
-              <p className="muted">Activate a plan to create a manual billing profile and usage counters.</p>
+              <p className="muted">Choose a plan to start tracking usage and billing events.</p>
             </>
           )}
         </article>
@@ -246,7 +264,7 @@ export function MonetizationView() {
       </div>
 
       <section className="result-block" aria-label="monetization-event-feed">
-        <h3>Billing Event Feed</h3>
+        <h3>Commercial Audit Feed</h3>
         {events.length > 0 ? (
           <div className="event-feed">
             {events.map((event) => (

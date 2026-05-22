@@ -107,7 +107,7 @@ make smoke-check
 ```
 
 This command verifies:
-- frontend routes (`/dashboard`, `/today`, `/reflection`, `/technical-analysis`, `/orchestrate`, `/orchestrations`, `/monetization`, `/knowledge`, `/templates`)
+- frontend routes (`/dashboard`, `/today`, `/reflection`, `/technical-analysis`, `/orchestrate`, `/orchestrations`, `/monetization`, `/tutorial`, `/knowledge`, `/templates`)
 - backend health (`/health`)
 - core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, monetization read APIs, and Manual Billing V1 lifecycle APIs
 - history ledger integrity and idempotent backfill tests are covered by the local release gate

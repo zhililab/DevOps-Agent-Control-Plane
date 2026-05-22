@@ -11,11 +11,12 @@ import ReflectionPage from "@/app/reflection/page";
 import TechnicalAnalysisPage from "@/app/technical-analysis/page";
 import TemplatesPage from "@/app/templates/page";
 import TodayPage from "@/app/today/page";
+import TutorialPage from "@/app/tutorial/page";
 
 describe("core pages", () => {
   test("renders dashboard", () => {
     render(<DashboardPage />);
-    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Control Dashboard" })).toBeInTheDocument();
   });
 
   test("renders profile", () => {
@@ -60,7 +61,12 @@ describe("core pages", () => {
 
   test("renders monetization", () => {
     render(<MonetizationPage />);
-    expect(screen.getByRole("heading", { name: "Monetization" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Plans & Usage" })).toBeInTheDocument();
+  });
+
+  test("renders tutorial", () => {
+    render(<TutorialPage />);
+    expect(screen.getByRole("heading", { name: "Tutorial" })).toBeInTheDocument();
   });
 
   test("renders templates", () => {

@@ -510,20 +510,23 @@ export function DashboardView() {
   const mergedError = [error, orchestrationError].filter(Boolean).join(" ") || null;
 
   return (
-    <PageCard title="Dashboard" description="Personal execution loop at a glance.">
+    <PageCard
+      title="Control Dashboard"
+      description="Track orchestration KPIs, policy blocks, commercial work units, and release readiness."
+    >
       <section className="hero-obsidian animate-enter">
         <div className="hero-copy">
-          <p className="eyebrow">OBSIDIAN-INSPIRED WORKSPACE</p>
-          <h3 className="hero-title">Build a second brain for execution, reflection, and technical decisions.</h3>
+          <p className="eyebrow">COMMERCIAL DEVOPS CONTROL LOOP</p>
+          <h3 className="hero-title">Run trusted agent workflows with replay, policy, and usage evidence.</h3>
           <p className="muted">
-            Capture daily signals, connect insights, and turn intent into repeatable momentum.
+            See workflow throughput, ledger health, approval blocks, and monetization signals in one operating view.
           </p>
           <div className="hero-actions">
-            <Link className="nav-link nav-link-active" href="/today">
-              Start Today Plan
+            <Link className="nav-link nav-link-active" href="/orchestrate">
+              Run Workflow
             </Link>
-            <Link className="nav-link" href="/technical-analysis">
-              Analyze Incident
+            <Link className="nav-link" href="/monetization">
+              View Plans
             </Link>
           </div>
         </div>

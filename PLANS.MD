@@ -1,24 +1,24 @@
 # PLANS.md
 
 ## Project
-Personal Agent Assistant
+DevOps Agent Control Plane
 
 ## Project Goal
 Build a personal AI agent assistant that helps the user turn context into action across work, learning, life planning, reflection, and communication.
 
 The long-term vision remains a reusable personal operating system for execution, reflection, and repeatable workflows.
 
-Current iteration goal: close out and ship the DevOps orchestration MVP. The current deployable product is centered on deterministic multi-agent orchestration for personal DevOps workflows, with inspectable step replay/history, queue lifecycle visibility, signed entitlement-aware tier gates, and reusable knowledge/templates. Communication Assistant and Weekly Review remain planned product modules, but they are not blockers for the current DevOps orchestration MVP deployment.
+Current iteration goal: commercialize the DevOps orchestration MVP. The current deployable product is centered on deterministic multi-agent orchestration for personal DevOps workflows, with inspectable step replay/history, queue lifecycle visibility, signed entitlement-aware tier gates, reusable knowledge/templates, Manual Billing V1, and a clearer buyer-facing tutorial path. Communication Assistant and Weekly Review remain planned product modules, but they are not blockers for the current DevOps orchestration MVP deployment.
 
 ---
 
 # 0. Current Iteration Snapshot (2026-05-21)
 
 ## Iteration Theme
-- current iteration target: DevOps orchestration MVP launch closeout
+- current iteration target: DevOps orchestration MVP commercialization closeout
 - product direction: deterministic personal DevOps orchestration with inspectable replay, queue lifecycle visibility, signed entitlement-aware tier gates, and reusable knowledge/templates
 - commercial direction: personal DevOps agent control plane; sell trusted, replayable, policy-gated workflow execution before broad assistant breadth, now with Manual Billing V1 for subscription lifecycle demos
-- UI direction: Obsidian-like visual language remains the active baseline (dark canvas, violet accent, layered cards, knowledge graph feeling)
+- UI direction: DevOps control-plane visual language with categorized navigation, animated workflow preview, and tutorial/commercial onboarding
 - status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; the Docker Compose server deployment path is the current MVP release path, with k3d/k8s retained as follow-up deployment options
 
 ## Completed In This Iteration
@@ -87,7 +87,11 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
   - `POST /api/monetization/checkout/manual`
   - `POST /api/monetization/cancel`
   - `POST /api/monetization/reactivate`
-- added `/monetization` UI for plan activation, subscription status, usage counters, and billing event audit feed
+- added `/monetization` UI for plan activation, subscription status, usage counters, and commercial audit feed
+- repositioned frontend title/header to `DevOps Agent Control Plane`
+- added categorized navigation: Operate, Commercial, Learn, Assets, and Personal Loops
+- added animated workflow preview to the global header
+- added `/tutorial` page for commercial onboarding and demo storytelling
 - aligned frontend monetization observability client with backend canonical route: `/api/observability/monetization`
 - upgraded `/orchestrate` UI with sync/async run mode, queue job status card, retry/cancel actions
 - upgraded `/orchestrations` UI with queue status filtering and timeline replay from `WorkflowQueueEvent`

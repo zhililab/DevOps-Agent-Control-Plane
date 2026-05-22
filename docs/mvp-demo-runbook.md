@@ -6,7 +6,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 
 - Public app: `http://1.117.63.81`
 - Health check: `http://1.117.63.81/health`
-- Primary pages: `/dashboard`, `/orchestrate`, `/orchestrations`
+- Primary pages: `/dashboard`, `/orchestrate`, `/orchestrations`, `/monetization`, `/tutorial`
 - Release path: Docker Compose server deployment through `make release-deploy`
 
 ## Three-Minute Demo Flow
@@ -37,14 +37,21 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Select a job and confirm `Timeline Replay` shows either observed event log entries or a deterministic snapshot fallback.
    - Demonstrate retry/cancel controls only when the selected job status allows the action.
 
-6. Close with commercial KPIs on `/dashboard`.
+6. Open `/monetization`.
+   - Show `Plans & Usage`, Free/Pro/Power packaging, account subject, usage counters, and `Commercial Audit Feed`.
+   - Explain that Manual Billing V1 is the current demoable commercial loop before real payment-provider integration.
+
+7. Open `/tutorial`.
+   - Use the run -> replay -> verify -> upgrade path as the short buyer story.
+
+8. Close with commercial KPIs on `/dashboard`.
    - Show `Billable Work Units`, `Audited Workflows`, and `Policy Blocks`.
    - Explain that these counters are the current bridge from technical workflow execution to pricing and packaging.
 
 ## Acceptance Checks
 
 - `/health` returns `{"status":"ok"}`.
-- `/orchestrate` and `/orchestrations` return HTTP 200.
+- `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` return HTTP 200.
 - `/api/orchestrations/history?limit=3` includes `ledger_integrity` for returned runs.
 - `/api/orchestrations/metrics?days=7` includes billable work units, audited workflow count, approval blocks, and template policy upgrade blocks.
 - `/orchestrations` does not show `History Ledger: not checked` for runs that already have ledger events.

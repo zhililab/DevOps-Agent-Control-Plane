@@ -1,6 +1,6 @@
-# Personal Agent Workflow Orchestration MVP
+# DevOps Agent Control Plane MVP
 
-Current product: a deployable DevOps personal workflow orchestration MVP. It focuses on deterministic multi-agent execution, replayable workflow history, queue lifecycle controls, entitlement-aware tier boundaries, and monetization observability. Commercially, this is best framed as a personal DevOps agent control plane: trusted workflow execution before broad assistant breadth.
+Current product: a deployable DevOps Agent Control Plane. It focuses on deterministic multi-agent execution, replayable workflow history, queue lifecycle controls, entitlement-aware tier boundaries, Manual Billing V1, and buyer-facing tutorial onboarding. Commercially, this is framed as trusted workflow execution before broad assistant breadth.
 
 Long-term vision: a personal AI operating system for work, reflection, knowledge, planning, and communication. The current release keeps that vision grounded in a narrow, auditable orchestration surface that can be deployed and verified by one maintainer.
 
@@ -9,7 +9,7 @@ Monorepo-style app with:
 - `backend/`: FastAPI + SQLAlchemy API
 - PostgreSQL scaffolding (optional for local via Docker), with SQLite default for fast boot
 
-Documentation map: `docs/README.md`. Current commercial strategy and orchestration pattern registry notes: `docs/agent-orchestration-commercial-strategy.md`.
+Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo path, and orchestration pattern registry notes: `docs/agent-orchestration-commercial-strategy.md`.
 
 ## Project Structure
 
@@ -132,6 +132,7 @@ Documentation map: `docs/README.md`. Current commercial strategy and orchestrati
 - `/orchestrate`
 - `/orchestrations`
 - `/monetization`
+- `/tutorial`
 - `/knowledge`
 - `/templates`
 - `/history`

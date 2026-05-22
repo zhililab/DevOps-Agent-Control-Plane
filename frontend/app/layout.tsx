@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 
 import { AppNav } from "@/components/layout/AppNav";
+import { ProductDemoMotion } from "@/components/layout/ProductDemoMotion";
 import { RouteTransitionFX } from "@/components/layout/RouteTransitionFX";
 
 import "./globals.css";
 
 export const metadata = {
-  title: "Personal Agent Assistant",
-  description: "Frontend skeleton for planning, reflection, and history.",
+  title: "DevOps Agent Control Plane",
+  description: "Deterministic orchestration, replayable audit trails, policy gates, and commercial workflow controls.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -18,12 +19,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <RouteTransitionFX />
         <main className="container app-shell">
           <header className="app-header">
-            <p className="eyebrow">PERSONAL OPERATING SYSTEM</p>
-            <div className="brand-row">
-              <img src="/logo-mark.svg" alt="Personal Agent Assistant logo" className="brand-logo" />
-              <h1>Personal Agent Assistant</h1>
+            <div className="brand-panel">
+              <div>
+                <p className="eyebrow">DEVOPS AGENT CONTROL PLANE</p>
+                <div className="brand-row">
+                  <img src="/logo-mark.svg" alt="DevOps Agent Control Plane logo" className="brand-logo" />
+                  <h1>DevOps Agent Control Plane</h1>
+                </div>
+                <p className="muted">
+                  Deterministic orchestration, replayable audit trails, and commercial workflow controls.
+                </p>
+              </div>
+              <ProductDemoMotion />
             </div>
-            <p className="muted">Execution, reflection, and reusable workflows.</p>
           </header>
           <AppNav />
           {children}

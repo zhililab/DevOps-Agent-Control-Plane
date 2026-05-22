@@ -86,9 +86,12 @@ describe("monetization flow", () => {
     await waitFor(() => {
       expect(screen.getByText(/PRO · active/)).toBeInTheDocument();
     });
+    expect(screen.getByRole("heading", { name: "Plans & Usage" })).toBeInTheDocument();
+    expect(screen.getByText("Govern")).toBeInTheDocument();
     expect(screen.getByText("Workflow Runs")).toBeInTheDocument();
     expect(screen.getByText("4 / 300")).toBeInTheDocument();
     expect(screen.getByText("checkout completed")).toBeInTheDocument();
+    expect(screen.getByText("Commercial Audit Feed")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Activate Power" }));
 
