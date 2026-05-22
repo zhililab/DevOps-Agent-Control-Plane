@@ -2,6 +2,34 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-05-22 Commercial Site Repositioning Release
+
+- Deployed implementation commit: `2131367 feat: reposition commercial control plane site`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release additions:
+  - frontend title/header repositioned to `DevOps Agent Control Plane`
+  - categorized navigation for Operate, Commercial, Learn, Assets, and Personal Loops
+  - animated workflow preview in the global header
+  - `/monetization` renamed in UI to `Plans & Usage` with clearer Free/Pro/Power value framing
+  - `/tutorial` page for commercial onboarding and demo storytelling
+  - mobile navigation compressed into horizontal grouped cards so page content is visible in the first viewport
+- Verified local gates:
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make release-check` passed
+  - local `make smoke-check` passed with `/tutorial`
+  - Playwright screenshots checked mobile `/monetization` and desktop `/tutorial`
+- Verified remote deployment:
+  - remote smoke checks passed, including `/tutorial`
+  - remote runtime security checks passed
+  - public `curl http://1.117.63.81/health` returned `200`
+  - public `/dashboard` returned `200`
+  - public `/monetization` returned `200`
+  - public `/tutorial` returned `200`
+
 ## 2026-05-22 Manual Billing V1 Commercialization Release
 
 - Deployed implementation commit: `78fba09 feat: add manual billing monetization flow`
