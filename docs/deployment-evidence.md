@@ -314,6 +314,43 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - public `GET /api/orchestrations/history?limit=1` returned a run with team metadata, `ledger_integrity.integrity_status=valid`, and `checkpoint_count=7`
   - public `GET /api/orchestrations/49/checkpoints` returned seven valid checkpoint events: `queue.queued`, `queue.started`, `orchestration.accepted`, `step.started`, `step.success`, `orchestration.success`, and `queue.succeeded`
 
+## 2026-05-22 Orchestration Loading Robustness And Gateway Performance Verification
+
+- Implementation commits:
+  - `949e303 fix: harden orchestration request loading`
+  - `ec93cd6 perf: reduce navigation prefetch load`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release fixes included:
+  - raised frontend API timeout budgets for orchestration, queue, checkpoint, entitlement, and workflow template calls
+  - added retry handling for transient browser-side GET aborts/network failures without retrying mutating POST calls
+  - reduced `/orchestrations` first-load history and queue list limits from 50 to 25
+  - extended frontend tests to cover transient abort recovery for workflow template loading and orchestration/queue history loading
+  - extended Playwright E2E to assert no `Request timed out. Please retry.` state on `/orchestrate` and `/orchestrations`
+  - kept queue history as a lightweight summary response without eager event/checkpoint payloads
+  - disabled global navigation prefetch to prevent first-load route chunk/RSC fan-out on slow public links
+  - enabled Nginx gzip for JavaScript, JSON, CSS, SVG, XML, and text responses
+- Verified on local gates:
+  - full backend test suite passed
+  - full frontend test suite passed with 47 tests
+  - frontend production build passed
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make e2e-orchestration` passed
+  - `make security-check` passed, including the static gzip config assertion
+  - `make release-check` passed, including Playwright E2E, security check, and k8s render
+- Verified on remote:
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `200`
+  - public `GET /api/orchestrations/templates` returned `200` in under one second during verification
+  - public `GET /api/orchestrations/queue/history?limit=3` returned `200` in under one second during verification
+  - public JS chunk responses returned `Content-Encoding: gzip` when requested with `Accept-Encoding: gzip`
+  - real browser verification for `/orchestrate` showed `orchestrateTimeouts=0`, workflow templates present, and `rscPrefetchAfterOrchestrate=0`
+  - real browser verification for `/orchestrations` showed history and queue loading states cleared with no `Request timed out. Please retry.`
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
