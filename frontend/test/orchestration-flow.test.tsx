@@ -167,8 +167,9 @@ describe("orchestration workflow", () => {
   test("imports curated workflow templates and refreshes template list", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     let listCalls = 0;
+    let runBody: Record<string, unknown> | null = null;
 
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       if (url.endsWith("/orchestrations/templates/import/builtin")) {
         return new Response(
@@ -196,13 +197,50 @@ describe("orchestration workflow", () => {
                     { step_name: "Analyze Deploy Risk", agent_type: "analyzer", enabled: true },
                     { step_name: "Review Remote Evidence", agent_type: "reviewer", enabled: true },
                   ],
-                  tags: ["pattern:sequential", "release", "deploy"],
+                  tags: [
+                    "pattern:sequential",
+                    "tier:power",
+                    "risk:high",
+                    "approval:required",
+                    "tool:server-deploy",
+                    "work-units:5",
+                    "release",
+                    "deploy",
+                  ],
+                  policy: {
+                    required_tier: "power",
+                    risk_level: "high",
+                    approval_required: true,
+                    allowed_tool_scopes: ["server-deploy"],
+                    billable_work_units: 5,
+                  },
                   enabled: true,
                   created_at: "2026-05-22T00:00:00Z",
                   updated_at: "2026-05-22T00:00:00Z",
                 },
               ];
         return new Response(JSON.stringify(items), { status: 200 });
+      }
+      if (url.endsWith("/orchestrations/run")) {
+        runBody = JSON.parse(String(init?.body ?? "{}"));
+        return new Response(
+          JSON.stringify({
+            id: 501,
+            status: "success",
+            duration_ms: 111,
+            entry_source: "web_ui",
+            subscription_tier: "power",
+            summary: {
+              conclusion: "Release gate approved and executed.",
+              risks: [],
+              next_actions: ["Capture release evidence."],
+            },
+            steps: [],
+            created_at: "2026-05-22T00:00:00Z",
+            updated_at: "2026-05-22T00:00:01Z",
+          }),
+          { status: 200 }
+        );
       }
       return new Response(JSON.stringify({ items: [] }), { status: 200 });
     });
@@ -216,6 +254,18 @@ describe("orchestration workflow", () => {
     expect(screen.getByRole("option", { name: "Release Gate And Remote Deploy" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Apply Existing Template"), { target: { value: "501" } });
     expect(screen.getByText("Pattern: Sequential · Tags: release, deploy")).toBeInTheDocument();
+    expect(
+      screen.getByText("Policy: tier=power · risk high · approval required · work units 5 · tools server-deploy")
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Human Approval Confirmed"));
+    fireEvent.click(screen.getByRole("button", { name: "Run Orchestration" }));
+    await waitFor(() => {
+      expect(screen.getByText(/Run #501/i)).toBeInTheDocument();
+    });
+    expect(runBody).toMatchObject({
+      template_id: 501,
+      approval_confirmed: true,
+    });
   });
 
   test("runs orchestration then verifies replay in history page", async () => {

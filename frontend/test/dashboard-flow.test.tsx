@@ -80,6 +80,10 @@ describe("dashboard flow", () => {
             weekly_active_orchestrations: 15,
             partial_success_rate: 0.1,
             average_duration_ms: 940,
+            billable_work_units: 32,
+            successful_audited_workflows: 20,
+            approval_required_blocks: 1,
+            template_policy_upgrade_blocks: 2,
           }),
           { status: 200 }
         );
@@ -93,6 +97,10 @@ describe("dashboard flow", () => {
             weekly_active_orchestrations: 3,
             partial_success_rate: 0.75,
             average_duration_ms: 1850,
+            billable_work_units: 9,
+            successful_audited_workflows: 4,
+            approval_required_blocks: 1,
+            template_policy_upgrade_blocks: 0,
           }),
           { status: 200 }
         );

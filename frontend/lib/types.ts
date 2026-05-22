@@ -165,9 +165,18 @@ export type WorkflowTemplate = {
   description: string;
   steps: WorkflowStepDefinition[];
   tags: string[];
+  policy?: WorkflowTemplatePolicy | null;
   enabled: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type WorkflowTemplatePolicy = {
+  required_tier: SubscriptionTier;
+  risk_level: "low" | "medium" | "high" | "critical";
+  approval_required: boolean;
+  allowed_tool_scopes: string[];
+  billable_work_units: number;
 };
 
 export type WorkflowAuditBlock = {
@@ -220,6 +229,10 @@ export type WorkflowOrchestrationMetrics = {
   weekly_active_orchestrations: number;
   partial_success_rate: number;
   average_duration_ms: number;
+  billable_work_units: number;
+  successful_audited_workflows: number;
+  approval_required_blocks: number;
+  template_policy_upgrade_blocks: number;
 };
 
 export type HistoryEvent = {

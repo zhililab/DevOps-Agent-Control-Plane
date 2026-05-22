@@ -345,6 +345,7 @@ SubscriptionTier = Literal["free", "pro", "power"]
 OrchestrationStatus = Literal["running", "success", "partial_success", "failed", "canceled"]
 StepStatus = Literal["success", "failed", "skipped"]
 AgentType = Literal["planner", "analyzer", "reviewer"]
+WorkflowTemplateRiskLevel = Literal["low", "medium", "high", "critical"]
 
 
 class WorkflowStepDefinition(BaseModel):
@@ -353,11 +354,34 @@ class WorkflowStepDefinition(BaseModel):
     enabled: bool = True
 
 
+class WorkflowTemplatePolicy(BaseModel):
+    required_tier: SubscriptionTier = "pro"
+    risk_level: WorkflowTemplateRiskLevel = "medium"
+    approval_required: bool = False
+    allowed_tool_scopes: list[str] = Field(default_factory=lambda: ["none"], max_length=10)
+    billable_work_units: int = Field(default=1, ge=1, le=100)
+
+    @field_validator("allowed_tool_scopes")
+    @classmethod
+    def validate_tool_scopes(cls, values: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for value in values:
+            scope = value.strip().lower()
+            if not scope:
+                continue
+            if len(scope) > 80:
+                raise ValueError("Tool scopes must be 80 characters or fewer.")
+            if scope not in normalized:
+                normalized.append(scope)
+        return normalized or ["none"]
+
+
 class WorkflowTemplateBase(BaseModel):
     name: str
     description: str = ""
     steps: list[WorkflowStepDefinition] = Field(default_factory=list, max_length=20)
     tags: list[str] = Field(default_factory=list, max_length=20)
+    policy: WorkflowTemplatePolicy | None = None
     enabled: bool = True
 
     @field_validator("name")
@@ -384,6 +408,7 @@ class WorkflowTemplateUpdate(BaseModel):
     description: str | None = None
     steps: list[WorkflowStepDefinition] | None = None
     tags: list[str] | None = None
+    policy: WorkflowTemplatePolicy | None = None
     enabled: bool | None = None
 
 
@@ -455,6 +480,7 @@ class WorkflowOrchestrationRunRequest(BaseModel):
     reflection_input: DailyReflectionInput | None = None
     persist_knowledge: bool = True
     persist_template: bool = False
+    approval_confirmed: bool = False
 
     @model_validator(mode="after")
     def ensure_template_or_steps(self) -> "WorkflowOrchestrationRunRequest":
@@ -488,6 +514,10 @@ class WorkflowOrchestrationMetricsResponse(BaseModel):
     weekly_active_orchestrations: int
     partial_success_rate: float
     average_duration_ms: int
+    billable_work_units: int
+    successful_audited_workflows: int
+    approval_required_blocks: int
+    template_policy_upgrade_blocks: int
 
 
 class HistoryEventRead(BaseModel):

@@ -60,6 +60,9 @@ def test_workflow_template_builtin_import_upserts(client) -> None:
         pattern_tags = [tag for tag in item["tags"] if tag.startswith("pattern:")]
         assert len(pattern_tags) == 1
         assert pattern_tags[0].split(":", 1)[1] in allowed_patterns
+        assert item["policy"]["required_tier"] in {"free", "pro", "power"}
+        assert item["policy"]["risk_level"] in {"low", "medium", "high", "critical"}
+        assert item["policy"]["billable_work_units"] >= 1
 
     first = client.post("/api/orchestrations/templates/import/builtin")
     assert first.status_code == 200
@@ -82,3 +85,11 @@ def test_workflow_template_builtin_import_upserts(client) -> None:
     assert len([step for step in free_tier["steps"] if step["enabled"]]) == 1
     history_audit = next(item for item in listed_items if item["name"] == "History Accuracy Audit")
     assert "pattern:maker-checker" in history_audit["tags"]
+    release_gate = next(item for item in listed_items if item["name"] == "Release Gate And Remote Deploy")
+    assert release_gate["policy"] == {
+        "required_tier": "power",
+        "risk_level": "high",
+        "approval_required": True,
+        "allowed_tool_scopes": ["server-deploy"],
+        "billable_work_units": 5,
+    }

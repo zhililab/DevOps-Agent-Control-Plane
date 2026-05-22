@@ -160,6 +160,85 @@ def test_workflow_template_import_export_round_trip(client) -> None:
     assert run_from_template.json()["status"] == "success"
 
 
+def test_template_policy_requires_human_approval(client) -> None:
+    create_template = client.post(
+        "/api/orchestrations/templates",
+        json={
+            "name": "Approval Required Migration",
+            "description": "High-risk migration gate",
+            "steps": [
+                {"step_name": "Plan Migration", "agent_type": "planner", "enabled": True},
+                {"step_name": "Review Migration", "agent_type": "reviewer", "enabled": True},
+            ],
+            "tags": ["migration"],
+            "policy": {
+                "required_tier": "pro",
+                "risk_level": "high",
+                "approval_required": True,
+                "allowed_tool_scopes": ["database-migration"],
+                "billable_work_units": 5,
+            },
+            "enabled": True,
+        },
+    )
+    assert create_template.status_code == 200
+    template_id = create_template.json()["id"]
+
+    payload = {
+        **_default_run_payload(),
+        "template_id": template_id,
+        "steps": None,
+    }
+    blocked = client.post("/api/orchestrations/run", json=payload)
+    assert blocked.status_code == 409
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "approval_required"
+    assert detail["risk_level"] == "high"
+
+    approved = client.post(
+        "/api/orchestrations/run",
+        json={**payload, "approval_confirmed": True},
+    )
+    assert approved.status_code == 200
+    assert approved.json()["status"] == "success"
+
+
+def test_template_policy_required_tier_blocks_lower_tier(client) -> None:
+    create_template = client.post(
+        "/api/orchestrations/templates",
+        json={
+            "name": "Power Only Smoke",
+            "description": "Single-step power-tier policy test",
+            "steps": [
+                {"step_name": "Plan Power Gate", "agent_type": "planner", "enabled": True},
+            ],
+            "tags": ["power-only"],
+            "policy": {
+                "required_tier": "power",
+                "risk_level": "medium",
+                "approval_required": False,
+                "allowed_tool_scopes": ["none"],
+                "billable_work_units": 2,
+            },
+            "enabled": True,
+        },
+    )
+    assert create_template.status_code == 200
+
+    response = client.post(
+        "/api/orchestrations/run",
+        json={
+            **_default_run_payload(),
+            "template_id": create_template.json()["id"],
+            "steps": None,
+        },
+    )
+    assert response.status_code == 403
+    detail = response.json()["detail"]
+    assert detail["capability"] == "template_policy"
+    assert detail["required_tier"] == "power"
+
+
 def test_orchestration_metrics_reports_weekly_activity(client) -> None:
     run_response = client.post("/api/orchestrations/run", json=_default_run_payload())
     assert run_response.status_code == 200
@@ -173,6 +252,10 @@ def test_orchestration_metrics_reports_weekly_activity(client) -> None:
     assert metrics["weekly_active_orchestrations"] >= 1
     assert "partial_success_rate" in metrics
     assert "average_duration_ms" in metrics
+    assert metrics["billable_work_units"] >= 1
+    assert metrics["successful_audited_workflows"] >= 1
+    assert "approval_required_blocks" in metrics
+    assert "template_policy_upgrade_blocks" in metrics
 
 
 def test_signed_entitlement_enforced_when_required(client) -> None:

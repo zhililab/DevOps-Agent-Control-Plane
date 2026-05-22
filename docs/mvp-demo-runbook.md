@@ -18,6 +18,8 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 2. Open `/orchestrate`.
    - Click `Import Curated Templates` if curated workflow templates are not already available.
    - Pick a DevOps-focused template such as `Release Gate And Remote Deploy`, `Production Incident Triage`, or `Query Performance Optimization`.
+   - Point out the selected template pattern and policy line: required tier, risk level, approval status, billable work units, and allowed tool scope.
+   - For high-risk templates, tick `Human Approval Confirmed` before running; the backend rejects unapproved high-risk runs.
    - Keep signed entitlement handling on the default UI path; do not use legacy `X-Subscription-Tier`.
    - Run a synchronous orchestration for the fastest demo path.
 
@@ -35,11 +37,16 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Select a job and confirm `Timeline Replay` shows either observed event log entries or a deterministic snapshot fallback.
    - Demonstrate retry/cancel controls only when the selected job status allows the action.
 
+6. Close with commercial KPIs on `/dashboard`.
+   - Show `Billable Work Units`, `Audited Workflows`, and `Policy Blocks`.
+   - Explain that these counters are the current bridge from technical workflow execution to pricing and packaging.
+
 ## Acceptance Checks
 
 - `/health` returns `{"status":"ok"}`.
 - `/orchestrate` and `/orchestrations` return HTTP 200.
 - `/api/orchestrations/history?limit=3` includes `ledger_integrity` for returned runs.
+- `/api/orchestrations/metrics?days=7` includes billable work units, audited workflow count, approval blocks, and template policy upgrade blocks.
 - `/orchestrations` does not show `History Ledger: not checked` for runs that already have ledger events.
 - Smoke/system records may exist from release checks, but personal history pages hide smoke data by default.
 

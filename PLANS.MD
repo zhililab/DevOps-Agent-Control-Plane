@@ -123,6 +123,11 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
   - tagged built-in workflow templates with `pattern:sequential`, `pattern:maker-checker`, and `pattern:handoff`
   - surfaced selected template pattern metadata in `/orchestrate`
   - added migration refresh so existing deployments receive pattern-tagged workflow templates
+- added Policy Layer V2 and Human Approval Gate:
+  - workflow template APIs expose policy metadata for required tier, risk level, approval requirement, allowed tool scopes, and billable work units
+  - template-backed sync and queued orchestration runs enforce required tier and explicit approval before execution
+  - dashboard orchestration KPIs include billable work units, audited workflows, and policy block counts
+  - demo runbook now includes the policy/approval/commercial-KPI narrative
 - fixed `/orchestrations` history ledger status recovery:
   - history list responses include ledger integrity summaries from persisted ledger data
   - page reloads and redeploys no longer reset verified runs to `History Ledger: not checked`
@@ -159,10 +164,9 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 - run full k8s gate on a reachable cluster context when a Kubernetes deployment becomes the selected release path
 
 ### Later Product Completion
-- add Policy Layer V2 for per-template tier requirements, approval requirements, and allowed tool scopes
 - add State & Checkpoint V2 for resumable queue jobs and explicit step checkpoint snapshots
-- add Human Approval Gate for risky deployment, migration, or external action templates
-- add commercial work-unit counters tied to template, tier, duration, and successful outcomes
+- add first-class policy authoring controls so users do not need to edit policy tags directly
+- add billing-provider integration and cohort reporting around commercial work units
 - complete P7 Communication Assistant (not a current deployment blocker)
 - complete P8 Weekly Review (not a current deployment blocker)
 - continue P9 integrations foundation after the orchestration MVP is deployed and audited

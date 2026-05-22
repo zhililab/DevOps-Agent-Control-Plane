@@ -58,7 +58,29 @@ function formatWorkflowTemplatePattern(template: Pick<WorkflowTemplate, "tags">)
 }
 
 function formatWorkflowTemplateTags(template: Pick<WorkflowTemplate, "tags">): string {
-  return template.tags.filter((tag) => !tag.toLowerCase().startsWith("pattern:")).join(", ");
+  return template.tags
+    .filter((tag) => {
+      const normalized = tag.toLowerCase();
+      return !(
+        normalized.startsWith("pattern:") ||
+        normalized.startsWith("tier:") ||
+        normalized.startsWith("risk:") ||
+        normalized.startsWith("approval:") ||
+        normalized.startsWith("tool:") ||
+        normalized.startsWith("work-units:")
+      );
+    })
+    .join(", ");
+}
+
+function formatWorkflowTemplatePolicy(template: WorkflowTemplate): string {
+  const policy = template.policy;
+  if (!policy) {
+    return "Policy: tier=pro · risk medium · approval optional · work units 1";
+  }
+  const approval = policy.approval_required ? "approval required" : "approval optional";
+  const scopes = policy.allowed_tool_scopes.join(", ");
+  return `Policy: tier=${policy.required_tier} · risk ${policy.risk_level} · ${approval} · work units ${policy.billable_work_units} · tools ${scopes}`;
 }
 
 export function OrchestrateView() {
@@ -91,6 +113,7 @@ export function OrchestrateView() {
 
   const [persistKnowledge, setPersistKnowledge] = useState(true);
   const [persistTemplate, setPersistTemplate] = useState(false);
+  const [approvalConfirmed, setApprovalConfirmed] = useState(false);
 
   const [latest, setLatest] = useState<WorkflowOrchestrationRecord | null>(null);
   const [queueJob, setQueueJob] = useState<WorkflowQueueJob | null>(null);
@@ -133,7 +156,32 @@ export function OrchestrateView() {
   );
 
   function buildPayload() {
-    return {
+    const payload: {
+      entry_source: string;
+      template_id?: number;
+      steps: WorkflowStepDefinition[];
+      daily_context: {
+        tasks: string[];
+        meetings: string[];
+        blockers: string[];
+        priorities: string[];
+      };
+      technical_input: {
+        issue_description: string;
+        errors: string[];
+        logs: string;
+        code_snippets: string[];
+      };
+      reflection_input: {
+        completed: string[];
+        unfinished: string[];
+        blockers: string[];
+        mood_or_notes: string;
+      };
+      persist_knowledge: boolean;
+      persist_template: boolean;
+      approval_confirmed: boolean;
+    } = {
       entry_source: entrySource.trim() || "web_ui",
       steps,
       daily_context: {
@@ -156,7 +204,12 @@ export function OrchestrateView() {
       },
       persist_knowledge: persistKnowledge,
       persist_template: persistTemplate,
+      approval_confirmed: approvalConfirmed,
     };
+    if (selectedTemplateId) {
+      payload.template_id = Number(selectedTemplateId);
+    }
+    return payload;
   }
 
   function buildRunOptions() {
@@ -390,6 +443,7 @@ export function OrchestrateView() {
 
   function applyTemplate(templateId: string) {
     setSelectedTemplateId(templateId);
+    setApprovalConfirmed(false);
     if (!templateId) return;
     const id = Number(templateId);
     const matched = templates.find((template) => template.id === id);
@@ -467,12 +521,25 @@ export function OrchestrateView() {
           </select>
         </label>
         {selectedWorkflowTemplate ? (
-          <p className="muted">
-            Pattern: {formatWorkflowTemplatePattern(selectedWorkflowTemplate)}
-            {formatWorkflowTemplateTags(selectedWorkflowTemplate)
-              ? ` · Tags: ${formatWorkflowTemplateTags(selectedWorkflowTemplate)}`
-              : ""}
-          </p>
+          <>
+            <p className="muted">
+              Pattern: {formatWorkflowTemplatePattern(selectedWorkflowTemplate)}
+              {formatWorkflowTemplateTags(selectedWorkflowTemplate)
+                ? ` · Tags: ${formatWorkflowTemplateTags(selectedWorkflowTemplate)}`
+                : ""}
+            </p>
+            <p className="muted">{formatWorkflowTemplatePolicy(selectedWorkflowTemplate)}</p>
+            {selectedWorkflowTemplate.policy?.approval_required ? (
+              <label>
+                Human Approval Confirmed
+                <input
+                  type="checkbox"
+                  checked={approvalConfirmed}
+                  onChange={(event) => setApprovalConfirmed(event.target.checked)}
+                />
+              </label>
+            ) : null}
+          </>
         ) : null}
         <label>
           Template Name

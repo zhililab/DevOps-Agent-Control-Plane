@@ -44,6 +44,15 @@ function normalizeErrorMessage(status: number, bodyText: string): string {
     if (typeof parsed.detail === "string" && parsed.detail.trim()) {
       return parsed.detail.trim();
     }
+    if (
+      parsed.detail &&
+      typeof parsed.detail === "object" &&
+      "message" in parsed.detail &&
+      typeof parsed.detail.message === "string" &&
+      parsed.detail.message.trim()
+    ) {
+      return parsed.detail.message.trim();
+    }
   } catch {
     return "Request failed.";
   }
@@ -240,12 +249,14 @@ export const apiClient = {
   runWorkflowOrchestration(
     payload: {
       entry_source: string;
-      steps: WorkflowStepDefinition[];
+      template_id?: number;
+      steps?: WorkflowStepDefinition[];
       daily_context?: DailyContextInput;
       technical_input?: TechnicalAnalysisInput;
       reflection_input?: DailyReflectionInput;
       persist_knowledge?: boolean;
       persist_template?: boolean;
+      approval_confirmed?: boolean;
     },
     options?: { subscription_tier?: "free" | "pro" | "power"; entitlement_token?: string }
   ) {
@@ -262,12 +273,14 @@ export const apiClient = {
   enqueueWorkflowOrchestration(
     payload: {
       entry_source: string;
-      steps: WorkflowStepDefinition[];
+      template_id?: number;
+      steps?: WorkflowStepDefinition[];
       daily_context?: DailyContextInput;
       technical_input?: TechnicalAnalysisInput;
       reflection_input?: DailyReflectionInput;
       persist_knowledge?: boolean;
       persist_template?: boolean;
+      approval_confirmed?: boolean;
     },
     options?: { subscription_tier?: "free" | "pro" | "power"; entitlement_token?: string }
   ) {
@@ -347,6 +360,7 @@ export const apiClient = {
     description: string;
     steps: WorkflowStepDefinition[];
     tags: string[];
+    policy?: WorkflowTemplate["policy"];
     enabled?: boolean;
   }) {
     return request<WorkflowTemplate>("/orchestrations/templates", {

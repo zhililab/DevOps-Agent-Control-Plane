@@ -47,8 +47,9 @@ Documentation map: `docs/README.md`. Current commercial strategy and orchestrati
 - UTC audit timestamps with `Asia/Shanghai` business-date derivation for daily history accuracy.
 - Smoke/system records are tagged by `record_source` and hidden from default personal history views.
 - Async queue lifecycle with status timeline, retry, and cancel behavior.
-- Workflow templates for reusable orchestration step definitions, with `pattern:*` tags for sequential, maker-checker, and handoff-style orchestration templates.
+- Workflow templates for reusable orchestration step definitions, with pattern metadata and policy metadata for required tier, risk level, approval requirement, tool scope, and billable work units.
 - Signed entitlement token support for free/pro/power tier boundaries.
+- Human approval gate for high-risk workflow templates before sync or queued execution.
 - Monetization observability for capability checks, quota checks, usage events, upgrade blocks, queue health, and KPI aggregation.
 - Knowledge and prompt-template utilities that support reuse around orchestration workflows.
 - Existing daily plan, reflection, technical analysis, task, and profile routes remain available for compatibility and personal workflow support.

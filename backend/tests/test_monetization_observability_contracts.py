@@ -210,12 +210,20 @@ def test_observability_metrics_shape_and_history_order_are_stable(client) -> Non
         "weekly_active_orchestrations",
         "partial_success_rate",
         "average_duration_ms",
+        "billable_work_units",
+        "successful_audited_workflows",
+        "approval_required_blocks",
+        "template_policy_upgrade_blocks",
     ]
     assert isinstance(metrics["period_days"], int)
     assert isinstance(metrics["total_runs"], int)
     assert isinstance(metrics["weekly_active_orchestrations"], int)
     assert isinstance(metrics["partial_success_rate"], float)
     assert isinstance(metrics["average_duration_ms"], int)
+    assert isinstance(metrics["billable_work_units"], int)
+    assert isinstance(metrics["successful_audited_workflows"], int)
+    assert isinstance(metrics["approval_required_blocks"], int)
+    assert isinstance(metrics["template_policy_upgrade_blocks"], int)
 
     history = client.get("/api/orchestrations/history?limit=3")
     assert history.status_code == 200

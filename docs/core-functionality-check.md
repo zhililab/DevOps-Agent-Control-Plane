@@ -23,6 +23,8 @@ This document records the current product target and the minimum functionality t
 - Browse reusable knowledge entries, prompt templates, and workflow templates.
 - Import or refresh curated orchestration workflow templates for the current DevOps operating loop.
 - Confirm selected workflow templates expose their orchestration pattern metadata (`pattern:sequential`, `pattern:maker-checker`, or `pattern:handoff`).
+- Confirm selected workflow templates expose policy metadata: required tier, risk level, human approval requirement, allowed tool scopes, and billable work units.
+- Confirm approval-required templates cannot run until explicit human approval is submitted.
 - Verify orchestration history ledger integrity for a run and confirm event count/status.
 
 ## Core API Surface
@@ -51,6 +53,8 @@ This document records the current product target and the minimum functionality t
 - Production orchestration actions require signed `X-Entitlement`.
 - Legacy `X-Subscription-Tier` is disabled in production.
 - Free tier must reject multi-step orchestration with `403`.
+- Template required tier must reject lower-tier runs with `403`.
+- Approval-required templates must reject unapproved sync/queue runs with `409`.
 - Missing entitlement must reject orchestration with `401`.
 - Oversized structured payloads must reject with `422` or gateway `413`.
 - API rate limit must return `429` with `Retry-After`.
@@ -67,6 +71,7 @@ This document records the current product target and the minimum functionality t
 - `/api/orchestrations/history` must load step replay records in a single batched query for the page of runs.
 - Dashboard trend reads should use `/api/orchestrations/history?include_steps=false&include_integrity=false` when step replay and ledger status details are not rendered.
 - Orchestration metrics should use database aggregate queries instead of Python-side full-window scans.
+- Orchestration metrics must include billable work units, successful audited workflows, approval blocks, and template policy upgrade blocks.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 
 ## Non-Blocking Product Modules

@@ -34,6 +34,10 @@ const DEFAULT_ORCHESTRATION_METRICS: WorkflowOrchestrationMetrics = {
   weekly_active_orchestrations: 0,
   partial_success_rate: 0,
   average_duration_ms: 0,
+  billable_work_units: 0,
+  successful_audited_workflows: 0,
+  approval_required_blocks: 0,
+  template_policy_upgrade_blocks: 0,
 };
 
 const DEFAULT_MONETIZATION_OBSERVABILITY: MonetizationObservability = {
@@ -115,7 +119,11 @@ function hasOrchestrationMetricsPayload(value: unknown): value is WorkflowOrches
     typeof metrics.total_runs === "number" &&
     typeof metrics.weekly_active_orchestrations === "number" &&
     typeof metrics.partial_success_rate === "number" &&
-    typeof metrics.average_duration_ms === "number"
+    typeof metrics.average_duration_ms === "number" &&
+    typeof metrics.billable_work_units === "number" &&
+    typeof metrics.successful_audited_workflows === "number" &&
+    typeof metrics.approval_required_blocks === "number" &&
+    typeof metrics.template_policy_upgrade_blocks === "number"
   );
 }
 
@@ -567,6 +575,24 @@ export function DashboardView() {
           <p className="kpi-label">Avg Orchestration Duration</p>
           <p className="muted">Last {orchestrationWindowDays} days</p>
           <p className="kpi-value">{formatDurationMs(state.orchestrationMetrics.average_duration_ms)}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Billable Work Units</p>
+          <p className="muted">Template-weighted runs</p>
+          <p className="kpi-value">{state.orchestrationMetrics.billable_work_units}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Audited Workflows</p>
+          <p className="muted">Successful or partial-success</p>
+          <p className="kpi-value">{state.orchestrationMetrics.successful_audited_workflows}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Policy Blocks</p>
+          <p className="muted">Approval + tier gates</p>
+          <p className="kpi-value">
+            {state.orchestrationMetrics.approval_required_blocks +
+              state.orchestrationMetrics.template_policy_upgrade_blocks}
+          </p>
         </article>
         <article className="kpi-card animate-enter">
           <p className="kpi-label">Revenue</p>

@@ -31,6 +31,7 @@ from app.schemas import (
     WorkflowTemplateCreate,
     WorkflowTemplateImportRequest,
     WorkflowTemplateImportResponse,
+    WorkflowTemplatePolicy,
     WorkflowTemplateRead,
     WorkflowTemplateUpdate,
 )
@@ -53,6 +54,8 @@ DEFAULT_STEPS = [
     WorkflowStepDefinition(step_name="Review And Reflect", agent_type="reviewer", enabled=True),
 ]
 BUILTIN_WORKFLOW_TEMPLATES_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "workflow_templates_v1.json"
+TIER_RANK = {"free": 0, "pro": 1, "power": 2}
+VALID_TEMPLATE_RISKS = {"low", "medium", "high", "critical"}
 
 
 def _utcnow() -> datetime:
@@ -228,6 +231,18 @@ def enforce_monetization_policy_for_run(
     endpoint: str,
 ) -> dict[str, int]:
     normalized_tier = normalize_tier(tier)
+    template = _resolve_template(db, payload)
+    template_policy = _template_policy_from_record(template) if template is not None else None
+    if template is not None and template_policy is not None:
+        _enforce_template_policy(
+            db,
+            payload,
+            template=template,
+            policy=template_policy,
+            tier=normalized_tier,
+            subject_id=subject_id,
+            endpoint=endpoint,
+        )
     capability_policy = capability_policy_for_tier(normalized_tier)
     max_enabled_steps = int(capability_policy["max_enabled_steps"])
     active_steps = [step for step in _resolve_steps(db, payload) if step.enabled]
@@ -403,6 +418,45 @@ def get_orchestration_metrics(db: Session, *, days: int = 7) -> WorkflowOrchestr
     partial_count = int(partial_count or 0)
     average_duration_ms = int(average_duration or 0)
     partial_success_rate = round((partial_count / total_runs), 4) if total_runs > 0 else 0.0
+    metric_records = (
+        db.query(
+            WorkflowOrchestration.status,
+            WorkflowOrchestration.request_json,
+        )
+        .filter(WorkflowOrchestration.created_at >= window_start)
+        .all()
+    )
+    template_ids = {
+        template_id
+        for _status, request_json in metric_records
+        for template_id in [_template_id_from_request_json(request_json)]
+        if template_id is not None
+    }
+    templates_by_id = {
+        template.id: template
+        for template in (
+            db.query(WorkflowTemplate).filter(WorkflowTemplate.id.in_(template_ids)).all()
+            if template_ids
+            else []
+        )
+    }
+    billable_work_units = sum(
+        _billable_work_units_from_request_json(request_json, templates_by_id)
+        for _status, request_json in metric_records
+    )
+    successful_audited_workflows = len(
+        [status for status, _request_json in metric_records if status in {"success", "partial_success"}]
+    )
+    approval_required_blocks = _count_monetization_logs(
+        db,
+        task_type="monetization.approval_required_blocked",
+        window_start=window_start,
+    )
+    template_policy_upgrade_blocks = _count_monetization_logs(
+        db,
+        task_type="monetization.template_policy_upgrade_required",
+        window_start=window_start,
+    )
 
     return WorkflowOrchestrationMetricsResponse(
         period_days=period_days,
@@ -410,6 +464,10 @@ def get_orchestration_metrics(db: Session, *, days: int = 7) -> WorkflowOrchestr
         weekly_active_orchestrations=total_runs,
         partial_success_rate=partial_success_rate,
         average_duration_ms=average_duration_ms,
+        billable_work_units=billable_work_units,
+        successful_audited_workflows=successful_audited_workflows,
+        approval_required_blocks=approval_required_blocks,
+        template_policy_upgrade_blocks=template_policy_upgrade_blocks,
     )
 
 
@@ -519,11 +577,12 @@ def get_monetization_observability(db: Session, *, days: int = 7) -> dict[str, o
 
 
 def create_workflow_template(db: Session, payload: WorkflowTemplateCreate) -> WorkflowTemplateRead:
+    tags = _tags_with_policy(payload.tags, payload.policy, payload.steps)
     record = WorkflowTemplate(
         name=payload.name.strip(),
         description=payload.description.strip(),
         steps_json=json.dumps([step.model_dump(mode="json") for step in payload.steps]),
-        tags_json=json.dumps(_normalize_tags(payload.tags)),
+        tags_json=json.dumps(tags),
         enabled=payload.enabled,
     )
     db.add(record)
@@ -547,8 +606,15 @@ def update_workflow_template(
         record.description = payload.description.strip()
     if payload.steps is not None:
         record.steps_json = json.dumps([step.model_dump(mode="json") for step in payload.steps])
-    if payload.tags is not None:
-        record.tags_json = json.dumps(_normalize_tags(payload.tags))
+    if payload.tags is not None or payload.policy is not None or payload.steps is not None:
+        next_steps = (
+            payload.steps
+            if payload.steps is not None
+            else [WorkflowStepDefinition.model_validate(item) for item in json.loads(record.steps_json or "[]")]
+        )
+        next_tags = payload.tags if payload.tags is not None else _normalize_tags(json.loads(record.tags_json or "[]"))
+        existing_policy = _template_policy_from_tags(next_tags, next_steps)
+        record.tags_json = json.dumps(_tags_with_policy(next_tags, payload.policy or existing_policy, next_steps))
     if payload.enabled is not None:
         record.enabled = payload.enabled
 
@@ -574,7 +640,11 @@ def load_builtin_workflow_templates() -> list[WorkflowTemplateCreate]:
     raw = json.loads(BUILTIN_WORKFLOW_TEMPLATES_PATH.read_text(encoding="utf-8"))
     if not isinstance(raw, list):
         raise RuntimeError("Workflow template bootstrap file must contain a list.")
-    return [WorkflowTemplateCreate.model_validate(item) for item in raw]
+    templates = [WorkflowTemplateCreate.model_validate(item) for item in raw]
+    return [
+        template.model_copy(update={"policy": template.policy or _template_policy_from_tags(template.tags, template.steps)})
+        for template in templates
+    ]
 
 
 def import_builtin_workflow_templates(db: Session) -> WorkflowTemplateImportResponse:
@@ -598,7 +668,7 @@ def import_workflow_templates(db: Session, payload: WorkflowTemplateImportReques
         if matched:
             matched.description = item.description.strip()
             matched.steps_json = json.dumps([step.model_dump(mode="json") for step in item.steps])
-            matched.tags_json = json.dumps(_normalize_tags(item.tags))
+            matched.tags_json = json.dumps(_tags_with_policy(item.tags, item.policy, item.steps))
             matched.enabled = item.enabled
             db.add(matched)
             updated += 1
@@ -607,7 +677,7 @@ def import_workflow_templates(db: Session, payload: WorkflowTemplateImportReques
             name=item.name.strip(),
             description=item.description.strip(),
             steps_json=json.dumps([step.model_dump(mode="json") for step in item.steps]),
-            tags_json=json.dumps(_normalize_tags(item.tags)),
+            tags_json=json.dumps(_tags_with_policy(item.tags, item.policy, item.steps)),
             enabled=item.enabled,
         )
         db.add(record)
@@ -620,15 +690,205 @@ def import_workflow_templates(db: Session, payload: WorkflowTemplateImportReques
     return WorkflowTemplateImportResponse(imported=imported, updated=updated, skipped=skipped, total=total)
 
 
+def _resolve_template(db: Session, payload: WorkflowOrchestrationRunRequest) -> WorkflowTemplate | None:
+    if payload.template_id is None:
+        return None
+    template = db.query(WorkflowTemplate).filter(WorkflowTemplate.id == payload.template_id).first()
+    if template is None:
+        raise HTTPException(status_code=404, detail="Workflow template not found.")
+    return template
+
+
 def _resolve_steps(db: Session, payload: WorkflowOrchestrationRunRequest) -> list[WorkflowStepDefinition]:
-    if payload.template_id is not None:
-        template = db.query(WorkflowTemplate).filter(WorkflowTemplate.id == payload.template_id).first()
-        if template is None:
-            raise HTTPException(status_code=404, detail="Workflow template not found.")
+    template = _resolve_template(db, payload)
+    if template is not None:
         return [WorkflowStepDefinition.model_validate(item) for item in json.loads(template.steps_json or "[]")]
     if payload.steps:
         return payload.steps
     return DEFAULT_STEPS
+
+
+def _enforce_template_policy(
+    db: Session,
+    payload: WorkflowOrchestrationRunRequest,
+    *,
+    template: WorkflowTemplate,
+    policy: WorkflowTemplatePolicy,
+    tier: SubscriptionTier,
+    subject_id: str,
+    endpoint: str,
+) -> None:
+    if TIER_RANK[tier] < TIER_RANK[policy.required_tier]:
+        _write_monetization_event(
+            db,
+            event_name="monetization.template_policy_upgrade_required",
+            status="blocked",
+            payload={
+                "endpoint": endpoint,
+                "tier": tier,
+                "subject_id": subject_id,
+                "template_id": template.id,
+                "template_name": template.name,
+                "required_tier": policy.required_tier,
+                "risk_level": policy.risk_level,
+            },
+            outcome="template policy tier blocked",
+        )
+        raise _monetization_error(
+            code="upgrade_required",
+            status_code=403,
+            message=f"Template '{template.name}' requires tier '{policy.required_tier}'.",
+            current_tier=tier,
+            required_tier=policy.required_tier,
+            capability="template_policy",
+            endpoint=endpoint,
+            template_id=template.id,
+            risk_level=policy.risk_level,
+        )
+    if policy.approval_required and not payload.approval_confirmed:
+        _write_monetization_event(
+            db,
+            event_name="monetization.approval_required_blocked",
+            status="blocked",
+            payload={
+                "endpoint": endpoint,
+                "tier": tier,
+                "subject_id": subject_id,
+                "template_id": template.id,
+                "template_name": template.name,
+                "risk_level": policy.risk_level,
+                "allowed_tool_scopes": policy.allowed_tool_scopes,
+            },
+            outcome="human approval required",
+        )
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "approval_required",
+                "message": f"Template '{template.name}' requires explicit human approval.",
+                "template_id": template.id,
+                "template_name": template.name,
+                "risk_level": policy.risk_level,
+                "required_tier": policy.required_tier,
+                "allowed_tool_scopes": policy.allowed_tool_scopes,
+            },
+        )
+    if policy.approval_required:
+        _write_monetization_event(
+            db,
+            event_name="monetization.approval_confirmed",
+            status="allowed",
+            payload={
+                "endpoint": endpoint,
+                "tier": tier,
+                "subject_id": subject_id,
+                "template_id": template.id,
+                "template_name": template.name,
+                "risk_level": policy.risk_level,
+            },
+            outcome="human approval confirmed",
+        )
+
+
+def _template_policy_from_record(template: WorkflowTemplate) -> WorkflowTemplatePolicy:
+    return _template_policy_from_tags(
+        _normalize_tags(json.loads(template.tags_json or "[]")),
+        [WorkflowStepDefinition.model_validate(item) for item in json.loads(template.steps_json or "[]")],
+    )
+
+
+def _template_policy_from_tags(tags: list[str], steps: list[WorkflowStepDefinition]) -> WorkflowTemplatePolicy:
+    normalized = _normalize_tags(tags)
+    active_step_count = len([step for step in steps if step.enabled])
+    required_tier = _tag_value(normalized, "tier")
+    risk_level = _tag_value(normalized, "risk")
+    work_units = _int_tag_value(normalized, "work-units")
+    tool_scopes = [tag.split(":", 1)[1] for tag in normalized if tag.startswith("tool:") and tag.split(":", 1)[1]]
+    return WorkflowTemplatePolicy(
+        required_tier=normalize_tier(required_tier or "pro"),
+        risk_level=(risk_level if risk_level in VALID_TEMPLATE_RISKS else "medium"),  # type: ignore[arg-type]
+        approval_required="approval:required" in normalized,
+        allowed_tool_scopes=tool_scopes or ["none"],
+        billable_work_units=work_units or max(1, active_step_count),
+    )
+
+
+def _tags_with_policy(
+    tags: list[str],
+    policy: WorkflowTemplatePolicy | None,
+    steps: list[WorkflowStepDefinition],
+) -> list[str]:
+    normalized = [
+        tag
+        for tag in _normalize_tags(tags)
+        if not (
+            tag.startswith("tier:")
+            or tag.startswith("risk:")
+            or tag.startswith("tool:")
+            or tag.startswith("work-units:")
+            or tag.startswith("approval:")
+        )
+    ]
+    resolved_policy = policy or _template_policy_from_tags(tags, steps)
+    policy_tags = [
+        f"tier:{resolved_policy.required_tier}",
+        f"risk:{resolved_policy.risk_level}",
+        "approval:required" if resolved_policy.approval_required else "approval:none",
+        f"work-units:{resolved_policy.billable_work_units}",
+    ]
+    policy_tags.extend(f"tool:{scope}" for scope in resolved_policy.allowed_tool_scopes)
+    return _normalize_tags([*normalized, *policy_tags])
+
+
+def _tag_value(tags: list[str], key: str) -> str | None:
+    prefix = f"{key}:"
+    for tag in tags:
+        if tag.startswith(prefix):
+            return tag.split(":", 1)[1].strip()
+    return None
+
+
+def _int_tag_value(tags: list[str], key: str) -> int | None:
+    value = _tag_value(tags, key)
+    if value is None:
+        return None
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _template_id_from_request_json(value: str) -> int | None:
+    payload = _safe_json_dict(value)
+    template_id = payload.get("template_id")
+    if isinstance(template_id, int):
+        return template_id
+    return None
+
+
+def _billable_work_units_from_request_json(value: str, templates_by_id: dict[int, WorkflowTemplate]) -> int:
+    payload = _safe_json_dict(value)
+    template_id = payload.get("template_id")
+    if isinstance(template_id, int) and template_id in templates_by_id:
+        return _template_policy_from_record(templates_by_id[template_id]).billable_work_units
+    steps = payload.get("steps")
+    if isinstance(steps, list):
+        active_steps = len([step for step in steps if isinstance(step, dict) and step.get("enabled", True)])
+        return max(1, active_steps)
+    return 1
+
+
+def _count_monetization_logs(db: Session, *, task_type: str, window_start: datetime) -> int:
+    return int(
+        db.query(func.count(AgentRunLog.id))
+        .filter(
+            AgentRunLog.task_type == task_type,
+            AgentRunLog.created_at >= window_start,
+        )
+        .scalar()
+        or 0
+    )
 
 
 def _build_step_input(
@@ -813,12 +1073,15 @@ def _safe_orchestration_summary(record: WorkflowOrchestration) -> WorkflowOrches
 
 
 def _to_template_read(record: WorkflowTemplate) -> WorkflowTemplateRead:
+    steps = [WorkflowStepDefinition.model_validate(item) for item in json.loads(record.steps_json or "[]")]
+    tags = _normalize_tags(json.loads(record.tags_json or "[]"))
     return WorkflowTemplateRead(
         id=record.id,
         name=record.name,
         description=record.description,
-        steps=[WorkflowStepDefinition.model_validate(item) for item in json.loads(record.steps_json or "[]")],
-        tags=_normalize_tags(json.loads(record.tags_json or "[]")),
+        steps=steps,
+        tags=tags,
+        policy=_template_policy_from_tags(tags, steps),
         enabled=record.enabled,
         created_at=record.created_at,
         updated_at=record.updated_at,

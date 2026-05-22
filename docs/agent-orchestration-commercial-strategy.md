@@ -63,15 +63,17 @@ The technical references reinforce starting simple and only adding coordination 
 - security/release/smoke gates
 - Docker Compose server deployment path
 - pattern registry via `pattern:*` template tags
+- Policy Layer V2 via template policy metadata for required tier, risk level, approval requirement, allowed tool scopes, and billable work units
+- Human Approval Gate for approval-required templates before sync or queued execution
+- commercial work-unit counters in orchestration metrics and dashboard KPIs
 
 ### Next High-Value Requirements
 
-- Policy Layer V2: per-template required tier, approval requirements, and allowed tool scopes.
 - State & Checkpoint V2: resumable queue jobs and explicit checkpoint snapshots per step.
 - Agent Communication Contract: standardized inter-step message schema beyond current audit block.
-- Human Approval Gate: pause before risky deployment, migration, or external action templates.
 - Tool Isolation: scoped credentials and deny-by-default external tool execution.
-- Commercial Metrics: billable work-unit counters tied to templates, tier, duration, and successful outcomes.
+- Policy Authoring UI: first-class controls for editing template policy without typing tags.
+- Commercial Metrics V2: billing-provider integration and cohort reporting around billable work units.
 
 ## Packaging Direction
 
