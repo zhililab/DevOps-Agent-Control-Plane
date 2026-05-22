@@ -51,6 +51,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - Signed entitlement token support for free/pro/power tier boundaries.
 - Human approval gate for high-risk workflow templates before sync or queued execution.
 - Monetization observability for capability checks, quota checks, usage events, upgrade blocks, queue health, and KPI aggregation.
+- Buyer-facing commercial UI with a polished control-plane shell, categorized navigation, animated workflow preview, and an interactive tutorial path from workflow run to replay evidence to plan upgrade.
 - Knowledge and prompt-template utilities that support reuse around orchestration workflows.
 - Existing daily plan, reflection, technical analysis, task, and profile routes remain available for compatibility and personal workflow support.
 

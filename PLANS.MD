@@ -92,6 +92,7 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 - added categorized navigation: Operate, Commercial, Learn, Assets, and Personal Loops
 - added animated workflow preview to the global header
 - added `/tutorial` page for commercial onboarding and demo storytelling
+- polished the commercial product shell with lighter grouped navigation, stronger first-screen hierarchy, and an interactive tutorial demo path inspired by modern AI product sites
 - aligned frontend monetization observability client with backend canonical route: `/api/observability/monetization`
 - upgraded `/orchestrate` UI with sync/async run mode, queue job status card, retry/cancel actions
 - upgraded `/orchestrations` UI with queue status filtering and timeline replay from `WorkflowQueueEvent`

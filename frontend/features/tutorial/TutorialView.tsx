@@ -1,23 +1,46 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
 
 const workflowSteps = [
   {
-    title: "1. Pick a DevOps workflow",
-    body: "Start with a release gate, incident triage, security hardening, or query performance template.",
+    id: "pick",
+    label: "Pick workflow",
+    title: "Start from a proven DevOps control loop",
+    body: "Choose a release gate, incident triage, security hardening, or query performance template instead of writing a blank prompt.",
+    metric: "12 curated templates",
+    stage: "Template",
+    preview: ["Release gate readiness", "Incident triage replay", "Query performance audit"],
   },
   {
-    title: "2. Run with entitlement",
-    body: "Signed entitlement selects the Free, Pro, or Power boundary before the workflow executes.",
+    id: "run",
+    label: "Run with policy",
+    title: "Execute only after the tier and policy boundary are clear",
+    body: "Signed entitlement selects Free, Pro, or Power before the workflow starts, so high-risk runs can require approval first.",
+    metric: "free/pro/power gate",
+    stage: "Policy",
+    preview: ["Signed entitlement verified", "Power approval required", "No legacy tier header"],
   },
   {
-    title: "3. Inspect replay evidence",
-    body: "Each step keeps conclusion, evidence, risk, next action, duration, and ledger integrity signals.",
+    id: "replay",
+    label: "Inspect replay",
+    title: "Turn the run into evidence someone can inspect",
+    body: "Each step preserves conclusion, evidence, risk, next action, duration, and ledger integrity signals for later review.",
+    metric: "ledger integrity visible",
+    stage: "Replay",
+    preview: ["Planner conclusion", "Analyzer evidence", "Reviewer next action"],
   },
   {
-    title: "4. Track commercial value",
-    body: "Plans & Usage records subscription state, usage counters, and commercial audit events.",
+    id: "upgrade",
+    label: "Track value",
+    title: "Connect trusted execution to a billable work unit",
+    body: "Plans & Usage records subscription state, usage counters, and commercial audit events without adding payment complexity yet.",
+    metric: "manual billing ready",
+    stage: "Commercial",
+    preview: ["Usage counter updated", "Audit event recorded", "Upgrade path clear"],
   },
 ];
 
@@ -28,38 +51,69 @@ const commercialLadders = [
 ];
 
 export function TutorialView() {
+  const [activeStepId, setActiveStepId] = useState(workflowSteps[0].id);
+  const activeStep = useMemo(
+    () => workflowSteps.find((step) => step.id === activeStepId) ?? workflowSteps[0],
+    [activeStepId]
+  );
+
   return (
     <PageCard
       title="Tutorial"
       description="A short commercial onboarding path for trusted DevOps agent orchestration."
     >
-      <section className="tutorial-hero" aria-label="tutorial-overview">
-        <div>
+      <section className="tutorial-showcase" aria-label="tutorial-overview">
+        <div className="tutorial-showcase-copy">
           <p className="eyebrow">FROM DEMO TO PAID WORKFLOW</p>
-          <h3>Show the value path: run, replay, verify, then upgrade.</h3>
+          <h3>Run the workflow, inspect the evidence, then show the upgrade path.</h3>
           <p className="muted">
-            The MVP is strongest when a user can see one operational workflow become auditable evidence and a billable
-            work unit.
+            The MVP is strongest when one operational task visibly becomes trusted replay evidence and a measurable
+            commercial work unit.
           </p>
+          <div className="tutorial-actions">
+            <Link className="nav-link nav-link-active" href="/orchestrate">
+              Run Workflow
+            </Link>
+            <Link className="nav-link" href="/orchestrations">
+              Inspect Replay
+            </Link>
+            <Link className="nav-link" href="/monetization">
+              Compare Plans
+            </Link>
+          </div>
         </div>
-        <div className="tutorial-motion" aria-hidden="true">
-          <span>run</span>
-          <span>replay</span>
-          <span>verify</span>
-          <span>upgrade</span>
+        <div className="tutorial-stage" aria-live="polite">
+          <div className="tutorial-stage-header">
+            <span>{activeStep.stage}</span>
+            <strong>{activeStep.metric}</strong>
+          </div>
+          <h3>{activeStep.title}</h3>
+          <p>{activeStep.body}</p>
+          <div className="tutorial-preview-stack">
+            {activeStep.preview.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="tutorial-grid" aria-label="workflow-tutorial">
-        {workflowSteps.map((step) => (
-          <article className="tutorial-card" key={step.title}>
-            <h3>{step.title}</h3>
+      <section className="tutorial-stepper" aria-label="workflow-tutorial">
+        {workflowSteps.map((step, index) => (
+          <button
+            aria-pressed={activeStep.id === step.id}
+            className={`tutorial-step-button ${activeStep.id === step.id ? "tutorial-step-active" : ""}`}
+            key={step.id}
+            onClick={() => setActiveStepId(step.id)}
+            type="button"
+          >
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{step.label}</strong>
             <p>{step.body}</p>
-          </article>
+          </button>
         ))}
       </section>
 
-      <section className="tutorial-grid tutorial-grid-three" aria-label="commercial-plan-guide">
+      <section className="tutorial-grid tutorial-grid-three tutorial-plan-guide" aria-label="commercial-plan-guide">
         {commercialLadders.map((item) => (
           <article className="tutorial-card" key={item.tier}>
             <p className="eyebrow">{item.tier}</p>
@@ -67,18 +121,6 @@ export function TutorialView() {
           </article>
         ))}
       </section>
-
-      <div className="tutorial-actions">
-        <Link className="nav-link nav-link-active" href="/orchestrate">
-          Run Workflow
-        </Link>
-        <Link className="nav-link" href="/orchestrations">
-          Inspect Replay
-        </Link>
-        <Link className="nav-link" href="/monetization">
-          Compare Plans
-        </Link>
-      </div>
     </PageCard>
   );
 }
