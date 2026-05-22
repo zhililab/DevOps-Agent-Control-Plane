@@ -3,7 +3,7 @@ import logging
 from collections.abc import Callable
 
 from fastapi import BackgroundTasks, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from app.database import SessionLocal
 from app.models import WorkflowQueueEvent, WorkflowQueueJob
@@ -88,12 +88,25 @@ def list_queue_jobs(
     status: str | None = None,
     limit: int = 50,
 ) -> WorkflowQueueHistoryResponse:
-    query = db.query(WorkflowQueueJob)
+    safe_limit = max(1, min(limit, 200))
+    query = db.query(WorkflowQueueJob).options(
+        load_only(
+            WorkflowQueueJob.id,
+            WorkflowQueueJob.status,
+            WorkflowQueueJob.attempts,
+            WorkflowQueueJob.max_attempts,
+            WorkflowQueueJob.cancel_requested,
+            WorkflowQueueJob.orchestration_id,
+            WorkflowQueueJob.error_message,
+            WorkflowQueueJob.created_at,
+            WorkflowQueueJob.updated_at,
+        )
+    )
     if status is not None:
         query = query.filter(WorkflowQueueJob.status == status)
     jobs = (
         query.order_by(WorkflowQueueJob.updated_at.desc(), WorkflowQueueJob.id.desc())
-        .limit(limit)
+        .limit(safe_limit)
         .all()
     )
     return WorkflowQueueHistoryResponse(items=[_to_queue_read(job) for job in jobs])

@@ -259,7 +259,8 @@ Observability and quota contract notes:
 
 - `GET /api/orchestrations/metrics` response fields are stable and ordered as:
   `period_days`, `total_runs`, `weekly_active_orchestrations`, `partial_success_rate`, `average_duration_ms`.
-- `GET /api/orchestrations/history` is returned newest-first for deterministic dashboard aggregation.
+- `GET /api/orchestrations/history` is returned newest-first for deterministic dashboard aggregation. Use `include_steps=false` for lightweight dashboard/trend reads that do not need replay step details.
+- Orchestration history, queue history, ledger, and monetization audit queries are backed by composite indexes for stable filtering and newest-first paging as data grows.
 - Global request quota/rate-limit boundary returns `429 Too many requests. Please retry later.` once configured per window limit is exceeded.
 - Dashboard contract note: monetization observability backend route is `GET /api/observability/monetization`; the frontend API client uses this canonical route.
 

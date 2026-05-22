@@ -108,6 +108,12 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
   - safe migration/backfill to recalculate historical business dates from UTC timestamps
   - default personal history views hide smoke/system records while `include_system=true` keeps audit access
   - read-only history endpoints no longer write `agent_run_logs`
+- added query performance optimization pass:
+  - batched `/api/orchestrations/history` step replay loading to remove N+1 step queries
+  - optional `include_steps=false` lightweight orchestration history reads for dashboard/trend views
+  - SQL aggregate orchestration metrics instead of Python-side full-window scans
+  - composite indexes for orchestration history filters, step replay lookup, queue history filters, queue event timelines, monetization logs, and history ledger integrity lookups
+  - backend regression tests for batched step loading, lightweight history reads, aggregate metrics, and stable queue ordering
 - updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, `make security-check`, and `make k8s-render`
 - verified simplified server deployment on target host with `make server-deploy`
   - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`

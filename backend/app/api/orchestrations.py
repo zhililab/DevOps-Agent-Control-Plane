@@ -100,8 +100,15 @@ def list_orchestrations_endpoint(
     status: str | None = Query(default=None),
     subscription_tier: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
+    include_steps: bool = Query(default=True),
 ) -> WorkflowOrchestrationHistoryResponse:
-    return list_orchestrations(db, status=status, subscription_tier=subscription_tier, limit=limit)
+    return list_orchestrations(
+        db,
+        status=status,
+        subscription_tier=subscription_tier,
+        limit=limit,
+        include_steps=include_steps,
+    )
 
 
 @router.get("/metrics", response_model=WorkflowOrchestrationMetricsResponse)

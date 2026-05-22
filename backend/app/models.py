@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -100,6 +100,9 @@ class ReflectionEntry(Base):
 
 class AgentRunLog(Base):
     __tablename__ = "agent_run_logs"
+    __table_args__ = (
+        Index("ix_agent_run_logs_task_created_id", "task_type", "created_at", "id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     task_type: Mapped[str] = mapped_column(String(64), index=True)
@@ -158,6 +161,18 @@ class PromptTemplate(Base):
 
 class WorkflowOrchestration(Base):
     __tablename__ = "workflow_orchestrations"
+    __table_args__ = (
+        Index("ix_workflow_orchestrations_created_id", "created_at", "id"),
+        Index("ix_workflow_orchestrations_status_created_id", "status", "created_at", "id"),
+        Index("ix_workflow_orchestrations_tier_created_id", "subscription_tier", "created_at", "id"),
+        Index(
+            "ix_workflow_orchestrations_status_tier_created_id",
+            "status",
+            "subscription_tier",
+            "created_at",
+            "id",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     status: Mapped[str] = mapped_column(String(32), default="success", index=True)
@@ -172,6 +187,9 @@ class WorkflowOrchestration(Base):
 
 class WorkflowStepRun(Base):
     __tablename__ = "workflow_step_runs"
+    __table_args__ = (
+        Index("ix_workflow_step_runs_orchestration_id_id", "orchestration_id", "id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     orchestration_id: Mapped[int] = mapped_column(Integer, index=True)
@@ -203,6 +221,10 @@ class WorkflowTemplate(Base):
 
 class WorkflowQueueJob(Base):
     __tablename__ = "workflow_queue_jobs"
+    __table_args__ = (
+        Index("ix_workflow_queue_jobs_updated_id", "updated_at", "id"),
+        Index("ix_workflow_queue_jobs_status_updated_id", "status", "updated_at", "id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
@@ -218,6 +240,9 @@ class WorkflowQueueJob(Base):
 
 class WorkflowQueueEvent(Base):
     __tablename__ = "workflow_queue_events"
+    __table_args__ = (
+        Index("ix_workflow_queue_events_job_created_id", "queue_job_id", "created_at", "id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     queue_job_id: Mapped[int] = mapped_column(Integer, index=True)
@@ -285,6 +310,8 @@ class HistoryEvent(Base):
     __tablename__ = "history_events"
     __table_args__ = (
         UniqueConstraint("event_uid", name="uq_history_events_event_uid"),
+        Index("ix_history_events_entity_occurrence", "entity_type", "entity_id", "occurred_at", "id"),
+        Index("ix_history_events_correlation_occurrence", "correlation_id", "occurred_at", "id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

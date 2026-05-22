@@ -2,12 +2,14 @@ import json
 import logging
 from datetime import datetime
 from datetime import timedelta
+from collections import defaultdict
 from collections.abc import Callable
 from statistics import quantiles
 
 from fastapi import HTTPException
+from sqlalchemy import case, func
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from app.models import AgentRunLog, NoteEntry, PromptTemplate, WorkflowOrchestration, WorkflowQueueJob, WorkflowStepRun, WorkflowTemplate
 from app.schemas import (
@@ -317,23 +319,47 @@ def list_orchestrations(
     status: str | None = None,
     subscription_tier: str | None = None,
     limit: int = 50,
+    include_steps: bool = True,
 ) -> WorkflowOrchestrationHistoryResponse:
-    query = db.query(WorkflowOrchestration)
+    safe_limit = max(1, min(limit, 200))
+    query = db.query(WorkflowOrchestration).options(
+        load_only(
+            WorkflowOrchestration.id,
+            WorkflowOrchestration.status,
+            WorkflowOrchestration.duration_ms,
+            WorkflowOrchestration.entry_source,
+            WorkflowOrchestration.subscription_tier,
+            WorkflowOrchestration.result_json,
+            WorkflowOrchestration.created_at,
+            WorkflowOrchestration.updated_at,
+        )
+    )
     if status:
         query = query.filter(WorkflowOrchestration.status == status.strip().lower())
     if subscription_tier:
         query = query.filter(WorkflowOrchestration.subscription_tier == normalize_tier(subscription_tier))
-    records = query.order_by(WorkflowOrchestration.created_at.desc()).limit(max(1, min(limit, 200))).all()
+    records = (
+        query.order_by(WorkflowOrchestration.created_at.desc(), WorkflowOrchestration.id.desc())
+        .limit(safe_limit)
+        .all()
+    )
+
+    steps_by_orchestration_id: dict[int, list[WorkflowStepRun]] = defaultdict(list)
+    if include_steps and records:
+        orchestration_ids = [record.id for record in records]
+        step_records = (
+            db.query(WorkflowStepRun)
+            .filter(WorkflowStepRun.orchestration_id.in_(orchestration_ids))
+            .order_by(WorkflowStepRun.orchestration_id.asc(), WorkflowStepRun.id.asc())
+            .all()
+        )
+        for step in step_records:
+            steps_by_orchestration_id[step.orchestration_id].append(step)
 
     items = []
     for record in records:
-        steps = (
-            db.query(WorkflowStepRun)
-            .filter(WorkflowStepRun.orchestration_id == record.id)
-            .order_by(WorkflowStepRun.id.asc())
-            .all()
-        )
-        summary = WorkflowOrchestrationSummary.model_validate(json.loads(record.result_json or "{}"))
+        steps = steps_by_orchestration_id.get(record.id, [])
+        summary = _safe_orchestration_summary(record)
         items.append(_to_orchestration_read(record, steps, summary))
     return WorkflowOrchestrationHistoryResponse(items=items)
 
@@ -341,16 +367,21 @@ def list_orchestrations(
 def get_orchestration_metrics(db: Session, *, days: int = 7) -> WorkflowOrchestrationMetricsResponse:
     period_days = max(1, min(days, 90))
     window_start = _utcnow() - timedelta(days=period_days)
-    records = (
-        db.query(WorkflowOrchestration)
+    total_runs, partial_count, average_duration = (
+        db.query(
+            func.count(WorkflowOrchestration.id),
+            func.coalesce(
+                func.sum(case((WorkflowOrchestration.status == "partial_success", 1), else_=0)),
+                0,
+            ),
+            func.coalesce(func.avg(WorkflowOrchestration.duration_ms), 0),
+        )
         .filter(WorkflowOrchestration.created_at >= window_start)
-        .order_by(WorkflowOrchestration.created_at.desc())
-        .all()
+        .one()
     )
-    total_runs = len(records)
-    partial_count = len([record for record in records if record.status == "partial_success"])
-    duration_total = sum(max(0, record.duration_ms) for record in records)
-    average_duration_ms = int(duration_total / total_runs) if total_runs > 0 else 0
+    total_runs = int(total_runs or 0)
+    partial_count = int(partial_count or 0)
+    average_duration_ms = int(average_duration or 0)
     partial_success_rate = round((partial_count / total_runs), 4) if total_runs > 0 else 0.0
 
     return WorkflowOrchestrationMetricsResponse(
@@ -372,7 +403,7 @@ def get_orchestration(db: Session, orchestration_id: int) -> WorkflowOrchestrati
         .order_by(WorkflowStepRun.id.asc())
         .all()
     )
-    summary = WorkflowOrchestrationSummary.model_validate(json.loads(record.result_json or "{}"))
+    summary = _safe_orchestration_summary(record)
     return _to_orchestration_read(record, steps, summary)
 
 
@@ -730,6 +761,17 @@ def _to_orchestration_read(
     )
 
 
+def _safe_orchestration_summary(record: WorkflowOrchestration) -> WorkflowOrchestrationSummary:
+    try:
+        return WorkflowOrchestrationSummary.model_validate(json.loads(record.result_json or "{}"))
+    except Exception:  # noqa: BLE001
+        return WorkflowOrchestrationSummary(
+            conclusion=f"Orchestration #{record.id} is {record.status}.",
+            risks=[],
+            next_actions=[],
+        )
+
+
 def _to_template_read(record: WorkflowTemplate) -> WorkflowTemplateRead:
     return WorkflowTemplateRead(
         id=record.id,
@@ -796,23 +838,26 @@ def _monetization_error(
 
 def _count_usage_events(db: Session, *, endpoint: str, subject_id: str, window_days: int) -> int:
     window_start = _utcnow() - timedelta(days=max(1, window_days))
+    endpoint_needle = _json_field_needle("endpoint", endpoint)
+    subject_needle = _json_field_needle("subject_id", subject_id)
     try:
-        rows = (
+        return int(
             db.query(AgentRunLog)
             .filter(
                 AgentRunLog.task_type == "monetization.usage_recorded",
                 AgentRunLog.created_at >= window_start,
+                AgentRunLog.input_summary.contains(endpoint_needle),
+                AgentRunLog.input_summary.contains(subject_needle),
             )
-            .all()
+            .count()
         )
     except SQLAlchemyError:
         return 0
-    count = 0
-    for row in rows:
-        payload = _safe_json_dict(row.input_summary)
-        if payload.get("endpoint") == endpoint and payload.get("subject_id") == subject_id:
-            count += 1
-    return count
+
+
+def _json_field_needle(key: str, value: str) -> str:
+    encoded = json.dumps({key: value}, separators=(",", ":"), ensure_ascii=True)
+    return encoded[1:-1]
 
 
 def _safe_json_dict(value: str) -> dict[str, object]:

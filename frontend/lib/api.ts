@@ -305,11 +305,17 @@ export const apiClient = {
     });
   },
 
-  listWorkflowOrchestrations(params?: { status?: string; subscription_tier?: string; limit?: number }) {
+  listWorkflowOrchestrations(params?: {
+    status?: string;
+    subscription_tier?: string;
+    limit?: number;
+    include_steps?: boolean;
+  }) {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
     if (params?.subscription_tier) search.set("subscription_tier", params.subscription_tier);
     if (params?.limit) search.set("limit", String(params.limit));
+    if (params?.include_steps !== undefined) search.set("include_steps", String(params.include_steps));
     const suffix = search.toString() ? `?${search.toString()}` : "";
     return request<WorkflowOrchestrationHistoryResponse>(`/orchestrations/history${suffix}`);
   },

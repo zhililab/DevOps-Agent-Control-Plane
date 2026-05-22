@@ -380,7 +380,7 @@ export function DashboardView() {
 
       const [metricsResult, historyResult, monetizationResult] = await Promise.allSettled([
         apiClient.getWorkflowOrchestrationMetrics(orchestrationWindowDays),
-        apiClient.listWorkflowOrchestrations({ limit: 200 }),
+        apiClient.listWorkflowOrchestrations({ limit: 200, include_steps: false }),
         apiClient.getMonetizationObservability(orchestrationWindowDays),
       ]);
 

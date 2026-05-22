@@ -57,6 +57,13 @@ This document records the current product target and the minimum functionality t
 - Daily plan/reflection/analysis history must hide `record_source=smoke_check|system` by default and expose it only through `include_system=true`.
 - Read-only history endpoints must not create new agent run log records.
 
+## Query Performance Baseline
+
+- `/api/orchestrations/history` must load step replay records in a single batched query for the page of runs.
+- Dashboard trend reads should use `/api/orchestrations/history?include_steps=false` when step replay details are not rendered.
+- Orchestration metrics should use database aggregate queries instead of Python-side full-window scans.
+- Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
+
 ## Non-Blocking Product Modules
 
 - P7 Communication Assistant remains part of the long-term personal assistant vision.
