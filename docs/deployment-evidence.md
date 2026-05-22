@@ -228,6 +228,30 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - `GET /api/orchestrations/metrics?days=7` returned billable work unit and policy block fields
   - unapproved `Release Gate And Remote Deploy` run with a power entitlement returned `409` with `detail.code=approval_required`
 
+## 2026-05-22 Commercial UI Polish Verification
+
+- Implementation commit: `992205a feat: polish commercial tutorial UI`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release fixes included:
+  - lighter product-shell header, softer shadows, and stronger first-screen hierarchy for `DevOps Agent Control Plane`
+  - less boxy grouped navigation across Operate, Commercial, Learn, Assets, and Personal Loops
+  - interactive `/tutorial` demo path for template selection, entitlement policy, replay evidence, and commercial value tracking
+  - tutorial interaction regression test and generated screenshot artifacts ignored from git via `output/`
+- Verified on local gates:
+  - focused frontend tests passed: `app-nav`, `pages`, and `tutorial-flow`
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make release-check` passed, including Playwright E2E, security check, and k8s render
+  - desktop and mobile Playwright screenshots were captured locally for `/tutorial`
+- Verified on remote:
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `200`
+  - public `/tutorial`, `/dashboard`, `/monetization`, `/orchestrate`, and `/orchestrations` returned `200`
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
