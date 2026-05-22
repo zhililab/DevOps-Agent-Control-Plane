@@ -281,6 +281,39 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - public `POST /api/monetization/checkout/manual` activated a Pro test account
   - public `GET /api/monetization/events?subject=...&limit=3` returned the account-scoped `checkout_completed` event
 
+## 2026-05-22 Team Trust Layer V1 Release Verification
+
+- Implementation commit: `e5d0655 feat: add team trust checkpoint layer`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release features included:
+  - State & Checkpoint V2 persistence for orchestration, step, and queue lifecycle state snapshots
+  - canonical JSON + SHA-256 checkpoint payload integrity checks with existing sensitive-field redaction rules
+  - lightweight team trust metadata on orchestration and queue runs: `team_subject`, `requested_by`, `approval_actor`, and `approval_note`
+  - checkpoint history API: `GET /api/orchestrations/{id}/checkpoints`
+  - team-filtered orchestration and queue history
+  - `/orchestrate` team/requester/approver inputs for commercial demos
+  - `/orchestrations` checkpoint timeline, actor summary, team filter, and persistent ledger verification display
+  - dashboard Team Trust KPIs for approved runs, checkpointed runs, policy blocks, and failed jobs needing owner
+  - tutorial demo path updated to Run -> Approve -> Checkpoint -> Replay -> Verify -> Upgrade
+- Verified on local gates:
+  - full backend test suite passed
+  - full frontend test suite passed
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make e2e-orchestration` passed with ledger verification persistence and checkpoint timeline checks
+  - `make security-check` passed; remaining npm audit findings are below the configured high-severity gate and require future breaking upgrades
+  - `make release-check` passed, including Playwright E2E, security check, and k8s render
+- Verified on remote:
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `200` with `{"status":"ok"}`
+  - public `/dashboard`, `/orchestrate`, `/orchestrations`, and `/monetization` returned `200`
+  - public `GET /api/orchestrations/history?limit=1` returned a run with team metadata, `ledger_integrity.integrity_status=valid`, and `checkpoint_count=7`
+  - public `GET /api/orchestrations/49/checkpoints` returned seven valid checkpoint events: `queue.queued`, `queue.started`, `orchestration.accepted`, `step.started`, `step.success`, `orchestration.success`, and `queue.succeeded`
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
