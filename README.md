@@ -105,6 +105,8 @@ Documentation map: `docs/README.md`.
 - `PUT /api/orchestrations/templates/{id}`: update orchestration workflow template
 - `GET /api/orchestrations/templates`: list orchestration workflow templates
 - `GET /api/orchestrations/templates/export`: export orchestration workflow templates
+- `GET /api/orchestrations/templates/init/json`: get built-in orchestration workflow templates
+- `POST /api/orchestrations/templates/import/builtin`: import or refresh built-in orchestration workflow templates
 - `POST /api/orchestrations/templates/import`: import orchestration workflow templates
 - `GET /api/observability/monetization`: monetization observability aggregation (`days=7|30`)
 - `GET /api/monetization/profile`: read subscription profile by `subject`
@@ -482,6 +484,14 @@ Or run local helper commands from repo root:
 make templates-import-json
 make templates-import-sql
 ```
+
+Built-in orchestration workflow templates are also available for `/orchestrate`:
+
+```bash
+curl -X POST http://localhost:8000/api/orchestrations/templates/import/builtin
+```
+
+The curated orchestration pack is based on the current DevOps MVP operating loop: release gates, remote deployment verification, history accuracy, security hardening, query performance, entitlement recovery, queue lifecycle audit, ledger integrity, database migration readiness, visual QA, Kubernetes follow-up readiness, and free-tier smoke checks.
 
 ## Current Limitations
 

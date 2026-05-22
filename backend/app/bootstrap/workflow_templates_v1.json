@@ -1,0 +1,134 @@
+[
+  {
+    "name": "Release Gate And Remote Deploy",
+    "description": "Run the full local release gate, prepare deployment notes, and verify the Docker Compose server rollout.",
+    "steps": [
+      { "step_name": "Plan Release Gate", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Deploy Risk", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Remote Evidence", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["release", "deploy", "qa", "server"],
+    "enabled": true
+  },
+  {
+    "name": "Production Incident Triage",
+    "description": "Structure a production issue into immediate containment, evidence gathering, and next validation action.",
+    "steps": [
+      { "step_name": "Plan Triage Window", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Incident Signals", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Containment Plan", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["incident", "sre", "devops", "triage"],
+    "enabled": true
+  },
+  {
+    "name": "History Accuracy Audit",
+    "description": "Verify business-date correctness, UTC audit timestamps, record source hygiene, and history sorting.",
+    "steps": [
+      { "step_name": "Plan Data Accuracy Checks", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Historical Records", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Accuracy Evidence", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["history", "data", "timezone", "audit"],
+    "enabled": true
+  },
+  {
+    "name": "Security Hardening Gate",
+    "description": "Check security headers, entitlement boundaries, oversized payloads, rate limits, and dependency audit status.",
+    "steps": [
+      { "step_name": "Plan Security Scope", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Security Signals", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Hardening Evidence", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["security", "headers", "entitlement", "robustness"],
+    "enabled": true
+  },
+  {
+    "name": "Query Performance Optimization",
+    "description": "Turn a slow history/dashboard path into indexed, batched, measured queries with regression tests.",
+    "steps": [
+      { "step_name": "Plan Hot Path Benchmark", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Query Plan", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Performance Evidence", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["performance", "database", "history", "dashboard"],
+    "enabled": true
+  },
+  {
+    "name": "Entitlement Recovery Debug",
+    "description": "Diagnose stale signed entitlement tokens, bootstrap recovery, and no-legacy-header browser behavior.",
+    "steps": [
+      { "step_name": "Plan Token Reproduction", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Entitlement Failure", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Recovery Flow", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["entitlement", "auth", "browser", "recovery"],
+    "enabled": true
+  },
+  {
+    "name": "Queue Lifecycle Audit",
+    "description": "Inspect queued, running, retry, cancel, succeeded, failed, and timeline replay behavior.",
+    "steps": [
+      { "step_name": "Plan Queue State Matrix", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Queue Events", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Retry Cancel Semantics", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["queue", "timeline", "retry", "audit"],
+    "enabled": true
+  },
+  {
+    "name": "Ledger Integrity Verification",
+    "description": "Verify canonical JSON payload hashes, event ordering, backfill idempotency, and integrity status.",
+    "steps": [
+      { "step_name": "Plan Ledger Sample", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Event Chain", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Integrity Result", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["ledger", "integrity", "audit", "history"],
+    "enabled": true
+  },
+  {
+    "name": "Database Migration Readiness",
+    "description": "Prepare backup, migration head checks, rollback evidence, and post-migration API validation.",
+    "steps": [
+      { "step_name": "Plan Backup And Migration", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Schema Change Risk", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Migration Evidence", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["migration", "backup", "database", "release"],
+    "enabled": true
+  },
+  {
+    "name": "Visual QA And Obsidian Polish",
+    "description": "Check dashboard, history, graph interactions, contrast, mobile readability, and visual baseline drift.",
+    "steps": [
+      { "step_name": "Plan Visual QA Pass", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze UI Regression Signals", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Visual Baseline", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["ui", "visual", "obsidian", "qa"],
+    "enabled": true
+  },
+  {
+    "name": "Kubernetes Path Readiness",
+    "description": "Keep k8s/k3d as a non-blocking follow-up by rendering manifests and recording cluster blockers.",
+    "steps": [
+      { "step_name": "Plan Cluster Gate", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyze Manifest Risk", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Review Deployment Path", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["kubernetes", "k3d", "infra", "follow-up"],
+    "enabled": true
+  },
+  {
+    "name": "Free Tier Smoke Check",
+    "description": "Run a single-step orchestration compatible with free-tier capability limits for fast smoke validation.",
+    "steps": [
+      { "step_name": "Free Tier Planner Smoke", "agent_type": "planner", "enabled": true },
+      { "step_name": "Analyzer Disabled For Free Tier", "agent_type": "analyzer", "enabled": false },
+      { "step_name": "Reviewer Disabled For Free Tier", "agent_type": "reviewer", "enabled": false }
+    ],
+    "tags": ["smoke", "free-tier", "qa", "fast"],
+    "enabled": true
+  }
+]

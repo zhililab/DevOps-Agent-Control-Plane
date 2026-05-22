@@ -164,6 +164,58 @@ describe("orchestration workflow", () => {
     expect(window.localStorage.getItem("entitlement_token")).toBe("fresh-token");
   });
 
+  test("imports curated workflow templates and refreshes template list", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    let listCalls = 0;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("/orchestrations/templates/import/builtin")) {
+        return new Response(
+          JSON.stringify({
+            imported: 12,
+            updated: 0,
+            skipped: 0,
+            total: 12,
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/templates")) {
+        listCalls += 1;
+        const items =
+          listCalls === 1
+            ? []
+            : [
+                {
+                  id: 501,
+                  name: "Release Gate And Remote Deploy",
+                  description: "Run the full local release gate and remote rollout verification.",
+                  steps: [
+                    { step_name: "Plan Release Gate", agent_type: "planner", enabled: true },
+                    { step_name: "Analyze Deploy Risk", agent_type: "analyzer", enabled: true },
+                    { step_name: "Review Remote Evidence", agent_type: "reviewer", enabled: true },
+                  ],
+                  tags: ["release", "deploy"],
+                  enabled: true,
+                  created_at: "2026-05-22T00:00:00Z",
+                  updated_at: "2026-05-22T00:00:00Z",
+                },
+              ];
+        return new Response(JSON.stringify(items), { status: 200 });
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestratePage />);
+    fireEvent.click(screen.getByRole("button", { name: "Import Curated Templates" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Curated templates imported: imported=12, updated=0.")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("option", { name: "Release Gate And Remote Deploy" })).toBeInTheDocument();
+  });
+
   test("runs orchestration then verifies replay in history page", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     const createdRun = {

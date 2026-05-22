@@ -43,8 +43,10 @@ from app.services.orchestration_service import (
     export_workflow_templates,
     get_orchestration,
     get_orchestration_metrics,
+    import_builtin_workflow_templates,
     import_workflow_templates,
     list_orchestrations,
+    load_builtin_workflow_templates,
     list_workflow_templates,
     run_orchestration,
     update_workflow_template,
@@ -259,6 +261,18 @@ def export_workflow_templates_endpoint(
     db: Session = Depends(get_db),
 ) -> list[WorkflowTemplateRead]:
     return export_workflow_templates(db)
+
+
+@router.get("/templates/init/json", response_model=list[WorkflowTemplateCreate])
+def get_workflow_template_init_json() -> list[WorkflowTemplateCreate]:
+    return load_builtin_workflow_templates()
+
+
+@router.post("/templates/import/builtin", response_model=WorkflowTemplateImportResponse)
+def import_builtin_workflow_templates_endpoint(
+    db: Session = Depends(get_db),
+) -> WorkflowTemplateImportResponse:
+    return import_builtin_workflow_templates(db)
 
 
 @router.post("/templates/import", response_model=WorkflowTemplateImportResponse)

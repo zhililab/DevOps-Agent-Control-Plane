@@ -4,6 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 from collections import defaultdict
 from collections.abc import Callable
+from pathlib import Path
 from statistics import quantiles
 
 from fastapi import HTTPException
@@ -49,6 +50,7 @@ DEFAULT_STEPS = [
     WorkflowStepDefinition(step_name="Analyze Technical Signals", agent_type="analyzer", enabled=True),
     WorkflowStepDefinition(step_name="Review And Reflect", agent_type="reviewer", enabled=True),
 ]
+BUILTIN_WORKFLOW_TEMPLATES_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "workflow_templates_v1.json"
 
 
 def _utcnow() -> datetime:
@@ -542,12 +544,29 @@ def list_workflow_templates(db: Session, *, enabled: bool | None = None) -> list
     query = db.query(WorkflowTemplate)
     if enabled is not None:
         query = query.filter(WorkflowTemplate.enabled == enabled)
-    records = query.order_by(WorkflowTemplate.updated_at.desc()).all()
+    records = query.order_by(WorkflowTemplate.updated_at.desc(), WorkflowTemplate.id.desc()).all()
     return [_to_template_read(record) for record in records]
 
 
 def export_workflow_templates(db: Session) -> list[WorkflowTemplateRead]:
     return list_workflow_templates(db)
+
+
+def load_builtin_workflow_templates() -> list[WorkflowTemplateCreate]:
+    raw = json.loads(BUILTIN_WORKFLOW_TEMPLATES_PATH.read_text(encoding="utf-8"))
+    if not isinstance(raw, list):
+        raise RuntimeError("Workflow template bootstrap file must contain a list.")
+    return [WorkflowTemplateCreate.model_validate(item) for item in raw]
+
+
+def import_builtin_workflow_templates(db: Session) -> WorkflowTemplateImportResponse:
+    return import_workflow_templates(
+        db,
+        WorkflowTemplateImportRequest(
+            items=load_builtin_workflow_templates(),
+            upsert_by_name=True,
+        ),
+    )
 
 
 def import_workflow_templates(db: Session, payload: WorkflowTemplateImportRequest) -> WorkflowTemplateImportResponse:

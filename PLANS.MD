@@ -114,6 +114,9 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
   - SQL aggregate orchestration metrics instead of Python-side full-window scans
   - composite indexes for orchestration history filters, step replay lookup, queue history filters, queue event timelines, monetization logs, and history ledger integrity lookups
   - backend regression tests for batched step loading, lightweight history reads, aggregate metrics, and stable queue ordering
+- added expanded orchestration workflow template pack:
+  - built-in templates for release gates, production incident triage, history accuracy audit, security hardening, query performance, entitlement recovery, queue lifecycle audit, ledger integrity, database migration readiness, visual QA, Kubernetes readiness, and free-tier smoke checks
+  - migration seeding for existing deployments and API/UI import path for refreshing curated workflow templates
 - updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, `make security-check`, and `make k8s-render`
 - verified simplified server deployment on target host with `make server-deploy`
   - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`

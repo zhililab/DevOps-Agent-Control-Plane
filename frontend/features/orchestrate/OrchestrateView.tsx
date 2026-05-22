@@ -70,17 +70,6 @@ export function OrchestrateView() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
   useEffect(() => {
-    async function loadTemplates() {
-      try {
-        const response = await apiClient.listWorkflowTemplates();
-        setTemplates(response);
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "Failed to load workflow templates.");
-      } finally {
-        setIsLoadingTemplates(false);
-      }
-    }
-
     void loadTemplates();
   }, []);
 
@@ -193,6 +182,17 @@ export function OrchestrateView() {
       }
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Failed to refresh queue status.");
+    }
+  }
+
+  async function loadTemplates() {
+    try {
+      const response = await apiClient.listWorkflowTemplates();
+      setTemplates(response);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Failed to load workflow templates.");
+    } finally {
+      setIsLoadingTemplates(false);
     }
   }
 
@@ -338,6 +338,20 @@ export function OrchestrateView() {
     }
   }
 
+  async function onImportBuiltinTemplates() {
+    setStatus(null);
+    setError(null);
+    setIsLoadingTemplates(true);
+    try {
+      const response = await apiClient.importBuiltinWorkflowTemplates();
+      await loadTemplates();
+      setStatus(`Curated templates imported: imported=${response.imported}, updated=${response.updated}.`);
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : "Failed to import curated templates.");
+      setIsLoadingTemplates(false);
+    }
+  }
+
   function applyTemplate(templateId: string) {
     const id = Number(templateId);
     const matched = templates.find((template) => template.id === id);
@@ -435,6 +449,9 @@ export function OrchestrateView() {
           </button>
           <button type="button" onClick={onImportTemplates}>
             Import Templates
+          </button>
+          <button type="button" onClick={onImportBuiltinTemplates}>
+            Import Curated Templates
           </button>
         </div>
         {isLoadingTemplates ? <p className="muted">Loading templates...</p> : null}

@@ -81,6 +81,7 @@ This document describes the current deployable DevOps personal workflow orchestr
 - Built-in starter prompt templates live in `backend/app/bootstrap/prompt_templates_v1.json`.
 - Local helper commands `make templates-import-json` and `make templates-import-sql` call the import APIs.
 - `WorkflowTemplate` is separate from prompt templates: it stores orchestration step definitions for replayable multi-agent workflows.
+- Built-in workflow templates live in `backend/app/bootstrap/workflow_templates_v1.json` and are seeded by migration plus `POST /api/orchestrations/templates/import/builtin`.
 - Knowledge/template retrieval currently supports basic text query (`q`) and exact tag filtering; semantic/vector ranking is intentionally out of scope for the current MVP.
 
 ## Frontend

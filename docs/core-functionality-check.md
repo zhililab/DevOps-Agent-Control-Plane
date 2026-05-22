@@ -20,6 +20,7 @@ This document records the current product target and the minimum functionality t
 - Generate and persist daily plans, daily reflections, and technical analysis records.
 - Review daily history with accurate `Asia/Shanghai` business dates while preserving UTC audit timestamps.
 - Browse reusable knowledge entries, prompt templates, and workflow templates.
+- Import or refresh curated orchestration workflow templates for the current DevOps operating loop.
 - Verify orchestration history ledger integrity for a run and confirm event count/status.
 
 ## Core API Surface
@@ -38,6 +39,8 @@ This document records the current product target and the minimum functionality t
 - `GET /api/orchestrations/queue/{job_id}`
 - `POST /api/orchestrations/queue/{job_id}/retry`
 - `POST /api/orchestrations/queue/{job_id}/cancel`
+- `GET /api/orchestrations/templates/init/json`
+- `POST /api/orchestrations/templates/import/builtin`
 - `GET /api/observability/monetization?days=...`
 - `GET /api/monetization/profile|usage|events`
 

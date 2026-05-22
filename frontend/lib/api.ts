@@ -364,6 +364,12 @@ export const apiClient = {
     return request<WorkflowTemplate[]>("/orchestrations/templates/export");
   },
 
+  importBuiltinWorkflowTemplates() {
+    return request<WorkflowTemplateImportResponse>("/orchestrations/templates/import/builtin", {
+      method: "POST",
+    });
+  },
+
   importWorkflowTemplates(payload: { items: Omit<WorkflowTemplate, "id" | "created_at" | "updated_at">[] }) {
     return request<WorkflowTemplateImportResponse>("/orchestrations/templates/import", {
       method: "POST",
