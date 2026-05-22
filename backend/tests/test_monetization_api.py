@@ -1,4 +1,5 @@
 import json
+from calendar import monthrange
 from datetime import date, datetime, timedelta, timezone
 
 from app.config import get_settings
@@ -17,6 +18,7 @@ from app.models import (
     WorkflowTemplate,
 )
 from app.services.entitlement_service import resolve_entitlement_context
+from app.services.monetization_service import backfill_current_period_usage_counters
 
 
 def _now() -> datetime:
@@ -78,6 +80,8 @@ def test_monetization_usage_sorts_counters_deterministically_for_subject(client)
     db_generator = app.dependency_overrides[get_db]()
     db = next(db_generator)
     now = _now()
+    period_start = date(now.year, now.month, 1)
+    period_end = date(now.year, now.month, monthrange(now.year, now.month)[1])
     try:
         profile = SubscriptionProfile(
             subject="usage-subject",
@@ -102,8 +106,8 @@ def test_monetization_usage_sorts_counters_deterministically_for_subject(client)
                 UsageCounter(
                     subscription_profile_id=profile.id,
                     metric=UsageMetric.workflow_runs,
-                    period_start=date(2026, 5, 1),
-                    period_end=date(2026, 5, 31),
+                    period_start=period_start,
+                    period_end=period_end,
                     used=7,
                     limit=100,
                     created_at=now,
@@ -122,8 +126,8 @@ def test_monetization_usage_sorts_counters_deterministically_for_subject(client)
                 UsageCounter(
                     subscription_profile_id=profile.id,
                     metric=UsageMetric.queued_runs,
-                    period_start=date(2026, 5, 1),
-                    period_end=date(2026, 5, 31),
+                    period_start=period_start,
+                    period_end=period_end,
                     used=2,
                     limit=50,
                     created_at=now,
@@ -376,12 +380,146 @@ def test_active_manual_subscription_issues_signed_entitlement_and_scopes_metrics
         )
         assert run.status_code == 200
 
+        usage = client.get("/api/monetization/usage?subject=demo-user")
+        assert usage.status_code == 200
+        counters = {item["metric"]: item for item in usage.json()["counters"]}
+        assert counters["workflow_runs"]["used"] == 1
+        assert counters["workflow_runs"]["limit"] == 300
+        assert counters["queued_runs"]["used"] == 0
+
         metrics = client.get("/api/monetization/commercial-metrics?days=7&subject=demo-user")
         assert metrics.status_code == 200
         metrics_payload = metrics.json()
         assert metrics_payload["usage_summary"]["workflow_runs_used"] == 1
+        assert metrics_payload["plan_usage"]["workflow_runs_used"] == 1
+        assert metrics_payload["plan_usage"]["workflow_runs_limit"] == 300
         assert metrics_payload["billable_work_units"]["total"] == 3
         assert metrics_payload["top_templates"][0]["template_name"] == "Ad hoc workflow"
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
+
+
+def test_active_manual_subscription_records_queue_usage_counter(client) -> None:
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "manual-billing-queue-secret"
+        settings.entitlement_required = True
+
+        checkout = client.post(
+            "/api/monetization/checkout/manual",
+            json={"subject": "queue-demo-user", "target_tier": "pro"},
+        )
+        assert checkout.status_code == 200
+        entitlement = client.get("/api/monetization/entitlement?subject=queue-demo-user")
+        assert entitlement.status_code == 200
+
+        queued = client.post(
+            "/api/orchestrations/queue/run",
+            headers={"X-Entitlement": entitlement.json()["token"]},
+            json={
+                "entry_source": "manual_billing_queue_test",
+                "steps": [
+                    {"step_name": "Plan Queue Workflow", "agent_type": "planner", "enabled": True},
+                    {"step_name": "Analyze Queue Workflow", "agent_type": "analyzer", "enabled": True},
+                    {"step_name": "Review Queue Workflow", "agent_type": "reviewer", "enabled": True},
+                ],
+                "daily_context": {
+                    "tasks": ["Run queued workflow"],
+                    "meetings": [],
+                    "blockers": [],
+                    "priorities": ["Run queued workflow"],
+                },
+                "technical_input": {
+                    "issue_description": "Queue deployment check.",
+                    "errors": [],
+                    "logs": "queued",
+                    "code_snippets": [],
+                },
+                "reflection_input": {
+                    "completed": ["Queued"],
+                    "unfinished": [],
+                    "blockers": [],
+                    "mood_or_notes": "steady",
+                },
+                "persist_knowledge": False,
+                "persist_template": False,
+            },
+        )
+        assert queued.status_code == 200
+
+        usage = client.get("/api/monetization/usage?subject=queue-demo-user")
+        assert usage.status_code == 200
+        counters = {item["metric"]: item for item in usage.json()["counters"]}
+        assert counters["workflow_runs"]["used"] == 0
+        assert counters["queued_runs"]["used"] == 1
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
+
+
+def test_manual_subscription_quota_uses_current_billing_period_counter(client) -> None:
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "manual-billing-quota-secret"
+        settings.entitlement_required = True
+
+        checkout = client.post(
+            "/api/monetization/checkout/manual",
+            json={"subject": "quota-demo-user", "target_tier": "pro"},
+        )
+        assert checkout.status_code == 200
+
+        db_generator = app.dependency_overrides[get_db]()
+        db = next(db_generator)
+        try:
+            profile_id = checkout.json()["profile"]["id"]
+            counter = (
+                db.query(UsageCounter)
+                .filter(
+                    UsageCounter.subscription_profile_id == profile_id,
+                    UsageCounter.metric == UsageMetric.workflow_runs,
+                )
+                .first()
+            )
+            assert counter is not None
+            counter.used = counter.limit
+            db.commit()
+        finally:
+            db_generator.close()
+
+        entitlement = client.get("/api/monetization/entitlement?subject=quota-demo-user")
+        assert entitlement.status_code == 200
+
+        blocked = client.post(
+            "/api/orchestrations/run",
+            headers={"X-Entitlement": entitlement.json()["token"]},
+            json={
+                "entry_source": "manual_billing_quota_test",
+                "steps": [
+                    {"step_name": "Plan Quota Workflow", "agent_type": "planner", "enabled": True},
+                ],
+                "daily_context": {
+                    "tasks": ["Run quota workflow"],
+                    "meetings": [],
+                    "blockers": [],
+                    "priorities": ["Run quota workflow"],
+                },
+                "persist_knowledge": False,
+                "persist_template": False,
+            },
+        )
+        assert blocked.status_code == 429
+        detail = blocked.json()["detail"]
+        assert detail["code"] == "quota_exceeded"
+        assert detail["quota"]["window"] == "billing_period"
+        assert detail["quota"]["metric"] == "workflow_runs"
+        assert detail["quota"]["used"] == 300
+        assert detail["quota"]["limit"] == 300
     finally:
         settings.entitlement_secret = old_secret
         settings.entitlement_required = old_required
@@ -458,6 +596,8 @@ def test_commercial_metrics_aggregates_subject_scoped_usage_policy_blocks_and_te
     db_generator = app.dependency_overrides[get_db]()
     db = next(db_generator)
     now = _now()
+    period_start = date(now.year, now.month, 1)
+    period_end = date(now.year, now.month, monthrange(now.year, now.month)[1])
     try:
         profile = SubscriptionProfile(
             subject="metrics-subject",
@@ -495,8 +635,8 @@ def test_commercial_metrics_aggregates_subject_scoped_usage_policy_blocks_and_te
                 UsageCounter(
                     subscription_profile_id=profile.id,
                     metric=UsageMetric.workflow_runs,
-                    period_start=date(2026, 5, 1),
-                    period_end=date(2026, 5, 31),
+                    period_start=period_start,
+                    period_end=period_end,
                     used=0,
                     limit=2000,
                     created_at=now,
@@ -505,8 +645,8 @@ def test_commercial_metrics_aggregates_subject_scoped_usage_policy_blocks_and_te
                 UsageCounter(
                     subscription_profile_id=profile.id,
                     metric=UsageMetric.queued_runs,
-                    period_start=date(2026, 5, 1),
-                    period_end=date(2026, 5, 31),
+                    period_start=period_start,
+                    period_end=period_end,
                     used=0,
                     limit=2000,
                     created_at=now,
@@ -609,6 +749,9 @@ def test_commercial_metrics_aggregates_subject_scoped_usage_policy_blocks_and_te
         assert payload["subscription_summary"]["active_subjects"] == 1
         assert payload["usage_summary"]["workflow_runs_used"] == 1
         assert payload["usage_summary"]["workflow_runs_limit"] == 2000
+        assert payload["plan_usage"]["workflow_runs_used"] == 1
+        assert payload["plan_usage"]["workflow_runs_limit"] == 2000
+        assert payload["plan_usage"]["queued_runs_used"] == 0
         assert payload["policy_blocks"]["approval_required"] == 1
         assert payload["policy_blocks"]["total"] == 1
         assert payload["billable_work_units"]["total"] == 7
@@ -619,6 +762,100 @@ def test_commercial_metrics_aggregates_subject_scoped_usage_policy_blocks_and_te
         serialized = json.dumps(payload)
         assert "secret-value" not in serialized
         assert "should-not-leak" not in serialized
+    finally:
+        db_generator.close()
+
+
+def test_usage_counter_backfill_is_idempotent_for_current_billing_period(client) -> None:
+    _ = client
+    db_generator = app.dependency_overrides[get_db]()
+    db = next(db_generator)
+    now = _now()
+    period_start = date(now.year, now.month, 1)
+    period_end = date(now.year, now.month, monthrange(now.year, now.month)[1])
+    try:
+        profile = SubscriptionProfile(
+            subject="backfill-subject",
+            tier=SubscriptionTier.pro,
+            status=SubscriptionStatus.active,
+            billing_provider="manual",
+            entitlements_json=json.dumps({"workflow_runs": 300, "queued_runs": 300}),
+            current_period_start=now - timedelta(days=1),
+            current_period_end=now + timedelta(days=29),
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(profile)
+        db.flush()
+        db.add_all(
+            [
+                UsageCounter(
+                    subscription_profile_id=profile.id,
+                    metric=UsageMetric.workflow_runs,
+                    period_start=period_start,
+                    period_end=period_end,
+                    used=1,
+                    limit=300,
+                    created_at=now,
+                    updated_at=now,
+                ),
+                UsageCounter(
+                    subscription_profile_id=profile.id,
+                    metric=UsageMetric.queued_runs,
+                    period_start=period_start,
+                    period_end=period_end,
+                    used=0,
+                    limit=300,
+                    created_at=now,
+                    updated_at=now,
+                ),
+                AgentRunLog(
+                    task_type="monetization.usage_recorded",
+                    input_summary=json.dumps(
+                        {
+                            "endpoint": "/api/orchestrations/run",
+                            "subject_id": "backfill-subject",
+                            "orchestration_id": 101,
+                        },
+                        separators=(",", ":"),
+                    ),
+                    output_summary="usage recorded",
+                    status="success",
+                    created_at=now,
+                ),
+                AgentRunLog(
+                    task_type="monetization.usage_recorded",
+                    input_summary=json.dumps(
+                        {
+                            "endpoint": "/api/orchestrations/run",
+                            "subject_id": "backfill-subject",
+                            "orchestration_id": 102,
+                        },
+                        separators=(",", ":"),
+                    ),
+                    output_summary="usage recorded",
+                    status="success",
+                    created_at=now,
+                ),
+            ]
+        )
+        db.commit()
+
+        first_changed = backfill_current_period_usage_counters(db, subject="backfill-subject")
+        second_changed = backfill_current_period_usage_counters(db, subject="backfill-subject")
+
+        counter = (
+            db.query(UsageCounter)
+            .filter(
+                UsageCounter.subscription_profile_id == profile.id,
+                UsageCounter.metric == UsageMetric.workflow_runs,
+            )
+            .first()
+        )
+        assert counter is not None
+        assert counter.used == 2
+        assert first_changed == 1
+        assert second_changed == 0
     finally:
         db_generator.close()
 
@@ -648,6 +885,14 @@ def test_commercial_metrics_global_view_counts_multiple_tiers_and_stable_templat
         "queued_runs_used",
         "queued_runs_limit",
         "usage_subjects",
+    }
+    assert set(payload["plan_usage"]) == {
+        "workflow_runs_used",
+        "workflow_runs_limit",
+        "queued_runs_used",
+        "queued_runs_limit",
+        "period_start",
+        "period_end",
     }
     assert isinstance(payload["top_templates"], list)
     assert isinstance(payload["trend"], list)

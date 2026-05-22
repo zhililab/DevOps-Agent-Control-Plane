@@ -71,6 +71,7 @@ def enqueue_orchestration_run(
                 "endpoint": str(monetization_context.get("endpoint", "/api/orchestrations/queue/run")),
                 "tier": str(monetization_context.get("tier", subscription_tier)),
                 "subject_id": str(monetization_context.get("subject_id", "unknown")),
+                "billing_subject": str(monetization_context.get("billing_subject", "")),
                 "queue_job_id": job.id,
             },
             outcome="usage recorded after queue accept",
@@ -236,13 +237,12 @@ def _process_queue_job(job_id: int) -> None:
             current = db.query(WorkflowQueueJob).filter(WorkflowQueueJob.id == job_id).first()
             return bool(current.cancel_requested) if current is not None else True
 
-        monetization_context = request_data.get("monetization_context", {})
         result = run_orchestration(
             db,
             payload,
             subscription_tier=subscription_tier,
             should_cancel=_is_cancel_requested,
-            monetization_context=monetization_context if isinstance(monetization_context, dict) else None,
+            monetization_context=None,
         )
         refreshed = db.query(WorkflowQueueJob).filter(WorkflowQueueJob.id == job_id).first()
         if refreshed is None:

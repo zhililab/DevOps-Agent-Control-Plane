@@ -84,6 +84,7 @@ def run_orchestration_endpoint(
         tier=entitlement.tier,
         subject_id=entitlement.subject_id,
         endpoint="/api/orchestrations/run",
+        billing_subject=entitlement.billing_subject,
     )
     return run_orchestration(
         db,
@@ -93,6 +94,7 @@ def run_orchestration_endpoint(
             "endpoint": "/api/orchestrations/run",
             "tier": entitlement.tier,
             "subject_id": entitlement.subject_id,
+            "billing_subject": entitlement.billing_subject or "",
             "source": entitlement.source,
         },
     )
@@ -179,6 +181,7 @@ def enqueue_orchestration_endpoint(
         tier=entitlement.tier,
         subject_id=entitlement.subject_id,
         endpoint="/api/orchestrations/queue/run",
+        billing_subject=entitlement.billing_subject,
     )
     return enqueue_orchestration_run(
         db,
@@ -189,6 +192,7 @@ def enqueue_orchestration_endpoint(
             "endpoint": "/api/orchestrations/queue/run",
             "tier": entitlement.tier,
             "subject_id": entitlement.subject_id,
+            "billing_subject": entitlement.billing_subject or "",
             "source": entitlement.source,
         },
     )

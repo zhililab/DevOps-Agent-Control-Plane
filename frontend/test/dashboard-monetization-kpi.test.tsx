@@ -79,6 +79,14 @@ describe("dashboard monetization kpi", () => {
               queued_runs_limit: 2300,
               usage_subjects: 2,
             },
+            plan_usage: {
+              workflow_runs_used: 9,
+              workflow_runs_limit: 2300,
+              queued_runs_used: 2,
+              queued_runs_limit: 2300,
+              period_start: "2026-05-01",
+              period_end: "2026-05-31",
+            },
             commercial_events: [{ action: "checkout completed", count: 2 }],
             policy_blocks: {
               approval_required: 1,

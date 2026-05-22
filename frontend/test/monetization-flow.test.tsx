@@ -61,6 +61,14 @@ const commercialMetrics = {
     queued_runs_limit: 300,
     usage_subjects: 1,
   },
+  plan_usage: {
+    workflow_runs_used: 4,
+    workflow_runs_limit: 300,
+    queued_runs_used: 1,
+    queued_runs_limit: 300,
+    period_start: "2026-05-01",
+    period_end: "2026-05-31",
+  },
   commercial_events: [{ action: "checkout completed", count: 1 }],
   policy_blocks: {
     approval_required: 1,
@@ -142,11 +150,15 @@ describe("monetization flow", () => {
     expect(screen.getByRole("heading", { name: "Plans & Usage" })).toBeInTheDocument();
     expect(screen.getByText("COMMERCIAL MVP")).toBeInTheDocument();
     expect(screen.getByText("Turn trusted DevOps runs into metered plans.")).toBeInTheDocument();
+    expect(screen.getByText("Plan Usage")).toBeInTheDocument();
+    expect(screen.getByText("Current billing period")).toBeInTheDocument();
     expect(screen.getByText("Workflow Runs")).toBeInTheDocument();
     expect(screen.getAllByText("4 / 300").length).toBeGreaterThan(0);
     expect(screen.getAllByText("checkout completed").length).toBeGreaterThan(0);
     expect(screen.getByText("Commercial Audit Feed")).toBeInTheDocument();
-    expect(screen.getByText("Commercial Metrics V2")).toBeInTheDocument();
+    expect(screen.queryByText("Commercial Metrics V2")).not.toBeInTheDocument();
+    expect(screen.getByText("Commercial Signal")).toBeInTheDocument();
+    expect(screen.getByText("7D activity & ROI")).toBeInTheDocument();
     expect(screen.getByText("Release Gate And Remote Deploy")).toBeInTheDocument();
     expect(screen.getAllByText("21").length).toBeGreaterThan(0);
 

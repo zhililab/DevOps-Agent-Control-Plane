@@ -701,6 +701,15 @@ class CommercialMetricsUsageSummary(BaseModel):
     usage_subjects: int
 
 
+class CommercialMetricsPlanUsage(BaseModel):
+    workflow_runs_used: int
+    workflow_runs_limit: int
+    queued_runs_used: int
+    queued_runs_limit: int
+    period_start: date | None = None
+    period_end: date | None = None
+
+
 class CommercialMetricsEventSummary(BaseModel):
     action: str
     count: int
@@ -748,6 +757,7 @@ class CommercialMetricsResponse(BaseModel):
     subject: str | None = None
     subscription_summary: CommercialMetricsSubscriptionSummary
     usage_summary: CommercialMetricsUsageSummary
+    plan_usage: CommercialMetricsPlanUsage
     commercial_events: list[CommercialMetricsEventSummary] = Field(default_factory=list)
     policy_blocks: CommercialMetricsPolicyBlocks
     billable_work_units: CommercialMetricsBillableWorkUnits

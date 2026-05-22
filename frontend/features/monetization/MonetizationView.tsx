@@ -67,6 +67,14 @@ const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
     queued_runs_limit: 0,
     usage_subjects: 0,
   },
+  plan_usage: {
+    workflow_runs_used: 0,
+    workflow_runs_limit: 0,
+    queued_runs_used: 0,
+    queued_runs_limit: 0,
+    period_start: null,
+    period_end: null,
+  },
   commercial_events: [],
   policy_blocks: {
     approval_required: 0,
@@ -90,6 +98,10 @@ function metricLabel(metric: string): string {
 
 function formatLimit(used: number, limit: number): string {
   return limit > 0 ? `${used} / ${limit}` : `${used}`;
+}
+
+function periodLabel(start: string | null | undefined, end: string | null | undefined): string {
+  return start && end ? `${start} - ${end}` : "Current billing period";
 }
 
 function eventAction(event: MonetizationEvent): string {
@@ -359,7 +371,8 @@ export function MonetizationView() {
         </article>
 
         <article className="result-block">
-          <p className="eyebrow">Usage Counters</p>
+          <p className="eyebrow">Plan Usage</p>
+          <p className="muted">Current billing period</p>
           {counters.length > 0 ? (
             <div className="usage-counter-grid">
               {counters.map((counter) => (
@@ -375,7 +388,22 @@ export function MonetizationView() {
               ))}
             </div>
           ) : (
-            <p className="muted">No counters yet.</p>
+            <div className="usage-counter-grid">
+              <div className="usage-counter">
+                <strong>Workflow Runs</strong>
+                <span>
+                  {formatLimit(commercialMetrics.plan_usage.workflow_runs_used, commercialMetrics.plan_usage.workflow_runs_limit)}
+                </span>
+                <small>{periodLabel(commercialMetrics.plan_usage.period_start, commercialMetrics.plan_usage.period_end)}</small>
+              </div>
+              <div className="usage-counter">
+                <strong>Queued Runs</strong>
+                <span>
+                  {formatLimit(commercialMetrics.plan_usage.queued_runs_used, commercialMetrics.plan_usage.queued_runs_limit)}
+                </span>
+                <small>{periodLabel(commercialMetrics.plan_usage.period_start, commercialMetrics.plan_usage.period_end)}</small>
+              </div>
+            </div>
           )}
         </article>
       </section>
@@ -383,8 +411,8 @@ export function MonetizationView() {
       <section className="commercial-metrics-panel" aria-label="commercial-metrics">
         <div className="section-heading-row">
           <div>
-            <p className="eyebrow">Commercial Metrics V2</p>
-            <h3>Paid workflow signal</h3>
+            <p className="eyebrow">Commercial Signal</p>
+            <h3>{metricsWindowDays}D activity & ROI</h3>
           </div>
           <div className="graph-filter-row compact-controls" aria-label="commercial-metrics-window">
             {METRICS_WINDOW_OPTIONS.map((days) => {
@@ -413,11 +441,10 @@ export function MonetizationView() {
             </p>
           </article>
           <article className="result-block">
-            <p className="eyebrow">Usage</p>
-            <h3>{formatLimit(commercialMetrics.usage_summary.workflow_runs_used, commercialMetrics.usage_summary.workflow_runs_limit)}</h3>
+            <p className="eyebrow">Window Activity</p>
+            <h3>{commercialMetrics.usage_summary.workflow_runs_used}</h3>
             <p className="muted">
-              Workflow runs · queued{" "}
-              {formatLimit(commercialMetrics.usage_summary.queued_runs_used, commercialMetrics.usage_summary.queued_runs_limit)}
+              Workflow runs · queued {commercialMetrics.usage_summary.queued_runs_used}
             </p>
           </article>
           <article className="result-block">

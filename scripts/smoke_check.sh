@@ -193,7 +193,7 @@ main() {
 
   assert_api_get_json_contains \
     "${API_BASE}/monetization/commercial-metrics?days=7&subject=smoke-check" \
-    '"billable_work_units"'
+    '"plan_usage"'
 
   assert_api_json_contains \
     "${API_BASE}/monetization/checkout/manual" \

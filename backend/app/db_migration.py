@@ -9,6 +9,7 @@ from sqlalchemy.engine import Connection
 from app.database import engine
 from app.db_bootstrap import CORE_TABLES, ensure_core_tables
 from app.services.history_ledger import backfill_history_events
+from app.services.monetization_service import backfill_current_period_usage_counters
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,13 @@ def run_startup_migrations() -> None:
     command.upgrade(config, "head")
     ensure_core_tables()
     backfill_history_events()
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        backfill_current_period_usage_counters(db)
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

@@ -90,16 +90,21 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
   - `POST /api/monetization/cancel`
   - `POST /api/monetization/reactivate`
 - added `/monetization` UI for plan activation, subscription status, usage counters, and commercial audit feed
-- added Commercial Metrics V2:
-  - subject/global commercial reporting for subscription tier distribution, usage logs, policy blocks, billable work units, top templates, event summaries, anomaly hints, and daily work-unit trend
-  - `/monetization` commercial metrics cockpit with 7D/30D switch, top value templates, and partial-failure resilience
+- added Commercial Signal:
+  - subject/global commercial reporting for subscription tier distribution, billing-period plan usage, 7D/30D activity, policy blocks, billable work units, top templates, event summaries, anomaly hints, and daily work-unit trend
+  - `/monetization` commercial signal cockpit with 7D/30D switch, top value templates, and partial-failure resilience
   - `/dashboard` commercial work-unit line trend, policy block KPI, and commercial anomaly hints
 - added Policy Authoring UI V1 on `/orchestrate` so template tier, risk, approval, tool scopes, billable work units, and enabled state are editable without policy tag edits
 - connected Manual Billing V1 subscriptions to signed orchestration entitlement:
   - active subscription subjects can issue signed free/pro/power entitlement tokens
   - `/orchestrate` persists the commercial billing subject and can load its subscription entitlement
   - Pro users are prevented from accidentally running Power-only templates and can switch to a compatible template before submit
-  - subject-scoped Commercial Metrics V2 now matches entitlement-derived workflow usage
+  - subject-scoped Commercial Signal now matches entitlement-derived workflow usage
+- normalized commercial usage accounting:
+  - successful sync workflows increment billing-period `workflow_runs`
+  - accepted queue workflows increment billing-period `queued_runs`
+  - startup backfill reconciles existing usage logs into current plan counters without double counting
+  - `/monetization` separates `Plan Usage` from 7D/30D `Commercial Signal`
 - repositioned frontend title/header to `DevOps Agent Control Plane`
 - added categorized navigation: Operate, Commercial, Learn, Assets, and Personal Loops
 - added animated workflow preview to the global header

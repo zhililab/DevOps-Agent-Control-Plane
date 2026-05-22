@@ -78,6 +78,14 @@ const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
     queued_runs_limit: 0,
     usage_subjects: 0,
   },
+  plan_usage: {
+    workflow_runs_used: 0,
+    workflow_runs_limit: 0,
+    queued_runs_used: 0,
+    queued_runs_limit: 0,
+    period_start: null,
+    period_end: null,
+  },
   commercial_events: [],
   policy_blocks: {
     approval_required: 0,
@@ -254,6 +262,7 @@ function hasCommercialMetricsPayload(value: unknown): value is CommercialMetrics
     typeof value.window_days === "number" &&
     isRecord(value.subscription_summary) &&
     isRecord(value.usage_summary) &&
+    isRecord(value.plan_usage) &&
     isRecord(value.policy_blocks) &&
     isRecord(value.billable_work_units) &&
     Array.isArray(value.top_templates) &&
@@ -715,7 +724,7 @@ export function DashboardView() {
         </article>
         <article className="kpi-card animate-enter">
           <p className="kpi-label">Commercial Work Units</p>
-          <p className="muted">Commercial Metrics V2</p>
+          <p className="muted">Commercial Signal</p>
           <p className="kpi-value">{state.commercialMetrics.billable_work_units.total}</p>
         </article>
         <article className="kpi-card animate-enter">

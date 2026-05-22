@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from calendar import monthrange
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from app.schemas import (
     CommercialMetricsAnomalyHint,
     CommercialMetricsBillableWorkUnits,
     CommercialMetricsEventSummary,
+    CommercialMetricsPlanUsage,
     CommercialMetricsPolicyBlocks,
     CommercialMetricsResponse,
     CommercialMetricsSubscriptionSummary,
@@ -72,6 +73,127 @@ POLICY_BLOCK_LOG_TYPES = {
 VALID_TEMPLATE_RISKS = {"low", "medium", "high", "critical"}
 
 
+def usage_metric_for_endpoint(endpoint: str) -> UsageMetric | None:
+    if endpoint == "/api/orchestrations/run":
+        return UsageMetric.workflow_runs
+    if endpoint == "/api/orchestrations/queue/run":
+        return UsageMetric.queued_runs
+    return None
+
+
+def record_plan_usage(
+    db: Session,
+    *,
+    subject: str | None,
+    metric: UsageMetric | None,
+    endpoint: str,
+    tier: str,
+    subject_id: str,
+    quantity: int = 1,
+) -> UsageCounterRead | None:
+    if not subject or metric is None or quantity <= 0:
+        return None
+
+    now = utcnow_naive()
+    profile = _get_active_profile_for_usage(db, subject=subject, now=now)
+    if profile is None:
+        return None
+
+    entitlements = _safe_json_dict(profile.entitlements_json) or _entitlements_for_tier(profile.tier.value)
+    counters = _upsert_current_period_counters(db, profile=profile, entitlements=entitlements, now=now)
+    counter = next((item for item in counters if item.metric == metric), None)
+    if counter is None:
+        return None
+
+    counter.used = max(0, int(counter.used)) + quantity
+    counter.updated_at = now
+    event = MonetizationEvent(
+        subscription_profile_id=profile.id,
+        usage_counter_id=counter.id,
+        event_kind=MonetizationEventKind.usage_recorded,
+        event_json=json.dumps(
+            {
+                "version": 1,
+                "action": "usage_recorded",
+                "subject": profile.subject,
+                "metric": metric.value,
+                "endpoint": endpoint,
+                "tier": tier,
+                "subject_id": subject_id,
+                "quantity": quantity,
+                "used": counter.used,
+                "limit": counter.limit,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+        created_at=now,
+    )
+    db.add(event)
+    db.commit()
+    db.refresh(counter)
+    return UsageCounterRead.model_validate(counter)
+
+
+def get_plan_usage_quota(
+    db: Session,
+    *,
+    subject: str | None,
+    metric: UsageMetric | None,
+) -> dict[str, object] | None:
+    if not subject or metric is None:
+        return None
+
+    now = utcnow_naive()
+    profile = _get_active_profile_for_usage(db, subject=subject, now=now)
+    if profile is None:
+        return None
+
+    entitlements = _safe_json_dict(profile.entitlements_json) or _entitlements_for_tier(profile.tier.value)
+    counters = _upsert_current_period_counters(db, profile=profile, entitlements=entitlements, now=now)
+    counter = next((item for item in counters if item.metric == metric), None)
+    if counter is None:
+        return None
+    return {
+        "used": int(counter.used),
+        "limit": int(counter.limit),
+        "period_start": counter.period_start.isoformat(),
+        "period_end": counter.period_end.isoformat(),
+        "metric": metric.value,
+        "subject": profile.subject,
+    }
+
+
+def backfill_current_period_usage_counters(db: Session, *, subject: str | None = None) -> int:
+    normalized_subject = subject.strip() if subject and subject.strip() else None
+    profiles = _latest_profiles(db, subject=normalized_subject)
+    now = utcnow_naive()
+    changed = 0
+
+    for profile in profiles:
+        if _get_active_profile_for_usage(db, subject=profile.subject, now=now) is None:
+            continue
+
+        entitlements = _safe_json_dict(profile.entitlements_json) or _entitlements_for_tier(profile.tier.value)
+        counters = _upsert_current_period_counters(db, profile=profile, entitlements=entitlements, now=now)
+        for counter in counters:
+            endpoint = _endpoint_for_usage_metric(counter.metric)
+            counted_logs = _count_current_period_usage_logs(
+                db,
+                subject=profile.subject,
+                endpoint=endpoint,
+                period_start=counter.period_start,
+                period_end=counter.period_end,
+            )
+            if counter.used < counted_logs:
+                counter.used = counted_logs
+                counter.updated_at = now
+                changed += 1
+
+    db.commit()
+    return changed
+
+
 def get_subscription_profile(db: Session, *, subject: str) -> SubscriptionProfileRead | None:
     profile = (
         db.query(SubscriptionProfile)
@@ -85,6 +207,7 @@ def get_subscription_profile(db: Session, *, subject: str) -> SubscriptionProfil
 
 
 def list_usage_counters(db: Session, *, subject: str) -> list[UsageCounterRead]:
+    backfill_current_period_usage_counters(db, subject=subject)
     profile = (
         db.query(SubscriptionProfile)
         .filter(SubscriptionProfile.subject == subject)
@@ -129,6 +252,7 @@ def get_commercial_metrics(
     generated_at = utcnow_naive()
     window_start = generated_at - timedelta(days=period_days)
     normalized_subject = subject.strip() if subject and subject.strip() else None
+    backfill_current_period_usage_counters(db, subject=normalized_subject)
 
     latest_profiles = _latest_profiles(db, subject=normalized_subject)
     profile_ids = [profile.id for profile in latest_profiles]
@@ -141,12 +265,19 @@ def get_commercial_metrics(
         task_types={"monetization.usage_recorded"},
     )
     workflow_run_logs = [
-        log for log in usage_logs if _log_payload(log).get("endpoint") == "/api/orchestrations/run"
+        log
+        for log in usage_logs
+        if _log_payload(log).get("endpoint") == "/api/orchestrations/run"
+        and isinstance(_log_payload(log).get("orchestration_id"), int)
     ]
     queued_run_logs = [
-        log for log in usage_logs if _log_payload(log).get("endpoint") == "/api/orchestrations/queue/run"
+        log
+        for log in usage_logs
+        if _log_payload(log).get("endpoint") == "/api/orchestrations/queue/run"
+        and isinstance(_log_payload(log).get("queue_job_id"), int)
     ]
     counters = _usage_counters_for_profiles(db, profile_ids)
+    plan_usage = _build_plan_usage(counters)
     usage_summary = CommercialMetricsUsageSummary(
         workflow_runs_used=len(workflow_run_logs),
         workflow_runs_limit=_counter_limit(counters, UsageMetric.workflow_runs),
@@ -228,6 +359,7 @@ def get_commercial_metrics(
         subject=normalized_subject,
         subscription_summary=subscription_summary,
         usage_summary=usage_summary,
+        plan_usage=plan_usage,
         commercial_events=commercial_events,
         policy_blocks=policy_blocks,
         billable_work_units=CommercialMetricsBillableWorkUnits(
@@ -444,6 +576,76 @@ def _usage_counters_for_profiles(db: Session, profile_ids: list[int]) -> list[Us
 
 def _counter_limit(counters: list[UsageCounter], metric: UsageMetric) -> int:
     return sum(counter.limit for counter in counters if counter.metric == metric)
+
+
+def _counter_used(counters: list[UsageCounter], metric: UsageMetric) -> int:
+    return sum(counter.used for counter in counters if counter.metric == metric)
+
+
+def _build_plan_usage(counters: list[UsageCounter]) -> CommercialMetricsPlanUsage:
+    period_starts = [counter.period_start for counter in counters]
+    period_ends = [counter.period_end for counter in counters]
+    return CommercialMetricsPlanUsage(
+        workflow_runs_used=_counter_used(counters, UsageMetric.workflow_runs),
+        workflow_runs_limit=_counter_limit(counters, UsageMetric.workflow_runs),
+        queued_runs_used=_counter_used(counters, UsageMetric.queued_runs),
+        queued_runs_limit=_counter_limit(counters, UsageMetric.queued_runs),
+        period_start=min(period_starts) if period_starts else None,
+        period_end=max(period_ends) if period_ends else None,
+    )
+
+
+def _endpoint_for_usage_metric(metric: UsageMetric) -> str:
+    if metric == UsageMetric.queued_runs:
+        return "/api/orchestrations/queue/run"
+    return "/api/orchestrations/run"
+
+
+def _get_active_profile_for_usage(db: Session, *, subject: str, now) -> SubscriptionProfile | None:
+    profile = _get_latest_profile_model(db, subject=subject)
+    if profile is None or profile.status != SubscriptionStatus.active:
+        return None
+    if profile.current_period_end and profile.current_period_end <= now:
+        return None
+    return profile
+
+
+def _count_current_period_usage_logs(
+    db: Session,
+    *,
+    subject: str,
+    endpoint: str,
+    period_start,
+    period_end,
+) -> int:
+    expected_subject_ids = {subject, subject_id_for_entitlement_user(subject)}
+    lower_bound = datetime.combine(period_start - timedelta(days=1), time.min)
+    upper_bound = datetime.combine(period_end + timedelta(days=2), time.min)
+    rows = (
+        db.query(AgentRunLog)
+        .filter(
+            AgentRunLog.task_type == "monetization.usage_recorded",
+            AgentRunLog.created_at >= lower_bound,
+            AgentRunLog.created_at < upper_bound,
+        )
+        .order_by(AgentRunLog.created_at.desc(), AgentRunLog.id.desc())
+        .all()
+    )
+    total = 0
+    for row in rows:
+        payload = _log_payload(row)
+        if payload.get("endpoint") != endpoint:
+            continue
+        if payload.get("subject_id") not in expected_subject_ids:
+            continue
+        if endpoint == "/api/orchestrations/queue/run" and not isinstance(payload.get("queue_job_id"), int):
+            continue
+        if endpoint == "/api/orchestrations/run" and not isinstance(payload.get("orchestration_id"), int):
+            continue
+        business_day = business_date_from_utc(row.created_at)
+        if period_start <= business_day <= period_end:
+            total += 1
+    return total
 
 
 def _list_monetization_logs(

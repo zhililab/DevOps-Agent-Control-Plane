@@ -387,6 +387,14 @@ export type CommercialMetricsResponse = {
     queued_runs_limit: number;
     usage_subjects: number;
   };
+  plan_usage: {
+    workflow_runs_used: number;
+    workflow_runs_limit: number;
+    queued_runs_used: number;
+    queued_runs_limit: number;
+    period_start: string | null;
+    period_end: string | null;
+  };
   commercial_events: Array<{
     action: string;
     count: number;

@@ -22,7 +22,7 @@ This document records the current product target and the minimum functionality t
 - Review dashboard orchestration KPIs and monetization observability fallback states.
 - Activate or change a manual subscription on `/monetization`, then confirm usage counters and subject-scoped audit events update.
 - Load the same billing subject on `/orchestrate`; an active Pro/Power subscription should issue a signed entitlement token for compatible workflow runs.
-- Review Commercial Metrics V2 on `/monetization`: billable work units, policy blocks, top value templates, and anomaly hints should load independently from subscription/profile refreshes.
+- Review Commercial Signal on `/monetization`: billing-period Plan Usage, billable work units, 7D/30D activity, policy blocks, top value templates, and anomaly hints should load independently from subscription/profile refreshes.
 - Confirm `/dashboard` shows Commercial Work Units and Commercial Policy Blocks from the canonical commercial metrics API.
 - Confirm `/monetization` keeps the active subscription visible if usage or audit-feed refreshes are slow or partially unavailable.
 - Use `/tutorial` to explain the commercial path from workflow run to replay evidence to plan upgrade.
@@ -93,7 +93,7 @@ This document records the current product target and the minimum functionality t
 - Orchestration metrics must include Team Trust KPIs: approved runs, checkpointed runs, and failed jobs needing owner.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 - Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.
-- Commercial Metrics V2 reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view.
+- Commercial Signal reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view. Billing-period Plan Usage comes from `usage_counters`; 7D/30D activity comes from usage audit logs.
 - `/orchestrate` should warn before submit when the current signed entitlement tier is lower than the selected template policy tier, and should offer a compatible template path for Pro users.
 - Global route transition and header preview animations should avoid continuous idle work and respect `prefers-reduced-motion`.
 

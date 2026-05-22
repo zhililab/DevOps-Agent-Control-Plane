@@ -40,6 +40,7 @@ class EntitlementContext:
     tier: SubscriptionTier
     subject_id: str
     source: str
+    billing_subject: str | None = None
 
 
 def normalize_tier(value: str) -> SubscriptionTier:
@@ -124,10 +125,12 @@ def resolve_entitlement_context(
     raw_subject = payload.get("user_id")
     if not isinstance(raw_subject, str) or not raw_subject.strip():
         raw_subject = "anonymous"
+    billing_subject = raw_subject.strip()
     return EntitlementContext(
         tier=normalize_tier(tier),
-        subject_id=subject_id_for_entitlement_user(raw_subject),
+        subject_id=subject_id_for_entitlement_user(billing_subject),
         source="entitlement",
+        billing_subject=billing_subject,
     )
 
 

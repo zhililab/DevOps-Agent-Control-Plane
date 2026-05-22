@@ -43,8 +43,8 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Demonstrate retry/cancel controls only when the selected job status allows the action.
 
 6. Open `/monetization`.
-   - Show the `Commercial MVP` cockpit: plan state, usage counters, and `Commercial Audit Feed`.
-   - Show `Commercial Metrics V2`: billable work units, policy blocks, top value templates, lifecycle events, and the 7D/30D window switch.
+   - Show the `Commercial MVP` cockpit: plan state, `Plan Usage`, and `Commercial Audit Feed`.
+   - Show `Commercial Signal`: billable work units, 7D/30D activity, policy blocks, top value templates, lifecycle events, and the window switch.
    - Activate or refresh a Pro/Power plan for a demo account and confirm the audit feed is scoped to that account.
    - Explain that Manual Billing V1 is the current demoable commercial loop before real payment-provider integration.
 

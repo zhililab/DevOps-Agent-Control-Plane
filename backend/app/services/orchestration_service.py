@@ -54,6 +54,11 @@ from app.services.history_ledger import (
     append_step_event,
     summarize_orchestration_histories,
 )
+from app.services.monetization_service import (
+    get_plan_usage_quota,
+    record_plan_usage,
+    usage_metric_for_endpoint,
+)
 from app.services.workflow_checkpoints import (
     append_orchestration_checkpoint,
     list_checkpoints_for_orchestration,
@@ -335,6 +340,7 @@ def run_orchestration(
                 "endpoint": str(monetization_context.get("endpoint", "/api/orchestrations/run")),
                 "tier": tier,
                 "subject_id": str(monetization_context.get("subject_id", "unknown")),
+                "billing_subject": str(monetization_context.get("billing_subject", "")),
                 "orchestration_id": record.id,
             },
             outcome="usage recorded after workflow execution",
@@ -349,6 +355,7 @@ def enforce_monetization_policy_for_run(
     tier: str,
     subject_id: str,
     endpoint: str,
+    billing_subject: str | None = None,
 ) -> dict[str, int]:
     normalized_tier = normalize_tier(tier)
     template = _resolve_template(db, payload)
@@ -411,6 +418,65 @@ def enforce_monetization_policy_for_run(
     quota_policy = quota_policy_for_tier(normalized_tier)
     window_days = int(quota_policy["window_days"])
     limit = int(quota_policy["max_runs"])
+    usage_metric = usage_metric_for_endpoint(endpoint)
+    plan_quota = get_plan_usage_quota(db, subject=billing_subject, metric=usage_metric)
+    if plan_quota is not None:
+        used = int(plan_quota["used"])
+        plan_limit = int(plan_quota["limit"])
+        if used >= plan_limit:
+            _write_monetization_event(
+                db,
+                event_name="monetization.quota_exceeded",
+                status="blocked",
+                payload={
+                    "endpoint": endpoint,
+                    "tier": normalized_tier,
+                    "subject_id": subject_id,
+                    "billing_subject": billing_subject or "",
+                    "window": "billing_period",
+                    "metric": str(plan_quota["metric"]),
+                    "period_start": str(plan_quota["period_start"]),
+                    "period_end": str(plan_quota["period_end"]),
+                    "limit": plan_limit,
+                    "used": used,
+                },
+                outcome="billing period quota exceeded",
+            )
+            raise _monetization_error(
+                code="quota_exceeded",
+                status_code=429,
+                message=f"Quota exceeded for tier '{normalized_tier}'.",
+                tier=normalized_tier,
+                endpoint=endpoint,
+                quota={
+                    "window": "billing_period",
+                    "metric": str(plan_quota["metric"]),
+                    "period_start": str(plan_quota["period_start"]),
+                    "period_end": str(plan_quota["period_end"]),
+                    "limit": plan_limit,
+                    "used": used,
+                },
+            )
+        _write_monetization_event(
+            db,
+            event_name="monetization.quota_checked",
+            status="allowed",
+            payload={
+                "endpoint": endpoint,
+                "tier": normalized_tier,
+                "subject_id": subject_id,
+                "billing_subject": billing_subject or "",
+                "window": "billing_period",
+                "metric": str(plan_quota["metric"]),
+                "period_start": str(plan_quota["period_start"]),
+                "period_end": str(plan_quota["period_end"]),
+                "limit": plan_limit,
+                "used": used,
+            },
+            outcome="billing period quota allowed",
+        )
+        return {"window_days": window_days, "limit": plan_limit, "used": used}
+
     used = _count_usage_events(db, endpoint=endpoint, subject_id=subject_id, window_days=window_days)
     if used >= limit:
         _write_monetization_event(
@@ -1311,6 +1377,18 @@ def _write_monetization_event(
         payload=payload,
         outcome=outcome,
     )
+    if event_name == "monetization.usage_recorded":
+        endpoint = str(payload.get("endpoint", ""))
+        metric = usage_metric_for_endpoint(endpoint)
+        billing_subject = payload.get("billing_subject")
+        record_plan_usage(
+            db,
+            subject=billing_subject if isinstance(billing_subject, str) else None,
+            metric=metric,
+            endpoint=endpoint,
+            tier=str(payload.get("tier", "")),
+            subject_id=str(payload.get("subject_id", "unknown")),
+        )
 
 
 def _monetization_error(
