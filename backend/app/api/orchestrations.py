@@ -10,6 +10,7 @@ from app.database import get_db
 from app.schemas import (
     EntitlementBootstrapResponse,
     HistoryIntegrityResponse,
+    WorkflowCheckpointHistoryResponse,
     WorkflowOrchestrationHistoryResponse,
     WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
@@ -42,6 +43,7 @@ from app.services.orchestration_service import (
     enforce_monetization_policy_for_run,
     export_workflow_templates,
     get_orchestration,
+    get_orchestration_checkpoints,
     get_orchestration_metrics,
     import_builtin_workflow_templates,
     import_workflow_templates,
@@ -104,6 +106,7 @@ def list_orchestrations_endpoint(
     limit: int = Query(default=50, ge=1, le=200),
     include_steps: bool = Query(default=True),
     include_integrity: bool = Query(default=True),
+    team_subject: str | None = Query(default=None),
 ) -> WorkflowOrchestrationHistoryResponse:
     return list_orchestrations(
         db,
@@ -112,6 +115,7 @@ def list_orchestrations_endpoint(
         limit=limit,
         include_steps=include_steps,
         include_integrity=include_integrity,
+        team_subject=team_subject,
     )
 
 
@@ -194,9 +198,10 @@ def enqueue_orchestration_endpoint(
 def list_queue_jobs_endpoint(
     db: Session = Depends(get_db),
     status: str | None = Query(default=None),
+    team_subject: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> WorkflowQueueHistoryResponse:
-    return list_queue_jobs(db, status=status, limit=limit)
+    return list_queue_jobs(db, status=status, team_subject=team_subject, limit=limit)
 
 
 @router.get("/queue/{job_id}", response_model=WorkflowQueueJobRead)
@@ -212,16 +217,18 @@ def retry_queue_job_endpoint(
     job_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    actor: str | None = Query(default=None),
 ) -> WorkflowQueueRunResponse:
-    return retry_queue_job(db, job_id, background_tasks)
+    return retry_queue_job(db, job_id, background_tasks, actor=actor)
 
 
 @router.post("/queue/{job_id}/cancel", response_model=WorkflowQueueJobRead)
 def cancel_queue_job_endpoint(
     job_id: int,
     db: Session = Depends(get_db),
+    actor: str | None = Query(default=None),
 ) -> WorkflowQueueJobRead:
-    return cancel_queue_job(db, job_id)
+    return cancel_queue_job(db, job_id, actor=actor)
 
 
 @router.get("/{orchestration_id}/history-events", response_model=HistoryIntegrityResponse)
@@ -231,6 +238,14 @@ def get_orchestration_history_events_endpoint(
 ) -> HistoryIntegrityResponse:
     get_orchestration(db, orchestration_id)
     return HistoryIntegrityResponse.model_validate(verify_orchestration_history(db, orchestration_id))
+
+
+@router.get("/{orchestration_id}/checkpoints", response_model=WorkflowCheckpointHistoryResponse)
+def get_orchestration_checkpoints_endpoint(
+    orchestration_id: int,
+    db: Session = Depends(get_db),
+) -> WorkflowCheckpointHistoryResponse:
+    return get_orchestration_checkpoints(db, orchestration_id)
 
 
 @router.post("/templates", response_model=WorkflowTemplateRead)

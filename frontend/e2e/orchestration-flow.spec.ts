@@ -39,8 +39,20 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
   await expect(page).toHaveURL(/\/orchestrations$/);
   await expect(page.getByRole("heading", { name: "Orchestration History" })).toBeVisible();
   await expect(page.getByRole("heading", { name: `Run #${runId}` })).toBeVisible();
-  await expect(page.getByText(/success · pro · \d+ms/).first()).toBeVisible();
-  await expect(page.getByText("Plan The Day (planner) - success")).toBeVisible();
-  await expect(page.getByText("Analyze Technical Signals (analyzer) - success")).toBeVisible();
-  await expect(page.getByText("Review And Reflect (reviewer) - success")).toBeVisible();
+  const runCard = page.locator(`#orchestration-run-${runId}`);
+  await expect(runCard.getByText(/success · pro · \d+ms/)).toBeVisible();
+  await expect(runCard.getByText(/Team: platform-team · requested by sre-lead/)).toBeVisible();
+  await expect(runCard.getByText(/Checkpoints: [1-9]\d*/)).toBeVisible();
+  await expect(runCard.getByText("Plan The Day (planner) - success")).toBeVisible();
+  await expect(runCard.getByText("Analyze Technical Signals (analyzer) - success")).toBeVisible();
+  await expect(runCard.getByText("Review And Reflect (reviewer) - success")).toBeVisible();
+
+  await runCard.getByRole("button", { name: "Verify History Ledger" }).click();
+  await expect(runCard.getByText(/History Ledger: valid · \d+ event\(s\)/)).toBeVisible();
+  await expect(runCard.locator(`[aria-label="checkpoint-timeline-${runId}"]`)).toBeVisible();
+
+  await page.reload();
+  const reloadedRunCard = page.locator(`#orchestration-run-${runId}`);
+  await expect(reloadedRunCard.getByText(/History Ledger: valid · \d+ event\(s\)/)).toBeVisible();
+  await expect(reloadedRunCard.getByText(/Checkpoints: [1-9]\d*/)).toBeVisible();
 });

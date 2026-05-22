@@ -212,9 +212,14 @@ export type WorkflowOrchestrationRecord = {
   duration_ms: number;
   entry_source: string;
   subscription_tier: SubscriptionTier;
+  team_subject: string;
+  requested_by: string;
+  approval_actor: string;
+  approval_note: string;
   summary: WorkflowOrchestrationSummary;
   steps: WorkflowStepRun[];
   ledger_integrity?: HistoryIntegritySummary | null;
+  checkpoint_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -233,6 +238,9 @@ export type WorkflowOrchestrationMetrics = {
   successful_audited_workflows: number;
   approval_required_blocks: number;
   template_policy_upgrade_blocks: number;
+  approved_runs: number;
+  checkpointed_runs: number;
+  failed_jobs_needing_owner: number;
 };
 
 export type HistoryEvent = {
@@ -263,6 +271,29 @@ export type HistoryIntegrityResponse = {
 };
 
 export type HistoryIntegritySummary = Omit<HistoryIntegrityResponse, "events">;
+
+export type WorkflowCheckpoint = {
+  id: number;
+  checkpoint_uid: string;
+  entity_type: string;
+  entity_id: string;
+  orchestration_id: number | null;
+  queue_job_id: number | null;
+  checkpoint_type: string;
+  step_name: string;
+  step_index: number | null;
+  status: string;
+  payload: Record<string, unknown>;
+  payload_sha256: string;
+  created_by: string;
+  created_at: string;
+  integrity_status: "valid" | "invalid" | string;
+  integrity_error: string;
+};
+
+export type WorkflowCheckpointHistoryResponse = {
+  items: WorkflowCheckpoint[];
+};
 
 export type EntitlementBootstrap = {
   token: string;
@@ -370,10 +401,15 @@ export type WorkflowQueueJob = {
   max_attempts: number;
   cancel_requested: boolean;
   orchestration_id: number | null;
+  team_subject: string;
+  requested_by: string;
+  approval_actor: string;
+  approval_note: string;
   error_message: string;
   created_at: string;
   updated_at: string;
   events?: WorkflowQueueJobEvent[];
+  checkpoints?: WorkflowCheckpoint[];
 };
 
 export type WorkflowQueueHistoryResponse = {

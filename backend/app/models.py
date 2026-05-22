@@ -165,6 +165,7 @@ class WorkflowOrchestration(Base):
         Index("ix_workflow_orchestrations_created_id", "created_at", "id"),
         Index("ix_workflow_orchestrations_status_created_id", "status", "created_at", "id"),
         Index("ix_workflow_orchestrations_tier_created_id", "subscription_tier", "created_at", "id"),
+        Index("ix_workflow_orchestrations_team_created_id", "team_subject", "created_at", "id"),
         Index(
             "ix_workflow_orchestrations_status_tier_created_id",
             "status",
@@ -179,6 +180,10 @@ class WorkflowOrchestration(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     entry_source: Mapped[str] = mapped_column(String(64), default="manual")
     subscription_tier: Mapped[str] = mapped_column(String(16), default="pro", index=True)
+    team_subject: Mapped[str] = mapped_column(String(120), default="", index=True)
+    requested_by: Mapped[str] = mapped_column(String(120), default="")
+    approval_actor: Mapped[str] = mapped_column(String(120), default="")
+    approval_note: Mapped[str] = mapped_column(Text, default="")
     request_json: Mapped[str] = mapped_column(Text, default="{}")
     result_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -224,6 +229,7 @@ class WorkflowQueueJob(Base):
     __table_args__ = (
         Index("ix_workflow_queue_jobs_updated_id", "updated_at", "id"),
         Index("ix_workflow_queue_jobs_status_updated_id", "status", "updated_at", "id"),
+        Index("ix_workflow_queue_jobs_team_updated_id", "team_subject", "updated_at", "id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -232,6 +238,10 @@ class WorkflowQueueJob(Base):
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
     cancel_requested: Mapped[bool] = mapped_column(default=False)
     orchestration_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    team_subject: Mapped[str] = mapped_column(String(120), default="", index=True)
+    requested_by: Mapped[str] = mapped_column(String(120), default="")
+    approval_actor: Mapped[str] = mapped_column(String(120), default="")
+    approval_note: Mapped[str] = mapped_column(Text, default="")
     request_json: Mapped[str] = mapped_column(Text, default="{}")
     error_message: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -249,6 +259,31 @@ class WorkflowQueueEvent(Base):
     event_type: Mapped[str] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(32))
     detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class WorkflowCheckpoint(Base):
+    __tablename__ = "workflow_checkpoints"
+    __table_args__ = (
+        UniqueConstraint("checkpoint_uid", name="uq_workflow_checkpoints_checkpoint_uid"),
+        Index("ix_workflow_checkpoints_orchestration_created_id", "orchestration_id", "created_at", "id"),
+        Index("ix_workflow_checkpoints_queue_job_created_id", "queue_job_id", "created_at", "id"),
+        Index("ix_workflow_checkpoints_entity_created_id", "entity_type", "entity_id", "created_at", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    checkpoint_uid: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    entity_type: Mapped[str] = mapped_column(String(32), index=True)
+    entity_id: Mapped[str] = mapped_column(String(64), index=True)
+    orchestration_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    queue_job_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    checkpoint_type: Mapped[str] = mapped_column(String(80), index=True)
+    step_name: Mapped[str] = mapped_column(String(120), default="")
+    step_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="")
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    payload_sha256: Mapped[str] = mapped_column(String(64))
+    created_by: Mapped[str] = mapped_column(String(120), default="system")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 

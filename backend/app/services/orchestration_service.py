@@ -12,7 +12,16 @@ from sqlalchemy import case, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, load_only
 
-from app.models import AgentRunLog, NoteEntry, PromptTemplate, WorkflowOrchestration, WorkflowQueueJob, WorkflowStepRun, WorkflowTemplate
+from app.models import (
+    AgentRunLog,
+    NoteEntry,
+    PromptTemplate,
+    WorkflowCheckpoint,
+    WorkflowOrchestration,
+    WorkflowQueueJob,
+    WorkflowStepRun,
+    WorkflowTemplate,
+)
 from app.schemas import (
     DailyContextInput,
     DailyReflectionInput,
@@ -21,6 +30,7 @@ from app.schemas import (
     SubscriptionTier,
     TechnicalAnalysisInput,
     WorkflowAuditBlock,
+    WorkflowCheckpointHistoryResponse,
     WorkflowOrchestrationHistoryResponse,
     WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
@@ -43,6 +53,12 @@ from app.services.history_ledger import (
     append_orchestration_completed_event,
     append_step_event,
     summarize_orchestration_histories,
+)
+from app.services.workflow_checkpoints import (
+    append_orchestration_checkpoint,
+    list_checkpoints_for_orchestration,
+    summarize_checkpoint_counts,
+    to_checkpoint_read,
 )
 from app.time_utils import utcnow_naive
 
@@ -96,11 +112,16 @@ def run_orchestration(
 
     started = _utcnow()
     request_dump = payload.model_dump(mode="json")
+    trust_metadata = _trust_metadata_from_payload(payload)
     record = WorkflowOrchestration(
         status="running",
         duration_ms=0,
         entry_source=payload.entry_source.strip() or "manual",
         subscription_tier=tier,
+        team_subject=trust_metadata["team_subject"],
+        requested_by=trust_metadata["requested_by"],
+        approval_actor=trust_metadata["approval_actor"],
+        approval_note=trust_metadata["approval_note"],
         request_json=json.dumps(request_dump),
         result_json="{}",
     )
@@ -108,11 +129,31 @@ def run_orchestration(
     db.commit()
     db.refresh(record)
     append_orchestration_accepted_event(db, record, request_dump)
+    append_orchestration_checkpoint(
+        db,
+        record,
+        checkpoint_type="orchestration.accepted",
+        payload={
+            "request": request_dump,
+            "active_steps": len(active_steps),
+            "subscription_tier": tier,
+        },
+        occurred_at=record.created_at,
+        uid_hint="accepted",
+    )
 
     log_agent_action(
         db,
         task_type="workflow_orchestration_request",
-        input_summary=json.dumps({"id": record.id, "tier": tier, "steps": len(active_steps)}),
+        input_summary=json.dumps(
+            {
+                "id": record.id,
+                "tier": tier,
+                "steps": len(active_steps),
+                "team_subject": record.team_subject,
+                "requested_by": record.requested_by,
+            }
+        ),
         output_summary="orchestration accepted",
         status="received",
     )
@@ -121,11 +162,27 @@ def run_orchestration(
     previous_audits: list[WorkflowAuditBlock] = []
     has_failure = False
 
-    for step in active_steps:
+    for step_index, step in enumerate(active_steps, start=1):
         if should_cancel and should_cancel():
             has_failure = True
             step_started = _utcnow()
             step_finished = _utcnow()
+            append_orchestration_checkpoint(
+                db,
+                record,
+                checkpoint_type="step.started",
+                status="running",
+                payload={
+                    "step_name": step.step_name,
+                    "agent_type": step.agent_type,
+                    "cancel_requested": True,
+                    "message": "Step canceled before execution.",
+                },
+                step_name=step.step_name,
+                step_index=step_index,
+                occurred_at=step_started,
+                uid_hint=f"step:{step_index}:started:canceled",
+            )
             canceled_audit = WorkflowAuditBlock(
                 conclusion=f"Step '{step.step_name}' canceled before execution.",
                 evidence="Queue cancel_requested flag was true before step execution.",
@@ -149,12 +206,44 @@ def run_orchestration(
             db.commit()
             db.refresh(step_record)
             append_step_event(db, step_record)
+            append_orchestration_checkpoint(
+                db,
+                record,
+                checkpoint_type="step.skipped",
+                status="skipped",
+                payload={
+                    "step_id": step_record.id,
+                    "step_name": step.step_name,
+                    "agent_type": step.agent_type,
+                    "audit": canceled_audit.model_dump(mode="json"),
+                    "fallback_action": step_record.fallback_action,
+                },
+                step_name=step.step_name,
+                step_index=step_index,
+                occurred_at=step_finished,
+                uid_hint=f"step:{step_record.id}:skipped",
+            )
             step_records.append(step_record)
             previous_audits.append(canceled_audit)
             break
 
         step_started = _utcnow()
         step_input = _build_step_input(step.agent_type, payload, previous_audits)
+        append_orchestration_checkpoint(
+            db,
+            record,
+            checkpoint_type="step.started",
+            status="running",
+            payload={
+                "step_name": step.step_name,
+                "agent_type": step.agent_type,
+                "input": _safe_json_dict(step_input),
+            },
+            step_name=step.step_name,
+            step_index=step_index,
+            occurred_at=step_started,
+            uid_hint=f"step:{step_index}:started",
+        )
         audit, step_status, fallback = _execute_step(step.agent_type, payload, previous_audits)
         step_finished = _utcnow()
 
@@ -178,6 +267,25 @@ def run_orchestration(
         db.commit()
         db.refresh(step_record)
         append_step_event(db, step_record)
+        append_orchestration_checkpoint(
+            db,
+            record,
+            checkpoint_type=f"step.{step_status}",
+            status=step_status,
+            payload={
+                "step_id": step_record.id,
+                "step_name": step.step_name,
+                "agent_type": step.agent_type,
+                "output_summary": step_record.output_summary,
+                "audit": audit.model_dump(mode="json"),
+                "fallback_action": fallback,
+                "duration_ms": step_record.duration_ms,
+            },
+            step_name=step.step_name,
+            step_index=step_index,
+            occurred_at=step_finished,
+            uid_hint=f"step:{step_record.id}:{step_status}",
+        )
         step_records.append(step_record)
         previous_audits.append(audit)
 
@@ -196,6 +304,18 @@ def run_orchestration(
         record,
         summary=summary.model_dump(mode="json"),
         step_count=len(step_records),
+    )
+    append_orchestration_checkpoint(
+        db,
+        record,
+        checkpoint_type=f"orchestration.{status}",
+        payload={
+            "summary": summary.model_dump(mode="json"),
+            "step_count": len(step_records),
+            "duration_ms": record.duration_ms,
+        },
+        occurred_at=record.updated_at,
+        uid_hint=f"completed:{status}",
     )
 
     _persist_reusable_assets(db, record, summary, payload)
@@ -219,7 +339,7 @@ def run_orchestration(
             },
             outcome="usage recorded after workflow execution",
         )
-    return _to_orchestration_read(record, step_records, summary)
+    return _to_orchestration_read(record, step_records, summary, checkpoint_count=2 + len(step_records) * 2)
 
 
 def enforce_monetization_policy_for_run(
@@ -340,6 +460,7 @@ def list_orchestrations(
     limit: int = 50,
     include_steps: bool = True,
     include_integrity: bool = True,
+    team_subject: str | None = None,
 ) -> WorkflowOrchestrationHistoryResponse:
     safe_limit = max(1, min(limit, 200))
     query = db.query(WorkflowOrchestration).options(
@@ -349,6 +470,10 @@ def list_orchestrations(
             WorkflowOrchestration.duration_ms,
             WorkflowOrchestration.entry_source,
             WorkflowOrchestration.subscription_tier,
+            WorkflowOrchestration.team_subject,
+            WorkflowOrchestration.requested_by,
+            WorkflowOrchestration.approval_actor,
+            WorkflowOrchestration.approval_note,
             WorkflowOrchestration.result_json,
             WorkflowOrchestration.created_at,
             WorkflowOrchestration.updated_at,
@@ -358,6 +483,8 @@ def list_orchestrations(
         query = query.filter(WorkflowOrchestration.status == status.strip().lower())
     if subscription_tier:
         query = query.filter(WorkflowOrchestration.subscription_tier == normalize_tier(subscription_tier))
+    if team_subject and team_subject.strip():
+        query = query.filter(WorkflowOrchestration.team_subject == team_subject.strip())
     records = (
         query.order_by(WorkflowOrchestration.created_at.desc(), WorkflowOrchestration.id.desc())
         .limit(safe_limit)
@@ -384,6 +511,8 @@ def list_orchestrations(
             for orchestration_id, summary in raw_integrity.items()
         }
 
+    checkpoint_counts = summarize_checkpoint_counts(db, [record.id for record in records]) if records else {}
+
     items = []
     for record in records:
         steps = steps_by_orchestration_id.get(record.id, [])
@@ -394,6 +523,7 @@ def list_orchestrations(
                 steps,
                 summary,
                 ledger_integrity=integrity_by_orchestration_id.get(record.id),
+                checkpoint_count=checkpoint_counts.get(record.id, 0),
             )
         )
     return WorkflowOrchestrationHistoryResponse(items=items)
@@ -457,6 +587,33 @@ def get_orchestration_metrics(db: Session, *, days: int = 7) -> WorkflowOrchestr
         task_type="monetization.template_policy_upgrade_required",
         window_start=window_start,
     )
+    approved_runs = int(
+        db.query(func.count(WorkflowOrchestration.id))
+        .filter(
+            WorkflowOrchestration.created_at >= window_start,
+            WorkflowOrchestration.approval_actor != "",
+        )
+        .scalar()
+        or 0
+    )
+    checkpointed_runs = int(
+        db.query(func.count(func.distinct(WorkflowCheckpoint.orchestration_id)))
+        .filter(
+            WorkflowCheckpoint.created_at >= window_start,
+            WorkflowCheckpoint.orchestration_id.isnot(None),
+        )
+        .scalar()
+        or 0
+    )
+    failed_jobs_needing_owner = int(
+        db.query(func.count(WorkflowQueueJob.id))
+        .filter(
+            WorkflowQueueJob.updated_at >= window_start,
+            WorkflowQueueJob.status == "failed",
+        )
+        .scalar()
+        or 0
+    )
 
     return WorkflowOrchestrationMetricsResponse(
         period_days=period_days,
@@ -468,6 +625,9 @@ def get_orchestration_metrics(db: Session, *, days: int = 7) -> WorkflowOrchestr
         successful_audited_workflows=successful_audited_workflows,
         approval_required_blocks=approval_required_blocks,
         template_policy_upgrade_blocks=template_policy_upgrade_blocks,
+        approved_runs=approved_runs,
+        checkpointed_runs=checkpointed_runs,
+        failed_jobs_needing_owner=failed_jobs_needing_owner,
     )
 
 
@@ -482,7 +642,14 @@ def get_orchestration(db: Session, orchestration_id: int) -> WorkflowOrchestrati
         .all()
     )
     summary = _safe_orchestration_summary(record)
-    return _to_orchestration_read(record, steps, summary)
+    checkpoint_counts = summarize_checkpoint_counts(db, [record.id])
+    return _to_orchestration_read(record, steps, summary, checkpoint_count=checkpoint_counts.get(record.id, 0))
+
+
+def get_orchestration_checkpoints(db: Session, orchestration_id: int) -> WorkflowCheckpointHistoryResponse:
+    get_orchestration(db, orchestration_id)
+    checkpoints = list_checkpoints_for_orchestration(db, orchestration_id)
+    return WorkflowCheckpointHistoryResponse(items=[to_checkpoint_read(checkpoint) for checkpoint in checkpoints])
 
 
 def get_monetization_observability(db: Session, *, days: int = 7) -> dict[str, object]:
@@ -1030,6 +1197,7 @@ def _to_orchestration_read(
     summary: WorkflowOrchestrationSummary,
     *,
     ledger_integrity: HistoryIntegritySummary | None = None,
+    checkpoint_count: int = 0,
 ) -> WorkflowOrchestrationRead:
     steps = [
         WorkflowStepRunRead(
@@ -1053,12 +1221,35 @@ def _to_orchestration_read(
         duration_ms=record.duration_ms,
         entry_source=record.entry_source,
         subscription_tier=normalize_tier(record.subscription_tier),
+        team_subject=record.team_subject,
+        requested_by=record.requested_by,
+        approval_actor=record.approval_actor,
+        approval_note=record.approval_note,
         summary=summary,
         steps=steps,
         ledger_integrity=ledger_integrity,
+        checkpoint_count=checkpoint_count,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
+
+
+def _trust_metadata_from_payload(payload: WorkflowOrchestrationRunRequest) -> dict[str, str]:
+    return {
+        "team_subject": _bounded_text(payload.team_subject, fallback="demo-team", limit=120),
+        "requested_by": _bounded_text(payload.requested_by, fallback="sre-lead", limit=120),
+        "approval_actor": _bounded_text(payload.approval_actor, fallback="", limit=120),
+        "approval_note": _bounded_text(payload.approval_note, fallback="", limit=1000),
+    }
+
+
+def _bounded_text(value: str | None, *, fallback: str, limit: int) -> str:
+    if value is None:
+        return fallback
+    clean = value.strip()
+    if not clean:
+        return fallback
+    return clean[:limit]
 
 
 def _safe_orchestration_summary(record: WorkflowOrchestration) -> WorkflowOrchestrationSummary:

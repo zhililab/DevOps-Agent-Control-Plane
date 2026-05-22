@@ -15,9 +15,9 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 # 0. Current Iteration Snapshot (2026-05-21)
 
 ## Iteration Theme
-- current iteration target: DevOps orchestration MVP commercialization closeout
-- product direction: deterministic personal DevOps orchestration with inspectable replay, queue lifecycle visibility, signed entitlement-aware tier gates, and reusable knowledge/templates
-- commercial direction: personal DevOps agent control plane; sell trusted, replayable, policy-gated workflow execution before broad assistant breadth, now with Manual Billing V1 for subscription lifecycle demos
+- current iteration target: DevOps orchestration MVP commercialization closeout with Team Trust Layer V1
+- product direction: deterministic personal/small-team DevOps orchestration with inspectable replay, queue lifecycle visibility, signed entitlement-aware tier gates, checkpoint snapshots, and reusable knowledge/templates
+- commercial direction: personal DevOps agent control plane; sell trusted, replayable, policy-gated workflow execution before broad assistant breadth, now with Manual Billing V1 and team-ready audit metadata for subscription lifecycle demos
 - UI direction: DevOps control-plane visual language with categorized navigation, animated workflow preview, and tutorial/commercial onboarding
 - status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; the Docker Compose server deployment path is the current MVP release path, with k3d/k8s retained as follow-up deployment options
 
@@ -139,6 +139,16 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
   - template-backed sync and queued orchestration runs enforce required tier and explicit approval before execution
   - dashboard orchestration KPIs include billable work units, audited workflows, and policy block counts
   - demo runbook now includes the policy/approval/commercial-KPI narrative
+- added Team Trust Layer V1:
+  - lightweight `team_subject`, `requested_by`, `approval_actor`, and `approval_note` metadata on orchestration and queue records
+  - team-scoped history and queue filters without introducing login/RBAC as a new blocker
+  - `workflow_checkpoints` state snapshot table with canonical JSON payload hashes and integrity verification
+  - checkpoint writes for orchestration accepted/completed, step start/result, and queue lifecycle events
+  - read-only checkpoint API: `GET /api/orchestrations/{id}/checkpoints`
+  - `/orchestrate` captures team/requester/approver context for commercial demos
+  - `/orchestrations` shows actor context, checkpoint counts, and loadable checkpoint timeline beside ledger verification
+  - dashboard Team Trust KPIs track approved runs, checkpointed runs, and failed jobs needing owner
+  - Playwright E2E verifies ledger valid status and checkpoint counts persist after page reload
 - fixed `/orchestrations` history ledger status recovery:
   - history list responses include ledger integrity summaries from persisted ledger data
   - page reloads and redeploys no longer reset verified runs to `History Ledger: not checked`
@@ -175,7 +185,7 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 - run full k8s gate on a reachable cluster context when a Kubernetes deployment becomes the selected release path
 
 ### Later Product Completion
-- add State & Checkpoint V2 for resumable queue jobs and explicit step checkpoint snapshots
+- extend State & Checkpoint V2 from inspectable snapshots to resumable queue restore controls
 - add first-class policy authoring controls so users do not need to edit policy tags directly
 - add real billing-provider integration and cohort reporting around commercial work units after Manual Billing V1 proves the flow
 - complete P7 Communication Assistant (not a current deployment blocker)

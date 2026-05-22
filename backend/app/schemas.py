@@ -473,6 +473,13 @@ class HistoryIntegritySummary(BaseModel):
 
 class WorkflowOrchestrationRunRequest(BaseModel):
     entry_source: str = "manual"
+    team_subject: str = Field(default="demo-team", max_length=120)
+    requested_by: str = Field(default="sre-lead", max_length=120)
+    approval_actor: str = Field(default="release-manager", max_length=120)
+    approval_note: str = Field(
+        default="Approved for trusted DevOps workflow execution.",
+        max_length=1000,
+    )
     template_id: int | None = None
     steps: list[WorkflowStepDefinition] | None = None
     daily_context: DailyContextInput | None = None
@@ -497,9 +504,14 @@ class WorkflowOrchestrationRead(BaseModel):
     duration_ms: int
     entry_source: str
     subscription_tier: SubscriptionTier
+    team_subject: str = ""
+    requested_by: str = ""
+    approval_actor: str = ""
+    approval_note: str = ""
     summary: WorkflowOrchestrationSummary
     steps: list[WorkflowStepRunRead]
     ledger_integrity: HistoryIntegritySummary | None = None
+    checkpoint_count: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -518,6 +530,9 @@ class WorkflowOrchestrationMetricsResponse(BaseModel):
     successful_audited_workflows: int
     approval_required_blocks: int
     template_policy_upgrade_blocks: int
+    approved_runs: int = 0
+    checkpointed_runs: int = 0
+    failed_jobs_needing_owner: int = 0
 
 
 class HistoryEventRead(BaseModel):
@@ -545,6 +560,29 @@ class HistoryIntegrityResponse(BaseModel):
     integrity_status: str
     event_count: int
     events: list[HistoryEventRead]
+
+
+class WorkflowCheckpointRead(BaseModel):
+    id: int
+    checkpoint_uid: str
+    entity_type: str
+    entity_id: str
+    orchestration_id: int | None
+    queue_job_id: int | None
+    checkpoint_type: str
+    step_name: str
+    step_index: int | None
+    status: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    payload_sha256: str
+    created_by: str
+    created_at: datetime
+    integrity_status: str
+    integrity_error: str
+
+
+class WorkflowCheckpointHistoryResponse(BaseModel):
+    items: list[WorkflowCheckpointRead]
 
 
 class EntitlementBootstrapResponse(BaseModel):
@@ -579,10 +617,15 @@ class WorkflowQueueJobRead(BaseModel):
     max_attempts: int
     cancel_requested: bool
     orchestration_id: int | None
+    team_subject: str = ""
+    requested_by: str = ""
+    approval_actor: str = ""
+    approval_note: str = ""
     error_message: str
     created_at: datetime
     updated_at: datetime
     events: list[WorkflowQueueEventRead] = Field(default_factory=list)
+    checkpoints: list[WorkflowCheckpointRead] = Field(default_factory=list)
 
 
 class WorkflowQueueHistoryResponse(BaseModel):

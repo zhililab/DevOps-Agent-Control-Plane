@@ -85,6 +85,10 @@ function formatWorkflowTemplatePolicy(template: WorkflowTemplate): string {
 
 export function OrchestrateView() {
   const [entrySource, setEntrySource] = useState("web_ui");
+  const [teamSubject, setTeamSubject] = useState("platform-team");
+  const [requestedBy, setRequestedBy] = useState("sre-lead");
+  const [approvalActor, setApprovalActor] = useState("release-manager");
+  const [approvalNote, setApprovalNote] = useState("Approved for trusted DevOps workflow demo execution.");
   const [runMode, setRunMode] = useState<"sync" | "async">("sync");
   const [entitlementToken, setEntitlementToken] = useState(DEFAULT_PUBLIC_ENTITLEMENT_TOKEN);
   const [steps, setSteps] = useState<WorkflowStepDefinition[]>(DEFAULT_STEPS);
@@ -158,6 +162,10 @@ export function OrchestrateView() {
   function buildPayload() {
     const payload: {
       entry_source: string;
+      team_subject: string;
+      requested_by: string;
+      approval_actor: string;
+      approval_note: string;
       template_id?: number;
       steps: WorkflowStepDefinition[];
       daily_context: {
@@ -183,6 +191,10 @@ export function OrchestrateView() {
       approval_confirmed: boolean;
     } = {
       entry_source: entrySource.trim() || "web_ui",
+      team_subject: teamSubject.trim() || "platform-team",
+      requested_by: requestedBy.trim() || "sre-lead",
+      approval_actor: approvalActor.trim(),
+      approval_note: approvalNote.trim(),
       steps,
       daily_context: {
         tasks: splitLines(tasksText),
@@ -310,6 +322,10 @@ export function OrchestrateView() {
           max_attempts: queued.max_attempts,
           cancel_requested: false,
           orchestration_id: null,
+          team_subject: teamSubject.trim() || "platform-team",
+          requested_by: requestedBy.trim() || "sre-lead",
+          approval_actor: approvalActor.trim(),
+          approval_note: approvalNote.trim(),
           error_message: "",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -347,7 +363,7 @@ export function OrchestrateView() {
     setStatus(null);
     setError(null);
     try {
-      const retried = await apiClient.retryWorkflowQueueJob(queueJob.id);
+      const retried = await apiClient.retryWorkflowQueueJob(queueJob.id, { actor: requestedBy.trim() || "sre-lead" });
       setQueueJob((current) =>
         current
           ? {
@@ -371,7 +387,7 @@ export function OrchestrateView() {
     setStatus(null);
     setError(null);
     try {
-      const canceled = await apiClient.cancelWorkflowQueueJob(queueJob.id);
+      const canceled = await apiClient.cancelWorkflowQueueJob(queueJob.id, { actor: requestedBy.trim() || "sre-lead" });
       setQueueJob(canceled);
       setStatus(`Queue job #${queueJob.id} cancel request accepted.`);
     } catch (cancelError) {
@@ -465,6 +481,24 @@ export function OrchestrateView() {
           Entry Source
           <input value={entrySource} onChange={(event) => setEntrySource(event.target.value)} />
         </label>
+        <div className="trust-grid">
+          <label>
+            Team
+            <input value={teamSubject} onChange={(event) => setTeamSubject(event.target.value)} />
+          </label>
+          <label>
+            Requester
+            <input value={requestedBy} onChange={(event) => setRequestedBy(event.target.value)} />
+          </label>
+          <label>
+            Approver
+            <input value={approvalActor} onChange={(event) => setApprovalActor(event.target.value)} />
+          </label>
+          <label>
+            Approval Note
+            <input value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} />
+          </label>
+        </div>
         <label>
           Run Mode
           <select value={runMode} onChange={(event) => setRunMode(event.target.value as "sync" | "async")}>
@@ -666,6 +700,10 @@ export function OrchestrateView() {
               <strong>Job #{queueJob.id}</strong> · status={queueJob.status} · attempts={queueJob.attempts}/
               {queueJob.max_attempts}
             </p>
+            <p className="muted">
+              Team {queueJob.team_subject || "unassigned"} · requested by {queueJob.requested_by || "unknown"}
+              {queueJob.approval_actor ? ` · approved by ${queueJob.approval_actor}` : ""}
+            </p>
             {queueJob.orchestration_id ? <p className="muted">Orchestration #{queueJob.orchestration_id} attached.</p> : null}
             {queueJob.error_message ? <p className="muted">Error: {queueJob.error_message}</p> : null}
             <div className="button-row">
@@ -690,6 +728,11 @@ export function OrchestrateView() {
             <p>
               <strong>Run #{latest.id}</strong> · status={latest.status} · tier={latest.subscription_tier} ·
               duration={latest.duration_ms}ms
+            </p>
+            <p className="muted">
+              Team {latest.team_subject || "unassigned"} · requested by {latest.requested_by || "unknown"}
+              {latest.approval_actor ? ` · approved by ${latest.approval_actor}` : ""} · checkpoints{" "}
+              {latest.checkpoint_count}
             </p>
             <p>{latest.summary.conclusion}</p>
           </article>

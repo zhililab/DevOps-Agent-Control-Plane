@@ -5,7 +5,13 @@ import { useEffect, useState } from "react";
 import { PageCard } from "@/components/ui/PageCard";
 import { buildQueueTimelineReplay } from "@/features/orchestrations/queueTimeline";
 import { apiClient } from "@/lib/api";
-import type { HistoryIntegrityResponse, WorkflowOrchestrationRecord, WorkflowQueueJob, WorkflowQueueJobStatus } from "@/lib/types";
+import type {
+  HistoryIntegrityResponse,
+  WorkflowCheckpoint,
+  WorkflowOrchestrationRecord,
+  WorkflowQueueJob,
+  WorkflowQueueJobStatus,
+} from "@/lib/types";
 
 function formatTimestamp(value: string): string {
   const parsed = new Date(value);
@@ -17,6 +23,7 @@ export function OrchestrationsHistoryView() {
   const [items, setItems] = useState<WorkflowOrchestrationRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "success" | "partial_success" | "failed" | "canceled">("all");
   const [tierFilter, setTierFilter] = useState<"all" | "free" | "pro" | "power">("all");
+  const [teamFilter, setTeamFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [queueJobs, setQueueJobs] = useState<WorkflowQueueJob[]>([]);
@@ -30,6 +37,8 @@ export function OrchestrationsHistoryView() {
   const [isLoadingQueueDetail, setIsLoadingQueueDetail] = useState(false);
   const [historyIntegrityByRunId, setHistoryIntegrityByRunId] = useState<Record<number, HistoryIntegrityResponse>>({});
   const [activeHistoryCheckRunId, setActiveHistoryCheckRunId] = useState<number | null>(null);
+  const [checkpointsByRunId, setCheckpointsByRunId] = useState<Record<number, WorkflowCheckpoint[]>>({});
+  const [activeCheckpointRunId, setActiveCheckpointRunId] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -37,9 +46,20 @@ export function OrchestrationsHistoryView() {
         const response = await apiClient.listWorkflowOrchestrations({
           status: statusFilter === "all" ? undefined : statusFilter,
           subscription_tier: tierFilter === "all" ? undefined : tierFilter,
+          team_subject: teamFilter.trim() || undefined,
           limit: 50,
         });
-        setItems(Array.isArray(response.items) ? response.items : []);
+        const nextItems = Array.isArray(response.items) ? response.items : [];
+        setItems(nextItems);
+        setHistoryIntegrityByRunId((current) => {
+          const next = { ...current };
+          nextItems.forEach((item) => {
+            if (item.ledger_integrity) {
+              next[item.id] = { ...item.ledger_integrity, events: current[item.id]?.events ?? [] };
+            }
+          });
+          return next;
+        });
         setError(null);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to load orchestration history.");
@@ -50,13 +70,14 @@ export function OrchestrationsHistoryView() {
 
     setIsLoading(true);
     void load();
-  }, [statusFilter, tierFilter]);
+  }, [statusFilter, tierFilter, teamFilter]);
 
   useEffect(() => {
     async function loadQueueJobs() {
       try {
         const response = await apiClient.listWorkflowQueueJobs({
           status: queueStatusFilter === "all" ? undefined : queueStatusFilter,
+          team_subject: teamFilter.trim() || undefined,
           limit: 50,
         });
         const nextJobs = Array.isArray(response.items) ? response.items : [];
@@ -82,7 +103,7 @@ export function OrchestrationsHistoryView() {
 
     setIsLoadingQueue(true);
     void loadQueueJobs();
-  }, [queueStatusFilter]);
+  }, [queueStatusFilter, teamFilter]);
 
   useEffect(() => {
     const jobId = selectedQueueJobId;
@@ -166,14 +187,35 @@ export function OrchestrationsHistoryView() {
     setActiveHistoryCheckRunId(runId);
     try {
       const integrity = await apiClient.getWorkflowOrchestrationHistoryEvents(runId);
+      const checkpoints = await apiClient.getWorkflowOrchestrationCheckpoints(runId);
       setHistoryIntegrityByRunId((current) => ({
         ...current,
         [runId]: integrity,
+      }));
+      setCheckpointsByRunId((current) => ({
+        ...current,
+        [runId]: Array.isArray(checkpoints.items) ? checkpoints.items : [],
       }));
     } catch (verifyError) {
       setError(verifyError instanceof Error ? verifyError.message : "Failed to verify history ledger.");
     } finally {
       setActiveHistoryCheckRunId(null);
+    }
+  }
+
+  async function onLoadCheckpoints(runId: number) {
+    setError(null);
+    setActiveCheckpointRunId(runId);
+    try {
+      const response = await apiClient.getWorkflowOrchestrationCheckpoints(runId);
+      setCheckpointsByRunId((current) => ({
+        ...current,
+        [runId]: Array.isArray(response.items) ? response.items : [],
+      }));
+    } catch (checkpointError) {
+      setError(checkpointError instanceof Error ? checkpointError.message : "Failed to load checkpoints.");
+    } finally {
+      setActiveCheckpointRunId(null);
     }
   }
 
@@ -204,6 +246,14 @@ export function OrchestrationsHistoryView() {
             <option value="power">Power</option>
           </select>
         </label>
+        <label>
+          Team
+          <input
+            value={teamFilter}
+            onChange={(event) => setTeamFilter(event.target.value)}
+            placeholder="Leave empty to show all teams"
+          />
+        </label>
       </section>
 
       {error ? <p className="status status-error">{error}</p> : null}
@@ -214,22 +264,53 @@ export function OrchestrationsHistoryView() {
         <section key={item.id} id={`orchestration-run-${item.id}`} className="history-plan orchestration-run-card">
           {(() => {
             const integrity = historyIntegrityByRunId[item.id] ?? item.ledger_integrity;
+            const checkpoints = checkpointsByRunId[item.id] ?? [];
             return (
-              <div className="ledger-strip">
-                <p className={`status ledger-status ${integrity?.integrity_status === "invalid" ? "status-error" : "status-success"}`}>
-                  History Ledger:{" "}
-                  {integrity
-                    ? `${integrity.integrity_status} · ${integrity.event_count} event(s)`
-                    : "not checked"}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void onVerifyHistory(item.id)}
-                  disabled={activeHistoryCheckRunId === item.id}
-                >
-                  {activeHistoryCheckRunId === item.id ? "Checking Ledger..." : "Verify History Ledger"}
-                </button>
-              </div>
+              <>
+                <div className="ledger-strip">
+                  <div className="ledger-badges">
+                    <p className={`status ledger-status ${integrity?.integrity_status === "invalid" ? "status-error" : "status-success"}`}>
+                      History Ledger:{" "}
+                      {integrity
+                        ? `${integrity.integrity_status} · ${integrity.event_count} event(s)`
+                        : "not checked"}
+                    </p>
+                    <p className="status status-default">Checkpoints: {checkpoints.length || item.checkpoint_count || 0}</p>
+                  </div>
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      onClick={() => void onVerifyHistory(item.id)}
+                      disabled={activeHistoryCheckRunId === item.id}
+                    >
+                      {activeHistoryCheckRunId === item.id ? "Checking Ledger..." : "Verify History Ledger"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onLoadCheckpoints(item.id)}
+                      disabled={activeCheckpointRunId === item.id}
+                    >
+                      {activeCheckpointRunId === item.id ? "Loading Checkpoints..." : "Load Checkpoint Timeline"}
+                    </button>
+                  </div>
+                </div>
+                {checkpoints.length > 0 ? (
+                  <div className="checkpoint-timeline" aria-label={`checkpoint-timeline-${item.id}`}>
+                    {checkpoints.slice(0, 8).map((checkpoint) => (
+                      <article key={checkpoint.id} className="checkpoint-node">
+                        <p className="eyebrow">{checkpoint.checkpoint_type}</p>
+                        <h4>
+                          {checkpoint.step_name || checkpoint.entity_type} · {checkpoint.status}
+                        </h4>
+                        <p className="muted">
+                          {formatTimestamp(checkpoint.created_at)} · by {checkpoint.created_by} ·{" "}
+                          {checkpoint.integrity_status}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </>
             );
           })()}
           <div className="run-heading">
@@ -241,7 +322,12 @@ export function OrchestrationsHistoryView() {
               {item.status} · {item.subscription_tier} · {item.duration_ms}ms
             </p>
           </div>
-          <p className="muted">Source: {item.entry_source}</p>
+          <p className="muted">
+            Source: {item.entry_source} · Team: {item.team_subject || "unassigned"} · requested by{" "}
+            {item.requested_by || "unknown"}
+            {item.approval_actor ? ` · approved by ${item.approval_actor}` : ""}
+          </p>
+          {item.approval_note ? <p className="muted">Approval note: {item.approval_note}</p> : null}
 
           <div className="result-grid">
             {item.steps.map((step) => (
@@ -293,6 +379,8 @@ export function OrchestrationsHistoryView() {
             </div>
             <div className="queue-job-meta">
               <p>cancel_requested={String(job.cancel_requested)}</p>
+              <p>team={job.team_subject || "unassigned"}</p>
+              <p>requester={job.requested_by || "unknown"}</p>
               <p>
                 orchestration=
                 {job.orchestration_id ? <a href={`#orchestration-run-${job.orchestration_id}`}>Run #{job.orchestration_id}</a> : "none"}
@@ -347,6 +435,9 @@ export function OrchestrationsHistoryView() {
                 ? "Observed queue events."
                 : "Inferred from queue snapshot fields (event log not currently available)."}
             </p>
+            {selectedQueueJob.checkpoints && selectedQueueJob.checkpoints.length > 0 ? (
+              <p className="muted">Checkpoint snapshots: {selectedQueueJob.checkpoints.length}</p>
+            ) : null}
             <div className="result-grid">
               {timeline.events.map((event) => (
                 <article key={event.id} className="result-block">

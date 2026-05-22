@@ -38,6 +38,9 @@ const DEFAULT_ORCHESTRATION_METRICS: WorkflowOrchestrationMetrics = {
   successful_audited_workflows: 0,
   approval_required_blocks: 0,
   template_policy_upgrade_blocks: 0,
+  approved_runs: 0,
+  checkpointed_runs: 0,
+  failed_jobs_needing_owner: 0,
 };
 
 const DEFAULT_MONETIZATION_OBSERVABILITY: MonetizationObservability = {
@@ -123,7 +126,10 @@ function hasOrchestrationMetricsPayload(value: unknown): value is WorkflowOrches
     typeof metrics.billable_work_units === "number" &&
     typeof metrics.successful_audited_workflows === "number" &&
     typeof metrics.approval_required_blocks === "number" &&
-    typeof metrics.template_policy_upgrade_blocks === "number"
+    typeof metrics.template_policy_upgrade_blocks === "number" &&
+    typeof metrics.approved_runs === "number" &&
+    typeof metrics.checkpointed_runs === "number" &&
+    typeof metrics.failed_jobs_needing_owner === "number"
   );
 }
 
@@ -596,6 +602,21 @@ export function DashboardView() {
             {state.orchestrationMetrics.approval_required_blocks +
               state.orchestrationMetrics.template_policy_upgrade_blocks}
           </p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Approved Runs</p>
+          <p className="muted">Team-trust actor evidence</p>
+          <p className="kpi-value">{state.orchestrationMetrics.approved_runs}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Checkpointed Runs</p>
+          <p className="muted">State snapshots persisted</p>
+          <p className="kpi-value">{state.orchestrationMetrics.checkpointed_runs}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Jobs Needing Owner</p>
+          <p className="muted">Failed queue jobs</p>
+          <p className="kpi-value">{state.orchestrationMetrics.failed_jobs_needing_owner}</p>
         </article>
         <article className="kpi-card animate-enter">
           <p className="kpi-label">Revenue</p>

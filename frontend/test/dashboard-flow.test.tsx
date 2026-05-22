@@ -84,6 +84,9 @@ describe("dashboard flow", () => {
             successful_audited_workflows: 20,
             approval_required_blocks: 1,
             template_policy_upgrade_blocks: 2,
+            approved_runs: 18,
+            checkpointed_runs: 20,
+            failed_jobs_needing_owner: 1,
           }),
           { status: 200 }
         );
@@ -101,6 +104,9 @@ describe("dashboard flow", () => {
             successful_audited_workflows: 4,
             approval_required_blocks: 1,
             template_policy_upgrade_blocks: 0,
+            approved_runs: 3,
+            checkpointed_runs: 4,
+            failed_jobs_needing_owner: 1,
           }),
           { status: 200 }
         );

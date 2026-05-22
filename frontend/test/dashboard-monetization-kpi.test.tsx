@@ -25,6 +25,9 @@ describe("dashboard monetization kpi", () => {
             successful_audited_workflows: 10,
             approval_required_blocks: 2,
             template_policy_upgrade_blocks: 1,
+            approved_runs: 8,
+            checkpointed_runs: 10,
+            failed_jobs_needing_owner: 1,
           }),
           { status: 200 }
         );
@@ -73,6 +76,9 @@ describe("dashboard monetization kpi", () => {
     const workUnitsCard = screen.getByText("Billable Work Units").closest("article");
     const auditedCard = screen.getByText("Audited Workflows").closest("article");
     const policyBlocksCard = screen.getByText("Policy Blocks").closest("article");
+    const approvedRunsCard = screen.getByText("Approved Runs").closest("article");
+    const checkpointedRunsCard = screen.getByText("Checkpointed Runs").closest("article");
+    const jobsNeedingOwnerCard = screen.getByText("Jobs Needing Owner").closest("article");
 
     expect(within(runCard!).getByText("11")).toBeInTheDocument();
     expect(within(runCard!).getByText("+11 vs previous 7D")).toBeInTheDocument();
@@ -83,6 +89,9 @@ describe("dashboard monetization kpi", () => {
     expect(within(workUnitsCard!).getByText("27")).toBeInTheDocument();
     expect(within(auditedCard!).getByText("10")).toBeInTheDocument();
     expect(within(policyBlocksCard!).getByText("3")).toBeInTheDocument();
+    expect(within(approvedRunsCard!).getByText("8")).toBeInTheDocument();
+    expect(within(checkpointedRunsCard!).getByText("10")).toBeInTheDocument();
+    expect(within(jobsNeedingOwnerCard!).getByText("1")).toBeInTheDocument();
 
     const revenueCard = screen.getByText("Revenue").closest("article");
     const paidRunsCard = screen.getByText("Paid Runs").closest("article");

@@ -9,6 +9,7 @@ from app.database import SessionLocal
 from app.models import WorkflowQueueEvent, WorkflowQueueJob
 from app.schemas import (
     QueueJobStatus,
+    WorkflowCheckpointRead,
     WorkflowOrchestrationRunRequest,
     WorkflowQueueEventRead,
     WorkflowQueueHistoryResponse,
@@ -17,6 +18,7 @@ from app.schemas import (
 )
 from app.services.history_ledger import append_queue_event_ledger
 from app.services.orchestration_service import run_orchestration
+from app.services.workflow_checkpoints import append_queue_checkpoint, list_checkpoints_for_queue_job, to_checkpoint_read
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,10 @@ def enqueue_orchestration_run(
         attempts=0,
         max_attempts=3,
         cancel_requested=False,
+        team_subject=payload.team_subject.strip() or "demo-team",
+        requested_by=payload.requested_by.strip() or "sre-lead",
+        approval_actor=payload.approval_actor.strip(),
+        approval_note=payload.approval_note.strip(),
         request_json=json.dumps(request_body, separators=(",", ":"), ensure_ascii=True),
     )
     db.add(job)
@@ -79,13 +85,15 @@ def get_queue_job(db: Session, job_id: int) -> WorkflowQueueJobRead:
     if job is None:
         raise HTTPException(status_code=404, detail="Queue job not found.")
     events = _get_queue_events(db, job.id)
-    return _to_queue_read(job, events=events)
+    checkpoints = [to_checkpoint_read(checkpoint) for checkpoint in list_checkpoints_for_queue_job(db, job.id)]
+    return _to_queue_read(job, events=events, checkpoints=checkpoints)
 
 
 def list_queue_jobs(
     db: Session,
     *,
     status: str | None = None,
+    team_subject: str | None = None,
     limit: int = 50,
 ) -> WorkflowQueueHistoryResponse:
     safe_limit = max(1, min(limit, 200))
@@ -97,6 +105,10 @@ def list_queue_jobs(
             WorkflowQueueJob.max_attempts,
             WorkflowQueueJob.cancel_requested,
             WorkflowQueueJob.orchestration_id,
+            WorkflowQueueJob.team_subject,
+            WorkflowQueueJob.requested_by,
+            WorkflowQueueJob.approval_actor,
+            WorkflowQueueJob.approval_note,
             WorkflowQueueJob.error_message,
             WorkflowQueueJob.created_at,
             WorkflowQueueJob.updated_at,
@@ -104,6 +116,8 @@ def list_queue_jobs(
     )
     if status is not None:
         query = query.filter(WorkflowQueueJob.status == status)
+    if team_subject is not None and team_subject.strip():
+        query = query.filter(WorkflowQueueJob.team_subject == team_subject.strip())
     jobs = (
         query.order_by(WorkflowQueueJob.updated_at.desc(), WorkflowQueueJob.id.desc())
         .limit(safe_limit)
@@ -112,7 +126,13 @@ def list_queue_jobs(
     return WorkflowQueueHistoryResponse(items=[_to_queue_read(job) for job in jobs])
 
 
-def retry_queue_job(db: Session, job_id: int, background_tasks: BackgroundTasks) -> WorkflowQueueRunResponse:
+def retry_queue_job(
+    db: Session,
+    job_id: int,
+    background_tasks: BackgroundTasks,
+    *,
+    actor: str | None = None,
+) -> WorkflowQueueRunResponse:
     job = db.query(WorkflowQueueJob).filter(WorkflowQueueJob.id == job_id).first()
     if job is None:
         raise HTTPException(status_code=404, detail="Queue job not found.")
@@ -131,6 +151,7 @@ def retry_queue_job(db: Session, job_id: int, background_tasks: BackgroundTasks)
         event_type="retry_requested",
         status="queued",
         detail=f"Job queued for retry attempt {job.attempts + 1}/{job.max_attempts}.",
+        actor=actor,
     )
     db.commit()
     db.refresh(job)
@@ -138,7 +159,7 @@ def retry_queue_job(db: Session, job_id: int, background_tasks: BackgroundTasks)
     return WorkflowQueueRunResponse(job_id=job.id, status=job.status, attempts=job.attempts, max_attempts=job.max_attempts)  # type: ignore[arg-type]
 
 
-def cancel_queue_job(db: Session, job_id: int) -> WorkflowQueueJobRead:
+def cancel_queue_job(db: Session, job_id: int, *, actor: str | None = None) -> WorkflowQueueJobRead:
     job = db.query(WorkflowQueueJob).filter(WorkflowQueueJob.id == job_id).first()
     if job is None:
         raise HTTPException(status_code=404, detail="Queue job not found.")
@@ -151,6 +172,7 @@ def cancel_queue_job(db: Session, job_id: int) -> WorkflowQueueJobRead:
             event_type="cancel_requested",
             status="canceled",
             detail="Cancel requested before execution started.",
+            actor=actor,
         )
     elif job.status == "running":
         job.cancel_requested = True
@@ -160,6 +182,7 @@ def cancel_queue_job(db: Session, job_id: int) -> WorkflowQueueJobRead:
             event_type="cancel_requested",
             status="running",
             detail="Cancel requested while job is running.",
+            actor=actor,
         )
     elif job.status in {"succeeded", "failed", "canceled"}:
         raise HTTPException(status_code=409, detail="Queue job already finished.")
@@ -167,7 +190,8 @@ def cancel_queue_job(db: Session, job_id: int) -> WorkflowQueueJobRead:
     db.commit()
     db.refresh(job)
     events = _get_queue_events(db, job.id)
-    return _to_queue_read(job, events=events)
+    checkpoints = [to_checkpoint_read(checkpoint) for checkpoint in list_checkpoints_for_queue_job(db, job.id)]
+    return _to_queue_read(job, events=events, checkpoints=checkpoints)
 
 
 def _process_queue_job(job_id: int) -> None:
@@ -267,7 +291,12 @@ def _process_queue_job(job_id: int) -> None:
         db.close()
 
 
-def _to_queue_read(job: WorkflowQueueJob, *, events: list[WorkflowQueueEventRead] | None = None) -> WorkflowQueueJobRead:
+def _to_queue_read(
+    job: WorkflowQueueJob,
+    *,
+    events: list[WorkflowQueueEventRead] | None = None,
+    checkpoints: list[WorkflowCheckpointRead] | None = None,
+) -> WorkflowQueueJobRead:
     return WorkflowQueueJobRead(
         id=job.id,
         status=job.status,  # type: ignore[arg-type]
@@ -275,10 +304,15 @@ def _to_queue_read(job: WorkflowQueueJob, *, events: list[WorkflowQueueEventRead
         max_attempts=job.max_attempts,
         cancel_requested=job.cancel_requested,
         orchestration_id=job.orchestration_id,
+        team_subject=job.team_subject,
+        requested_by=job.requested_by,
+        approval_actor=job.approval_actor,
+        approval_note=job.approval_note,
         error_message=job.error_message,
         created_at=job.created_at,
         updated_at=job.updated_at,
         events=events or [],
+        checkpoints=checkpoints or [],
     )
 
 
@@ -289,6 +323,7 @@ def _append_queue_event(
     event_type: str,
     status: QueueJobStatus,
     detail: str,
+    actor: str | None = None,
 ) -> None:
     event = WorkflowQueueEvent(
         queue_job_id=job_id,
@@ -299,6 +334,16 @@ def _append_queue_event(
     db.add(event)
     db.flush()
     append_queue_event_ledger(db, event)
+    job = db.query(WorkflowQueueJob).filter(WorkflowQueueJob.id == job_id).first()
+    if job is not None:
+        append_queue_checkpoint(
+            db,
+            job,
+            checkpoint_type=event_type,
+            detail=detail,
+            actor=actor,
+            uid_hint=f"queue_event:{event.id}",
+        )
 
 
 def _get_queue_events(db: Session, job_id: int) -> list[WorkflowQueueEventRead]:

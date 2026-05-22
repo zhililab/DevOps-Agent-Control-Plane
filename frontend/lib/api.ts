@@ -24,6 +24,7 @@ import type {
   WorkflowOrchestrationHistoryResponse,
   WorkflowOrchestrationMetrics,
   WorkflowOrchestrationRecord,
+  WorkflowCheckpointHistoryResponse,
   WorkflowQueueHistoryResponse,
   WorkflowQueueJob,
   WorkflowQueueRunResponse,
@@ -254,6 +255,10 @@ export const apiClient = {
   runWorkflowOrchestration(
     payload: {
       entry_source: string;
+      team_subject?: string;
+      requested_by?: string;
+      approval_actor?: string;
+      approval_note?: string;
       template_id?: number;
       steps?: WorkflowStepDefinition[];
       daily_context?: DailyContextInput;
@@ -278,6 +283,10 @@ export const apiClient = {
   enqueueWorkflowOrchestration(
     payload: {
       entry_source: string;
+      team_subject?: string;
+      requested_by?: string;
+      approval_actor?: string;
+      approval_note?: string;
       template_id?: number;
       steps?: WorkflowStepDefinition[];
       daily_context?: DailyContextInput;
@@ -303,22 +312,29 @@ export const apiClient = {
     return request<WorkflowQueueJob>(`/orchestrations/queue/${jobId}`);
   },
 
-  listWorkflowQueueJobs(params?: { status?: string; limit?: number }) {
+  listWorkflowQueueJobs(params?: { status?: string; team_subject?: string; limit?: number }) {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
+    if (params?.team_subject) search.set("team_subject", params.team_subject);
     if (params?.limit) search.set("limit", String(params.limit));
     const suffix = search.toString() ? `?${search.toString()}` : "";
     return request<WorkflowQueueHistoryResponse>(`/orchestrations/queue/history${suffix}`);
   },
 
-  retryWorkflowQueueJob(jobId: number) {
-    return request<WorkflowQueueRunResponse>(`/orchestrations/queue/${jobId}/retry`, {
+  retryWorkflowQueueJob(jobId: number, options?: { actor?: string }) {
+    const search = new URLSearchParams();
+    if (options?.actor) search.set("actor", options.actor);
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return request<WorkflowQueueRunResponse>(`/orchestrations/queue/${jobId}/retry${suffix}`, {
       method: "POST",
     });
   },
 
-  cancelWorkflowQueueJob(jobId: number) {
-    return request<WorkflowQueueJob>(`/orchestrations/queue/${jobId}/cancel`, {
+  cancelWorkflowQueueJob(jobId: number, options?: { actor?: string }) {
+    const search = new URLSearchParams();
+    if (options?.actor) search.set("actor", options.actor);
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return request<WorkflowQueueJob>(`/orchestrations/queue/${jobId}/cancel${suffix}`, {
       method: "POST",
     });
   },
@@ -326,6 +342,7 @@ export const apiClient = {
   listWorkflowOrchestrations(params?: {
     status?: string;
     subscription_tier?: string;
+    team_subject?: string;
     limit?: number;
     include_steps?: boolean;
     include_integrity?: boolean;
@@ -333,6 +350,7 @@ export const apiClient = {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
     if (params?.subscription_tier) search.set("subscription_tier", params.subscription_tier);
+    if (params?.team_subject) search.set("team_subject", params.team_subject);
     if (params?.limit) search.set("limit", String(params.limit));
     if (params?.include_steps !== undefined) search.set("include_steps", String(params.include_steps));
     if (params?.include_integrity !== undefined) search.set("include_integrity", String(params.include_integrity));
@@ -346,6 +364,10 @@ export const apiClient = {
 
   getWorkflowOrchestrationHistoryEvents(orchestrationId: number) {
     return request<HistoryIntegrityResponse>(`/orchestrations/${orchestrationId}/history-events`);
+  },
+
+  getWorkflowOrchestrationCheckpoints(orchestrationId: number) {
+    return request<WorkflowCheckpointHistoryResponse>(`/orchestrations/${orchestrationId}/checkpoints`);
   },
 
   getWorkflowOrchestrationMetrics(days = 7) {

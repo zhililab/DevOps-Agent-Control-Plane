@@ -25,6 +25,24 @@ const workflowSteps = [
     preview: ["Signed entitlement verified", "Power approval required", "No legacy tier header"],
   },
   {
+    id: "approve",
+    label: "Capture team approval",
+    title: "Record who requested and approved the trusted run",
+    body: "Team, requester, approver, and approval note travel with the run so a small team can see responsibility without a full login system.",
+    metric: "team audit metadata",
+    stage: "Trust",
+    preview: ["Team platform-team", "Requested by SRE lead", "Approved by release manager"],
+  },
+  {
+    id: "checkpoint",
+    label: "Checkpoint state",
+    title: "Persist explicit state snapshots for recovery",
+    body: "Accepted, step-started, step-finished, queue retry, cancel, and completion checkpoints make the workflow inspectable after refresh or redeploy.",
+    metric: "state snapshots",
+    stage: "Checkpoint",
+    preview: ["orchestration.accepted", "step.success", "queue.succeeded"],
+  },
+  {
     id: "replay",
     label: "Inspect replay",
     title: "Turn the run into evidence someone can inspect",
@@ -65,7 +83,7 @@ export function TutorialView() {
       <section className="tutorial-showcase" aria-label="tutorial-overview">
         <div className="tutorial-showcase-copy">
           <p className="eyebrow">FROM DEMO TO PAID WORKFLOW</p>
-          <h3>Run the workflow, inspect the evidence, then show the upgrade path.</h3>
+          <h3>Run, approve, checkpoint, replay, verify, then show the upgrade path.</h3>
           <p className="muted">
             The MVP is strongest when one operational task visibly becomes trusted replay evidence and a measurable
             commercial work unit.

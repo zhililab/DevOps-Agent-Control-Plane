@@ -1,6 +1,6 @@
 # DevOps Agent Control Plane MVP
 
-Current product: a deployable DevOps Agent Control Plane. It focuses on deterministic multi-agent execution, replayable workflow history, queue lifecycle controls, entitlement-aware tier boundaries, Manual Billing V1, and buyer-facing tutorial onboarding. Commercially, this is framed as trusted workflow execution before broad assistant breadth.
+Current product: a deployable DevOps Agent Control Plane. It focuses on deterministic multi-agent execution, replayable workflow history, checkpointed state snapshots, queue lifecycle controls, entitlement-aware tier boundaries, Manual Billing V1, and buyer-facing tutorial onboarding. Commercially, this is framed as trusted workflow execution before broad assistant breadth.
 
 Long-term vision: a personal AI operating system for work, reflection, knowledge, planning, and communication. The current release keeps that vision grounded in a narrow, auditable orchestration surface that can be deployed and verified by one maintainer.
 
@@ -44,6 +44,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - DevOps-oriented workflow orchestration through Planner, Analyzer, and Reviewer steps.
 - Replayable orchestration history backed by persisted step records, not regenerated text.
 - Accuracy-first orchestration history ledger with canonical JSON payload hashes and integrity verification.
+- Team Trust Layer V1 with lightweight team/requester/approver metadata and checkpoint snapshots for small-team demos.
 - UTC audit timestamps with `Asia/Shanghai` business-date derivation for daily history accuracy.
 - Smoke/system records are tagged by `record_source` and hidden from default personal history views.
 - Async queue lifecycle with status timeline, retry, and cancel behavior.
@@ -69,6 +70,12 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `WorkflowStepRun`
 - `WorkflowTemplate`
 - `WorkflowQueueJob`
+- `WorkflowQueueEvent`
+- `WorkflowCheckpoint`
+- `HistoryEvent`
+- `SubscriptionProfile`
+- `UsageCounter`
+- `MonetizationEvent`
 
 ### APIs
 - `POST /api/profile`: create profile
@@ -95,15 +102,16 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `PUT /api/templates/{id}`: update template
 - `DELETE /api/templates/{id}`: delete template
 - `POST /api/orchestrations/run`: run deterministic multi-agent orchestration (Planner/Analyzer/Reviewer)
-- `GET /api/orchestrations/history`: list orchestration runs with status/tier filters and ledger integrity summaries
+- `GET /api/orchestrations/history`: list orchestration runs with status/tier/team filters and ledger integrity summaries
 - `GET /api/orchestrations/{id}`: get orchestration run detail with step replay
 - `GET /api/orchestrations/{id}/history-events`: inspect immutable ledger events and integrity status for a run
+- `GET /api/orchestrations/{id}/checkpoints`: inspect checkpoint snapshots and payload hash status for a run
 - `GET /api/orchestrations/metrics`: orchestration KPI metrics (`days=7|30|...`)
 - `POST /api/orchestrations/queue/run`: enqueue orchestration run (async)
-- `GET /api/orchestrations/queue/history`: list queue jobs (status/attempts snapshot)
-- `GET /api/orchestrations/queue/{job_id}`: get queue job status with real queue events timeline payload
-- `POST /api/orchestrations/queue/{job_id}/retry`: retry failed/canceled queue job
-- `POST /api/orchestrations/queue/{job_id}/cancel`: request queue job cancellation
+- `GET /api/orchestrations/queue/history`: list queue jobs (status/team/attempts snapshot)
+- `GET /api/orchestrations/queue/{job_id}`: get queue job status with real queue events and checkpoint timeline payload
+- `POST /api/orchestrations/queue/{job_id}/retry`: retry failed/canceled queue job, optionally with `actor`
+- `POST /api/orchestrations/queue/{job_id}/cancel`: request queue job cancellation, optionally with `actor`
 - `POST /api/orchestrations/templates`: create orchestration workflow template
 - `PUT /api/orchestrations/templates/{id}`: update orchestration workflow template
 - `GET /api/orchestrations/templates`: list orchestration workflow templates

@@ -1,6 +1,6 @@
 from app.database import SessionLocal
 from app.config import get_settings
-from app.models import HistoryEvent
+from app.models import HistoryEvent, WorkflowCheckpoint
 from app.services.entitlement_service import sign_entitlement_token
 from app.services.history_ledger import backfill_history_events
 
@@ -68,6 +68,13 @@ def test_orchestration_run_writes_valid_history_events_without_raw_entitlement_t
     assert "ledger-secret" not in payloads
     assert "super-secret" not in payloads
 
+    checkpoint_response = client.get(f"/api/orchestrations/{run_id}/checkpoints")
+    assert checkpoint_response.status_code == 200
+    checkpoint_payloads = "\n".join(str(item["payload"]) for item in checkpoint_response.json()["items"])
+    assert token not in checkpoint_payloads
+    assert "ledger-secret" not in checkpoint_payloads
+    assert "super-secret" not in checkpoint_payloads
+
 
 def test_partial_success_history_event_preserves_failed_step_and_fallback(client) -> None:
     payload = _default_run_payload()
@@ -127,6 +134,29 @@ def test_history_integrity_detects_payload_tampering(client) -> None:
     assert any(event["integrity_error"] == "payload_sha256 mismatch" for event in history["events"])
 
 
+def test_checkpoint_integrity_detects_payload_tampering(client) -> None:
+    response = client.post("/api/orchestrations/run", json=_default_run_payload())
+    assert response.status_code == 200
+    run_id = response.json()["id"]
+
+    with SessionLocal() as db:
+        checkpoint = (
+            db.query(WorkflowCheckpoint)
+            .filter(WorkflowCheckpoint.orchestration_id == run_id)
+            .order_by(WorkflowCheckpoint.id.asc())
+            .first()
+        )
+        assert checkpoint is not None
+        checkpoint.payload_json = '{"tampered":true}'
+        db.add(checkpoint)
+        db.commit()
+
+    checkpoint_response = client.get(f"/api/orchestrations/{run_id}/checkpoints")
+    assert checkpoint_response.status_code == 200
+    checkpoints = checkpoint_response.json()["items"]
+    assert any(item["integrity_error"] == "payload_sha256 mismatch" for item in checkpoints)
+
+
 def test_history_events_api_uses_stable_descending_order(client) -> None:
     response = client.post("/api/orchestrations/run", json=_default_run_payload())
     assert response.status_code == 200
@@ -146,9 +176,16 @@ def test_queue_history_events_are_available_after_async_run(client) -> None:
     settings.entitlement_secret = "queue-ledger-secret"
     settings.entitlement_required = True
     token = sign_entitlement_token(secret="queue-ledger-secret", tier="pro", ttl_seconds=600)
+    payload = {
+        **_default_run_payload(),
+        "team_subject": "platform-team",
+        "requested_by": "queue-owner",
+        "approval_actor": "release-manager",
+        "approval_note": "Queue execution approved.",
+    }
     response = client.post(
         "/api/orchestrations/queue/run",
-        json=_default_run_payload(),
+        json=payload,
         headers={"X-Entitlement": token},
     )
     settings.entitlement_secret = old_secret
@@ -160,6 +197,9 @@ def test_queue_history_events_are_available_after_async_run(client) -> None:
     assert status_response.status_code == 200
     job = status_response.json()
     assert job["events"]
+    assert job["team_subject"] == "platform-team"
+    assert job["requested_by"] == "queue-owner"
+    assert len(job["checkpoints"]) >= 2
 
     with SessionLocal() as db:
         ledger_events = (
@@ -169,6 +209,10 @@ def test_queue_history_events_are_available_after_async_run(client) -> None:
             .all()
         )
     assert [event.event_type for event in ledger_events][:2] == ["queue.queued", "queue.started"]
+
+    queue_history_response = client.get("/api/orchestrations/queue/history?team_subject=platform-team")
+    assert queue_history_response.status_code == 200
+    assert [item["id"] for item in queue_history_response.json()["items"]] == [job_id]
 
     history_response = client.get("/api/orchestrations/history?limit=1")
     assert history_response.status_code == 200

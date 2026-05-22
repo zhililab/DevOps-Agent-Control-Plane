@@ -34,12 +34,23 @@ def _default_run_payload() -> dict:
 
 
 def test_orchestration_run_success_and_history_and_get(client) -> None:
-    create_response = client.post("/api/orchestrations/run", json=_default_run_payload())
+    payload = {
+        **_default_run_payload(),
+        "team_subject": "platform-team",
+        "requested_by": "alice@sre",
+        "approval_actor": "bob@platform",
+        "approval_note": "Approved release readiness demo.",
+    }
+    create_response = client.post("/api/orchestrations/run", json=payload)
     assert create_response.status_code == 200
     created = create_response.json()
 
     assert created["status"] == "success"
     assert created["subscription_tier"] == "pro"
+    assert created["team_subject"] == "platform-team"
+    assert created["requested_by"] == "alice@sre"
+    assert created["approval_actor"] == "bob@platform"
+    assert created["checkpoint_count"] >= 8
     assert len(created["steps"]) == 3
     for step in created["steps"]:
         assert step["audit"]["conclusion"]
@@ -52,6 +63,7 @@ def test_orchestration_run_success_and_history_and_get(client) -> None:
     history = history_response.json()["items"]
     assert len(history) == 1
     assert history[0]["id"] == created["id"]
+    assert history[0]["checkpoint_count"] >= 8
     assert history[0]["ledger_integrity"] == {
         "entity_type": "orchestration",
         "entity_id": str(created["id"]),
@@ -65,6 +77,23 @@ def test_orchestration_run_success_and_history_and_get(client) -> None:
     assert detail["id"] == created["id"]
     assert len(detail["steps"]) == 3
 
+    checkpoint_response = client.get(f"/api/orchestrations/{created['id']}/checkpoints")
+    assert checkpoint_response.status_code == 200
+    checkpoints = checkpoint_response.json()["items"]
+    checkpoint_types = [item["checkpoint_type"] for item in checkpoints]
+    assert "orchestration.accepted" in checkpoint_types
+    assert "orchestration.success" in checkpoint_types
+    assert checkpoint_types.count("step.started") == 3
+    assert all(item["integrity_status"] == "valid" for item in checkpoints)
+
+    filtered_history = client.get("/api/orchestrations/history?team_subject=platform-team")
+    assert filtered_history.status_code == 200
+    assert [item["id"] for item in filtered_history.json()["items"]] == [created["id"]]
+
+    empty_history = client.get("/api/orchestrations/history?team_subject=other-team")
+    assert empty_history.status_code == 200
+    assert empty_history.json()["items"] == []
+
 
 def test_orchestration_partial_success_when_analyzer_missing_signal(client) -> None:
     payload = _default_run_payload()
@@ -77,6 +106,11 @@ def test_orchestration_partial_success_when_analyzer_missing_signal(client) -> N
     analyzer = next(step for step in record["steps"] if step["agent_type"] == "analyzer")
     assert analyzer["status"] == "failed"
     assert analyzer["fallback_action"]
+
+    checkpoints = client.get(f"/api/orchestrations/{record['id']}/checkpoints").json()["items"]
+    failed = [item for item in checkpoints if item["checkpoint_type"] == "step.failed"]
+    assert len(failed) == 1
+    assert failed[0]["payload"]["fallback_action"] == "Gather one concrete error signal and rerun analyzer."
 
 
 def test_orchestration_free_tier_blocks_cross_workflow(client) -> None:
@@ -424,13 +458,18 @@ def test_queue_run_status_retry_and_cancel(client) -> None:
         assert isinstance(current.get("events"), list)
         assert len(current["events"]) >= 1
         assert any(item["event_type"] == "queued" for item in current["events"])
+        assert isinstance(current.get("checkpoints"), list)
+        assert any(item["checkpoint_type"] == "queue.queued" for item in current["checkpoints"])
+        assert current["team_subject"] == "demo-team"
 
-        cancel_response = client.post(f"/api/orchestrations/queue/{job_id}/cancel")
+        cancel_response = client.post(f"/api/orchestrations/queue/{job_id}/cancel?actor=queue-owner")
         # Cancel may race with completion; if completed, API returns 409 by design.
         assert cancel_response.status_code in {200, 409}
 
         if cancel_response.status_code == 200:
-            retry_response = client.post(f"/api/orchestrations/queue/{job_id}/retry")
+            canceled_job = cancel_response.json()
+            assert any(item["checkpoint_type"] == "queue.cancel_requested" for item in canceled_job["checkpoints"])
+            retry_response = client.post(f"/api/orchestrations/queue/{job_id}/retry?actor=queue-owner")
             assert retry_response.status_code == 200
             assert retry_response.json()["job_id"] == job_id
     finally:
@@ -460,6 +499,10 @@ def test_queue_history_endpoint_lists_jobs(client) -> None:
         assert len(history_items) >= 1
         assert "status" in history_items[0]
         assert "attempts" in history_items[0]
+
+        filtered_response = client.get("/api/orchestrations/queue/history?team_subject=demo-team&limit=20")
+        assert filtered_response.status_code == 200
+        assert len(filtered_response.json()["items"]) >= 1
     finally:
         settings.entitlement_secret = old_secret
         settings.entitlement_required = old_required

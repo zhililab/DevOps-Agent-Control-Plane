@@ -18,6 +18,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 2. Open `/orchestrate`.
    - Click `Import Curated Templates` if curated workflow templates are not already available.
    - Pick a DevOps-focused template such as `Release Gate And Remote Deploy`, `Production Incident Triage`, or `Query Performance Optimization`.
+   - Confirm Team, Requester, Approver, and Approval Note are populated for the small-team trust demo.
    - Point out the selected template pattern and policy line: required tier, risk level, approval status, billable work units, and allowed tool scope.
    - For high-risk templates, tick `Human Approval Confirmed` before running; the backend rejects unapproved high-risk runs.
    - Keep signed entitlement handling on the default UI path; do not use legacy `X-Subscription-Tier`.
@@ -26,11 +27,13 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 3. Review the immediate replay.
    - Confirm the result includes `Run Replay`, run id, summary, and step audit blocks.
    - Confirm each step exposes conclusion, evidence, risk, and next action.
+   - Confirm the replay summary shows team/requester/approver context and a non-zero checkpoint count.
 
 4. Open `/orchestrations`.
    - Confirm the new run appears newest-first.
    - Confirm the run displays persisted `History Ledger: valid · N event(s)` without first clicking verify.
-   - Click `Verify History Ledger` once to show manual re-verification keeps the same persisted status.
+   - Click `Verify History Ledger` once to show manual re-verification keeps the same persisted status and loads checkpoint timeline snapshots.
+   - Reload the page and confirm the ledger status and checkpoint count remain visible.
 
 5. Review queue visibility.
    - In `Queue Job List`, filter by status if needed.
@@ -46,7 +49,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Use the run -> replay -> verify -> upgrade path as the short buyer story.
 
 8. Close with commercial KPIs on `/dashboard`.
-   - Show `Billable Work Units`, `Audited Workflows`, and `Policy Blocks`.
+   - Show `Billable Work Units`, `Audited Workflows`, `Policy Blocks`, `Approved Runs`, `Checkpointed Runs`, and `Jobs Needing Owner`.
    - Explain that these counters are the current bridge from technical workflow execution to pricing and packaging.
 
 ## Acceptance Checks
@@ -54,8 +57,10 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/health` returns `{"status":"ok"}`.
 - `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` return HTTP 200.
 - `/api/orchestrations/history?limit=3` includes `ledger_integrity` for returned runs.
-- `/api/orchestrations/metrics?days=7` includes billable work units, audited workflow count, approval blocks, and template policy upgrade blocks.
+- `/api/orchestrations/{id}/checkpoints` returns checkpoint snapshots with valid payload hash status.
+- `/api/orchestrations/metrics?days=7` includes billable work units, audited workflow count, approval blocks, template policy upgrade blocks, approved runs, checkpointed runs, and failed jobs needing owner.
 - `/orchestrations` does not show `History Ledger: not checked` for runs that already have ledger events.
+- `/orchestrations` shows team/requester/approver context and checkpoint count for the new run.
 - `/monetization` can activate a Pro plan and show usage counters plus `checkout completed` in the audit feed without timeout errors.
 - Smoke/system records may exist from release checks, but personal history pages hide smoke data by default.
 

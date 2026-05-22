@@ -25,6 +25,11 @@ describe("orchestration workflow", () => {
             duration_ms: 120,
             entry_source: "web_ui",
             subscription_tier: "pro",
+            team_subject: "platform-team",
+            requested_by: "sre-lead",
+            approval_actor: "release-manager",
+            approval_note: "Approved for trusted DevOps workflow demo execution.",
+            checkpoint_count: 4,
             summary: {
               conclusion: "Reviewer summarized momentum with one carry-over action.",
               risks: ["Validation gaps can delay fixes."],
@@ -112,6 +117,11 @@ describe("orchestration workflow", () => {
             duration_ms: 90,
             entry_source: "web_ui",
             subscription_tier: "pro",
+            team_subject: "platform-team",
+            requested_by: "sre-lead",
+            approval_actor: "release-manager",
+            approval_note: "Approved for trusted DevOps workflow demo execution.",
+            checkpoint_count: 4,
             summary: {
               conclusion: "Recovered after refreshing stale entitlement.",
               risks: [],
@@ -230,6 +240,11 @@ describe("orchestration workflow", () => {
             duration_ms: 111,
             entry_source: "web_ui",
             subscription_tier: "power",
+            team_subject: "platform-team",
+            requested_by: "sre-lead",
+            approval_actor: "release-manager",
+            approval_note: "Approved for trusted DevOps workflow demo execution.",
+            checkpoint_count: 4,
             summary: {
               conclusion: "Release gate approved and executed.",
               risks: [],
@@ -265,6 +280,9 @@ describe("orchestration workflow", () => {
     expect(runBody).toMatchObject({
       template_id: 501,
       approval_confirmed: true,
+      team_subject: "platform-team",
+      requested_by: "sre-lead",
+      approval_actor: "release-manager",
     });
   });
 
@@ -276,6 +294,11 @@ describe("orchestration workflow", () => {
       duration_ms: 88,
       entry_source: "web_ui",
       subscription_tier: "pro",
+      team_subject: "platform-team",
+      requested_by: "sre-lead",
+      approval_actor: "release-manager",
+      approval_note: "Approved for trusted DevOps workflow demo execution.",
+      checkpoint_count: 3,
       summary: {
         conclusion: "Planner created a deployable orchestration checklist.",
         risks: ["Deployment evidence still needs capture."],
@@ -346,6 +369,51 @@ describe("orchestration workflow", () => {
           { status: 200 }
         );
       }
+      if (url.endsWith("/orchestrations/909/checkpoints")) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 1,
+                checkpoint_uid: "checkpoint-1",
+                entity_type: "orchestration",
+                entity_id: "909",
+                orchestration_id: 909,
+                queue_job_id: null,
+                checkpoint_type: "orchestration.accepted",
+                step_name: "",
+                step_index: null,
+                status: "running",
+                payload: { team_subject: "platform-team" },
+                payload_sha256: "abc",
+                created_by: "sre-lead",
+                created_at: "2026-05-21T00:00:00Z",
+                integrity_status: "valid",
+                integrity_error: "",
+              },
+              {
+                id: 2,
+                checkpoint_uid: "checkpoint-2",
+                entity_type: "orchestration",
+                entity_id: "909",
+                orchestration_id: 909,
+                queue_job_id: null,
+                checkpoint_type: "step.success",
+                step_name: "Plan The Day",
+                step_index: 1,
+                status: "success",
+                payload: { step_name: "Plan The Day" },
+                payload_sha256: "def",
+                created_by: "sre-lead",
+                created_at: "2026-05-21T00:00:01Z",
+                integrity_status: "valid",
+                integrity_error: "",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
       return new Response(JSON.stringify({ items: [] }), { status: 200 });
     });
 
@@ -370,10 +438,14 @@ describe("orchestration workflow", () => {
     expect(screen.getByText("Planner created a deployable orchestration checklist.")).toBeInTheDocument();
     expect(screen.getByText("Planner produced launch validation steps.")).toBeInTheDocument();
     expect(screen.getByText(/History Ledger: valid · 3 event\(s\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Team: platform-team · requested by sre-lead · approved by release-manager/i)).toBeInTheDocument();
+    expect(screen.getByText(/Checkpoints: 3/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Verify History Ledger" }));
     await waitFor(() => {
       expect(screen.getByText(/History Ledger: valid · 3 event\(s\)/i)).toBeInTheDocument();
     });
+    expect(screen.getByText("orchestration.accepted")).toBeInTheDocument();
+    expect(screen.getByText("Plan The Day · success")).toBeInTheDocument();
   });
 
   test("renders orchestration history with filters", async () => {
