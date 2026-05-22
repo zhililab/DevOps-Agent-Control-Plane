@@ -17,7 +17,7 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 ## Iteration Theme
 - current iteration target: DevOps orchestration MVP launch closeout
 - product direction: deterministic personal DevOps orchestration with inspectable replay, queue lifecycle visibility, signed entitlement-aware tier gates, and reusable knowledge/templates
-- commercial direction: personal DevOps agent control plane; sell trusted, replayable, policy-gated workflow execution before broad assistant breadth
+- commercial direction: personal DevOps agent control plane; sell trusted, replayable, policy-gated workflow execution before broad assistant breadth, now with Manual Billing V1 for subscription lifecycle demos
 - UI direction: Obsidian-like visual language remains the active baseline (dark canvas, violet accent, layered cards, knowledge graph feeling)
 - status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; the Docker Compose server deployment path is the current MVP release path, with k3d/k8s retained as follow-up deployment options
 
@@ -83,6 +83,11 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
   - `GET /api/monetization/profile?subject=...`
   - `GET /api/monetization/usage?subject=...`
   - `GET /api/monetization/events?limit=...`
+- added Manual Billing V1 subscription lifecycle APIs:
+  - `POST /api/monetization/checkout/manual`
+  - `POST /api/monetization/cancel`
+  - `POST /api/monetization/reactivate`
+- added `/monetization` UI for plan activation, subscription status, usage counters, and billing event audit feed
 - aligned frontend monetization observability client with backend canonical route: `/api/observability/monetization`
 - upgraded `/orchestrate` UI with sync/async run mode, queue job status card, retry/cancel actions
 - upgraded `/orchestrations` UI with queue status filtering and timeline replay from `WorkflowQueueEvent`
@@ -166,7 +171,7 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
 ### Later Product Completion
 - add State & Checkpoint V2 for resumable queue jobs and explicit step checkpoint snapshots
 - add first-class policy authoring controls so users do not need to edit policy tags directly
-- add billing-provider integration and cohort reporting around commercial work units
+- add real billing-provider integration and cohort reporting around commercial work units after Manual Billing V1 proves the flow
 - complete P7 Communication Assistant (not a current deployment blocker)
 - complete P8 Weekly Review (not a current deployment blocker)
 - continue P9 integrations foundation after the orchestration MVP is deployed and audited

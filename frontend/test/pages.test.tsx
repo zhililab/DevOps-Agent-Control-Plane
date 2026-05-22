@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import DashboardPage from "@/app/dashboard/page";
 import HistoryPage from "@/app/history/page";
 import KnowledgePage from "@/app/knowledge/page";
+import MonetizationPage from "@/app/monetization/page";
 import OrchestratePage from "@/app/orchestrate/page";
 import OrchestrationsPage from "@/app/orchestrations/page";
 import ProfilePage from "@/app/profile/page";
@@ -55,6 +56,11 @@ describe("core pages", () => {
   test("renders orchestrations", () => {
     render(<OrchestrationsPage />);
     expect(screen.getByRole("heading", { name: "Orchestration History" })).toBeInTheDocument();
+  });
+
+  test("renders monetization", () => {
+    render(<MonetizationPage />);
+    expect(screen.getByRole("heading", { name: "Monetization" })).toBeInTheDocument();
   });
 
   test("renders templates", () => {

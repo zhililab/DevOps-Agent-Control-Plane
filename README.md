@@ -113,6 +113,9 @@ Documentation map: `docs/README.md`. Current commercial strategy and orchestrati
 - `GET /api/monetization/profile`: read subscription profile by `subject`
 - `GET /api/monetization/usage`: read usage counters by `subject`
 - `GET /api/monetization/events`: read newest-first monetization event audit feed
+- `POST /api/monetization/checkout/manual`: activate or change a manual billing subscription
+- `POST /api/monetization/cancel`: schedule subscription cancellation at period end
+- `POST /api/monetization/reactivate`: clear a pending manual cancellation
 - `POST /api/tasks`: create task
 - `GET /api/tasks`: list tasks
 - `PUT /api/tasks/{id}`: update task
@@ -128,6 +131,7 @@ Documentation map: `docs/README.md`. Current commercial strategy and orchestrati
 - `/technical-analysis`
 - `/orchestrate`
 - `/orchestrations`
+- `/monetization`
 - `/knowledge`
 - `/templates`
 - `/history`

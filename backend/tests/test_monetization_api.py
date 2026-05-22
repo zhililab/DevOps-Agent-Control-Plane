@@ -207,3 +207,96 @@ def test_monetization_events_rejects_out_of_range_limit(client) -> None:
     response = client.get("/api/monetization/events?limit=101")
 
     assert response.status_code == 422
+
+
+def test_manual_checkout_creates_active_profile_counters_and_event(client) -> None:
+    response = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "commercial-user", "target_tier": "pro"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    profile = payload["profile"]
+    assert profile["subject"] == "commercial-user"
+    assert profile["tier"] == "pro"
+    assert profile["status"] == "active"
+    assert profile["billing_provider"] == "manual"
+    assert profile["cancel_at_period_end"] is False
+    assert profile["entitlements"]["workflow_runs"] == 300
+    assert profile["entitlements"]["queued_runs"] == 300
+    counters = payload["counters"]
+    assert {item["metric"] for item in counters} == {"workflow_runs", "queued_runs"}
+    assert {item["limit"] for item in counters} == {300}
+    assert payload["event"]["event_kind"] == "subscription_changed"
+    assert payload["event"]["event"]["action"] == "checkout_completed"
+
+    profile_response = client.get("/api/monetization/profile?subject=commercial-user")
+    assert profile_response.status_code == 200
+    assert profile_response.json()["profile"]["tier"] == "pro"
+
+
+def test_manual_checkout_tier_change_preserves_counter_usage(client) -> None:
+    create_response = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "usage-preserved", "target_tier": "pro"},
+    )
+    assert create_response.status_code == 200
+    counter_id = create_response.json()["counters"][0]["id"]
+
+    _ = client
+    db_generator = app.dependency_overrides[get_db]()
+    db = next(db_generator)
+    try:
+        counter = db.get(UsageCounter, counter_id)
+        assert counter is not None
+        counter.used = 17
+        db.commit()
+    finally:
+        db_generator.close()
+
+    upgrade_response = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "usage-preserved", "target_tier": "power"},
+    )
+
+    assert upgrade_response.status_code == 200
+    payload = upgrade_response.json()
+    assert payload["profile"]["tier"] == "power"
+    assert payload["event"]["event"]["action"] == "tier_changed"
+    assert payload["event"]["event"]["previous_tier"] == "pro"
+    upgraded_counter = next(item for item in payload["counters"] if item["id"] == counter_id)
+    assert upgraded_counter["used"] == 17
+    assert upgraded_counter["limit"] == 2000
+
+
+def test_subscription_cancel_and_reactivate_write_audit_events(client) -> None:
+    create_response = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "cancel-user", "target_tier": "power"},
+    )
+    assert create_response.status_code == 200
+
+    cancel_response = client.post("/api/monetization/cancel", json={"subject": "cancel-user"})
+    assert cancel_response.status_code == 200
+    assert cancel_response.json()["profile"]["cancel_at_period_end"] is True
+    assert cancel_response.json()["event"]["event"]["action"] == "cancel_requested"
+
+    reactivate_response = client.post("/api/monetization/reactivate", json={"subject": "cancel-user"})
+    assert reactivate_response.status_code == 200
+    assert reactivate_response.json()["profile"]["cancel_at_period_end"] is False
+    assert reactivate_response.json()["event"]["event"]["action"] == "reactivated"
+
+
+def test_manual_checkout_rejects_invalid_tier_and_empty_subject(client) -> None:
+    invalid_tier = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "commercial-user", "target_tier": "enterprise"},
+    )
+    empty_subject = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "   ", "target_tier": "pro"},
+    )
+
+    assert invalid_tier.status_code == 422
+    assert empty_subject.status_code == 422

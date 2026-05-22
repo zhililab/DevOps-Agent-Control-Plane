@@ -11,6 +11,7 @@ const links = [
   { href: "/technical-analysis", label: "Technical Analysis" },
   { href: "/orchestrate", label: "Orchestrate" },
   { href: "/orchestrations", label: "Orchestrations" },
+  { href: "/monetization", label: "Monetization" },
   { href: "/knowledge", label: "Knowledge" },
   { href: "/templates", label: "Templates" },
   { href: "/history", label: "History" },

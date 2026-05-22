@@ -643,6 +643,38 @@ class MonetizationEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ManualCheckoutRequest(BaseModel):
+    subject: str = Field(..., min_length=1, max_length=120)
+    target_tier: MonetizationTier
+    billing_provider: str = Field(default="manual", min_length=1, max_length=32)
+
+    @field_validator("subject", "billing_provider")
+    @classmethod
+    def strip_required_text(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Value cannot be empty.")
+        return stripped
+
+
+class SubscriptionCancelRequest(BaseModel):
+    subject: str = Field(..., min_length=1, max_length=120)
+
+    @field_validator("subject")
+    @classmethod
+    def strip_subject(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Subject cannot be empty.")
+        return stripped
+
+
+class SubscriptionLifecycleResponse(BaseModel):
+    profile: SubscriptionProfileRead
+    counters: list[UsageCounterRead] = Field(default_factory=list)
+    event: MonetizationEventRead
+
+
 class MonetizationObservabilityResponse(BaseModel):
     profile: SubscriptionProfileRead | None = None
     counters: list[UsageCounterRead] = Field(default_factory=list)

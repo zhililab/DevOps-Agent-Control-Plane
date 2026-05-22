@@ -514,6 +514,105 @@ button:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.monetization-subject-form {
+  margin-bottom: 18px;
+}
+
+.inline-form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.inline-form-row input,
+.inline-form-row button {
+  margin-bottom: 0;
+}
+
+.commercial-summary,
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.pricing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pricing-card,
+.usage-counter,
+.event-row {
+  border: 1px solid #363d63;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.pricing-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+}
+
+.pricing-card h3 {
+  font-size: 1.45rem;
+}
+
+.pricing-card button {
+  align-self: end;
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.pricing-card-active {
+  border-color: rgba(102, 210, 171, 0.6);
+  box-shadow: 0 0 0 1px rgba(102, 210, 171, 0.2);
+}
+
+.usage-counter-grid,
+.event-feed {
+  display: grid;
+  gap: 10px;
+}
+
+.usage-counter {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.usage-counter span {
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.usage-counter small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.event-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.event-row p,
+.event-row span {
+  margin: 0;
+}
+
+.event-row span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .reflection-section {
   border-top: 1px dashed #39416b;
   margin-top: 18px;
@@ -984,8 +1083,19 @@ pre {
   .kpi-grid,
   .chart-grid,
   .story-grid,
+  .commercial-summary,
+  .pricing-grid,
   .hero-obsidian {
     grid-template-columns: 1fr;
+  }
+
+  .inline-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .event-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .ledger-strip,

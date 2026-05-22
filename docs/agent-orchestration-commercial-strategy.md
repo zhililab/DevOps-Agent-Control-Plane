@@ -66,6 +66,7 @@ The technical references reinforce starting simple and only adding coordination 
 - Policy Layer V2 via template policy metadata for required tier, risk level, approval requirement, allowed tool scopes, and billable work units
 - Human Approval Gate for approval-required templates before sync or queued execution
 - commercial work-unit counters in orchestration metrics and dashboard KPIs
+- Manual Billing V1 subscription lifecycle: manual checkout, tier changes, cancellation/reactivation, usage counters, audit feed, and `/monetization` UI
 
 ### Next High-Value Requirements
 
@@ -73,12 +74,14 @@ The technical references reinforce starting simple and only adding coordination 
 - Agent Communication Contract: standardized inter-step message schema beyond current audit block.
 - Tool Isolation: scoped credentials and deny-by-default external tool execution.
 - Policy Authoring UI: first-class controls for editing template policy without typing tags.
-- Commercial Metrics V2: billing-provider integration and cohort reporting around billable work units.
+- Commercial Metrics V2: real billing-provider integration and cohort reporting around billable work units.
 
 ## Packaging Direction
 
 - Free: single-step smoke and personal experimentation.
 - Pro: deterministic multi-step DevOps workflows, history, replay, queue controls, and local/server deployment.
 - Power: policy packs, approval gates, advanced ledger/compliance evidence, team-ready observability, and higher limits.
+
+Manual Billing V1 intentionally uses the existing tables instead of a live payment provider. It makes the commercial loop demoable and testable now, while keeping Stripe or another provider as a later adapter behind the same subscription/profile/usage/event model.
 
 The MVP should keep selling trust and repeatability before breadth. Communication Assistant, Weekly Review, and broad integrations remain valuable later modules, but they should not displace the current DevOps orchestration control-plane wedge.

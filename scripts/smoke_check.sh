@@ -118,6 +118,7 @@ main() {
   assert_route_ok "/technical-analysis"
   assert_route_ok "/orchestrate"
   assert_route_ok "/orchestrations"
+  assert_route_ok "/monetization"
   assert_route_ok "/knowledge"
   assert_route_ok "/templates"
 
@@ -188,6 +189,21 @@ main() {
   assert_api_get_json_contains \
     "${API_BASE}/monetization/events?limit=1" \
     '"events":['
+
+  assert_api_json_contains \
+    "${API_BASE}/monetization/checkout/manual" \
+    '{"subject":"smoke-check","target_tier":"pro"}' \
+    '"event":{"action":"'
+
+  assert_api_json_contains \
+    "${API_BASE}/monetization/cancel" \
+    '{"subject":"smoke-check"}' \
+    '"cancel_at_period_end":true'
+
+  assert_api_json_contains \
+    "${API_BASE}/monetization/reactivate" \
+    '{"subject":"smoke-check"}' \
+    '"cancel_at_period_end":false'
 
   log "checking knowledge/template list response shape"
   assert_api_get_is_array "${API_BASE}/knowledge"

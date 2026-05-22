@@ -6,7 +6,7 @@ This document records the current product target and the minimum functionality t
 
 - Current release target: deterministic DevOps personal workflow orchestration MVP.
 - Commercial wedge: personal DevOps agent control plane for trusted, replayable, policy-gated workflow execution.
-- Primary surfaces: `/orchestrate`, `/orchestrations`, and `/dashboard`.
+- Primary surfaces: `/orchestrate`, `/orchestrations`, `/dashboard`, and `/monetization`.
 - Release path: Docker Compose server deployment through `make release-deploy`.
 - Public entrypoint: `http://1.117.63.81`.
 - Canonical health route: `/health`.
@@ -18,6 +18,7 @@ This document records the current product target and the minimum functionality t
 - Navigate to `/orchestrations` and verify persisted run history and step replay.
 - Submit queued orchestration work, then inspect queue job state, retry/cancel controls, and timeline replay.
 - Review dashboard orchestration KPIs and monetization observability fallback states.
+- Activate or change a manual subscription on `/monetization`, then confirm usage counters and audit events update.
 - Generate and persist daily plans, daily reflections, and technical analysis records.
 - Review daily history with accurate `Asia/Shanghai` business dates while preserving UTC audit timestamps.
 - Browse reusable knowledge entries, prompt templates, and workflow templates.
@@ -47,6 +48,9 @@ This document records the current product target and the minimum functionality t
 - `POST /api/orchestrations/templates/import/builtin`
 - `GET /api/observability/monetization?days=...`
 - `GET /api/monetization/profile|usage|events`
+- `POST /api/monetization/checkout/manual`
+- `POST /api/monetization/cancel`
+- `POST /api/monetization/reactivate`
 
 ## Security And Robustness Baseline
 

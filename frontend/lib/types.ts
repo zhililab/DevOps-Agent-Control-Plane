@@ -299,6 +299,52 @@ export type MonetizationObservability = {
   health: MonetizationObservabilityHealth;
 };
 
+export type MonetizationSubscriptionStatus = "inactive" | "active" | "past_due" | "canceled";
+export type UsageMetric = "workflow_runs" | "queued_runs";
+
+export type SubscriptionProfile = {
+  id: number;
+  subject: string;
+  tier: SubscriptionTier;
+  status: MonetizationSubscriptionStatus;
+  billing_provider: string;
+  external_customer_id: string;
+  external_subscription_id: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  entitlements: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UsageCounter = {
+  id: number;
+  subscription_profile_id: number;
+  metric: UsageMetric;
+  period_start: string;
+  period_end: string;
+  used: number;
+  limit: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MonetizationEvent = {
+  id: number;
+  subscription_profile_id: number | null;
+  usage_counter_id: number | null;
+  event_kind: string;
+  event: Record<string, unknown>;
+  created_at: string;
+};
+
+export type SubscriptionLifecycleResponse = {
+  profile: SubscriptionProfile;
+  counters: UsageCounter[];
+  event: MonetizationEvent;
+};
+
 export type WorkflowQueueJobStatus = "queued" | "running" | "succeeded" | "failed" | "canceled";
 
 export type WorkflowQueueRunResponse = {

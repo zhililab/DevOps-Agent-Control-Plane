@@ -8,14 +8,19 @@ import type {
   EntitlementBootstrap,
   HistoryIntegrityResponse,
   MonetizationObservability,
+  MonetizationEvent,
   NoteEntry,
   PromptTemplate,
   PromptTemplateImportResponse,
   ReflectionEntry,
+  SubscriptionTier,
+  SubscriptionLifecycleResponse,
+  SubscriptionProfile,
   Task,
   TechnicalAnalysisHistoryResponse,
   TechnicalAnalysisInput,
   TechnicalAnalysisRecord,
+  UsageCounter,
   WorkflowOrchestrationHistoryResponse,
   WorkflowOrchestrationMetrics,
   WorkflowOrchestrationRecord,
@@ -353,6 +358,41 @@ export const apiClient = {
 
   getMonetizationObservability(days = 7) {
     return request<MonetizationObservability>(`/observability/monetization?days=${days}`);
+  },
+
+  getSubscriptionProfile(subject: string) {
+    const search = new URLSearchParams({ subject });
+    return request<{ profile: SubscriptionProfile | null }>(`/monetization/profile?${search.toString()}`);
+  },
+
+  listUsageCounters(subject: string) {
+    const search = new URLSearchParams({ subject });
+    return request<{ counters: UsageCounter[] }>(`/monetization/usage?${search.toString()}`);
+  },
+
+  listMonetizationEvents(limit = 50) {
+    return request<{ events: MonetizationEvent[] }>(`/monetization/events?limit=${limit}`);
+  },
+
+  startManualCheckout(payload: { subject: string; target_tier: SubscriptionTier }) {
+    return request<SubscriptionLifecycleResponse>("/monetization/checkout/manual", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  cancelSubscription(subject: string) {
+    return request<SubscriptionLifecycleResponse>("/monetization/cancel", {
+      method: "POST",
+      body: JSON.stringify({ subject }),
+    });
+  },
+
+  reactivateSubscription(subject: string) {
+    return request<SubscriptionLifecycleResponse>("/monetization/reactivate", {
+      method: "POST",
+      body: JSON.stringify({ subject }),
+    });
   },
 
   createWorkflowTemplate(payload: {
