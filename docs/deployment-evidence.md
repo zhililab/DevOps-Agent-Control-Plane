@@ -120,6 +120,27 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - `curl http://1.117.63.81/health` returned `{"status":"ok"}`
   - `http://1.117.63.81/history` returned `200`
 
+## 2026-05-22 MVP Orchestration Closeout Baseline Verification
+
+- Baseline deployed commit: `a3329de fix: persist orchestration ledger status`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release fixes included:
+  - curated DevOps orchestration templates seeded and importable from `/orchestrate`
+  - `/api/orchestrations/history` returns `ledger_integrity` summaries by default
+  - `/orchestrations` displays persisted ledger status after reloads and redeploys
+  - dashboard trend reads use lightweight history parameters to avoid replay/integrity overhead
+- Verified on local gates:
+  - `make release-check` passed, including `qa-fast`, visual baseline, Playwright E2E, security check, and k8s render
+- Verified on remote:
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - `curl http://1.117.63.81/health` returned `200`
+  - `http://1.117.63.81/orchestrations` returned `200`
+  - `GET /api/orchestrations/history?limit=3` returned persisted `ledger_integrity` summaries for the latest runs
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.

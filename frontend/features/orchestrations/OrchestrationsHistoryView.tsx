@@ -208,12 +208,12 @@ export function OrchestrationsHistoryView() {
       {!isLoading && items.length === 0 ? <p className="muted">No orchestration runs found.</p> : null}
 
       {items.map((item) => (
-        <section key={item.id} id={`orchestration-run-${item.id}`} className="history-plan">
+        <section key={item.id} id={`orchestration-run-${item.id}`} className="history-plan orchestration-run-card">
           {(() => {
             const integrity = historyIntegrityByRunId[item.id] ?? item.ledger_integrity;
             return (
-              <div className="button-row">
-                <p className={`status ${integrity?.integrity_status === "invalid" ? "status-error" : "status-success"}`}>
+              <div className="ledger-strip">
+                <p className={`status ledger-status ${integrity?.integrity_status === "invalid" ? "status-error" : "status-success"}`}>
                   History Ledger:{" "}
                   {integrity
                     ? `${integrity.integrity_status} · ${integrity.event_count} event(s)`
@@ -229,11 +229,16 @@ export function OrchestrationsHistoryView() {
               </div>
             );
           })()}
-          <h3>
-            Run #{item.id} · {item.status} · {item.subscription_tier}
-          </h3>
-          <p>{item.summary.conclusion}</p>
-          <p className="muted">Duration: {item.duration_ms}ms | Source: {item.entry_source}</p>
+          <div className="run-heading">
+            <div>
+              <h3>Run #{item.id}</h3>
+              <p>{item.summary.conclusion}</p>
+            </div>
+            <p className="run-meta">
+              {item.status} · {item.subscription_tier} · {item.duration_ms}ms
+            </p>
+          </div>
+          <p className="muted">Source: {item.entry_source}</p>
 
           <div className="result-grid">
             {item.steps.map((step) => (
@@ -274,16 +279,23 @@ export function OrchestrationsHistoryView() {
         {!isLoadingQueue && queueJobs.length === 0 ? <p className="muted">No queue jobs found.</p> : null}
 
         {queueJobs.map((job) => (
-          <article key={job.id} className="result-block">
-            <p>
-              <strong>Job #{job.id}</strong> · status={job.status} · attempts={job.attempts}/{job.max_attempts}
-            </p>
-            <p className="muted">cancel_requested={String(job.cancel_requested)}</p>
-            <p className="muted">
-              orchestration=
-              {job.orchestration_id ? <a href={`#orchestration-run-${job.orchestration_id}`}>Run #{job.orchestration_id}</a> : "none"}
-            </p>
-            <p className="muted">updated={formatTimestamp(job.updated_at)}</p>
+          <article key={job.id} className="result-block queue-job-card">
+            <div className="queue-job-header">
+              <p>
+                <strong>Job #{job.id}</strong>
+              </p>
+              <p className="run-meta">
+                {job.status} · attempts {job.attempts}/{job.max_attempts}
+              </p>
+            </div>
+            <div className="queue-job-meta">
+              <p>cancel_requested={String(job.cancel_requested)}</p>
+              <p>
+                orchestration=
+                {job.orchestration_id ? <a href={`#orchestration-run-${job.orchestration_id}`}>Run #{job.orchestration_id}</a> : "none"}
+              </p>
+              <p>updated={formatTimestamp(job.updated_at)}</p>
+            </div>
             <div className="button-row">
               <button type="button" onClick={() => setSelectedQueueJobId(job.id)} disabled={selectedQueueJobId === job.id}>
                 {selectedQueueJobId === job.id ? "Selected" : "View Timeline Replay"}
@@ -320,9 +332,12 @@ export function OrchestrationsHistoryView() {
         {isLoadingQueueDetail ? <p className="muted">Loading selected queue job...</p> : null}
         {selectedQueueJob && timeline ? (
           <>
-            <p>
-              Job #{selectedQueueJob.id} · latest status={selectedQueueJob.status}
-            </p>
+            <div className="queue-job-header">
+              <p>
+                <strong>Job #{selectedQueueJob.id}</strong>
+              </p>
+              <p className="run-meta">latest status={selectedQueueJob.status}</p>
+            </div>
             <p className="muted">
               Timeline source:{" "}
               {timeline.mode === "event_log"

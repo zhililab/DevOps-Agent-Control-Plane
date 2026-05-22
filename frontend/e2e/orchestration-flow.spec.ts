@@ -38,7 +38,8 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
 
   await expect(page).toHaveURL(/\/orchestrations$/);
   await expect(page.getByRole("heading", { name: "Orchestration History" })).toBeVisible();
-  await expect(page.getByText(`Run #${runId} · success · pro`)).toBeVisible();
+  await expect(page.getByRole("heading", { name: `Run #${runId}` })).toBeVisible();
+  await expect(page.getByText(/success · pro · \d+ms/).first()).toBeVisible();
   await expect(page.getByText("Plan The Day (planner) - success")).toBeVisible();
   await expect(page.getByText("Analyze Technical Signals (analyzer) - success")).toBeVisible();
   await expect(page.getByText("Review And Reflect (reviewer) - success")).toBeVisible();

@@ -121,6 +121,10 @@ Current iteration goal: close out and ship the DevOps orchestration MVP. The cur
   - history list responses include ledger integrity summaries from persisted ledger data
   - page reloads and redeploys no longer reset verified runs to `History Ledger: not checked`
   - dashboard lightweight history reads opt out of integrity summaries for query performance
+- added MVP demo runbook for the current DevOps orchestration release path: `docs/mvp-demo-runbook.md`
+- tightened `/orchestrations` MVP closeout UI:
+  - clearer run headers, fixed ledger status strip, queue job metadata grouping, and timeline replay status treatment
+  - mobile layout guardrails for ledger/run/queue status rows
 - updated release gate to use the current server-release path: `make qa-all`, `make e2e-orchestration`, `make security-check`, and `make k8s-render`
 - verified simplified server deployment on target host with `make server-deploy`
   - deployed commit: `1e005db chore: release deploy 2026-05-21-2255`

@@ -459,6 +459,7 @@ CI is configured in `.github/workflows/ci.yml` with parallel jobs:
 Design/motion reuse guidance is documented in `docs/visual-guidelines.md`.
 Release gate checklist is documented in `docs/release-checklist.md`.
 Core functionality checks are documented in `docs/core-functionality-check.md`.
+MVP demo flow is documented in `docs/mvp-demo-runbook.md`.
 Deployment evidence is recorded in `docs/deployment-evidence.md`.
 K3d online deployment guide is documented in `docs/deploy-k3d-online.md`.
 

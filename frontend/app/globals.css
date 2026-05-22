@@ -455,6 +455,65 @@ button:focus-visible {
   background: var(--surface-soft);
 }
 
+.orchestration-run-card {
+  display: grid;
+  gap: 10px;
+}
+
+.ledger-strip,
+.run-heading,
+.queue-job-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ledger-strip {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #32395d;
+}
+
+.ledger-status {
+  margin: 0;
+}
+
+.run-heading h3,
+.run-heading p,
+.queue-job-header p {
+  margin: 0;
+}
+
+.run-meta {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid #3d456f;
+  border-radius: 999px;
+  background: #242948;
+  color: #c7d0f3;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.queue-job-card {
+  border-left: 3px solid #7f62ff;
+}
+
+.queue-job-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.queue-job-meta p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .reflection-section {
   border-top: 1px dashed #39416b;
   margin-top: 18px;
@@ -926,6 +985,21 @@ pre {
   .chart-grid,
   .story-grid,
   .hero-obsidian {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-strip,
+  .run-heading,
+  .queue-job-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .run-meta {
+    width: fit-content;
+  }
+
+  .queue-job-meta {
     grid-template-columns: 1fr;
   }
 

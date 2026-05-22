@@ -312,8 +312,9 @@ describe("orchestration workflow", () => {
     render(<OrchestrationsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Run #909 · success · pro")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Run #909" })).toBeInTheDocument();
     });
+    expect(screen.getByText("success · pro · 88ms")).toBeInTheDocument();
     expect(screen.getByText("Planner created a deployable orchestration checklist.")).toBeInTheDocument();
     expect(screen.getByText("Planner produced launch validation steps.")).toBeInTheDocument();
     expect(screen.getByText(/History Ledger: valid · 3 event\(s\)/i)).toBeInTheDocument();
@@ -325,6 +326,7 @@ describe("orchestration workflow", () => {
 
   test("renders orchestration history with filters", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
+    let job402Canceled = false;
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.includes("/orchestrations/history")) {
@@ -413,6 +415,7 @@ describe("orchestration workflow", () => {
         );
       }
       if (url.endsWith("/orchestrations/queue/402/cancel")) {
+        job402Canceled = true;
         return new Response(
           JSON.stringify({
             id: 402,
@@ -481,6 +484,32 @@ describe("orchestration workflow", () => {
         );
       }
       if (url.endsWith("/orchestrations/queue/402")) {
+        if (job402Canceled) {
+          return new Response(
+            JSON.stringify({
+              id: 402,
+              status: "canceled",
+              attempts: 1,
+              max_attempts: 3,
+              cancel_requested: true,
+              orchestration_id: null,
+              error_message: "",
+              created_at: "2026-04-23T00:01:00Z",
+              updated_at: "2026-04-23T00:01:20Z",
+              events: [
+                {
+                  id: 4,
+                  queue_job_id: 402,
+                  event_type: "cancel_requested",
+                  status: "canceled",
+                  detail: "Cancel requested while job is running.",
+                  created_at: "2026-04-23T00:01:20Z",
+                },
+              ],
+            }),
+            { status: 200 }
+          );
+        }
         return new Response(
           JSON.stringify({
             id: 402,
@@ -512,16 +541,16 @@ describe("orchestration workflow", () => {
     render(<OrchestrationsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Run #202 · partial_success · pro")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Run #202" })).toBeInTheDocument();
     });
+    expect(screen.getByText("partial_success · pro · 230ms")).toBeInTheDocument();
     expect(screen.getByText("Analyzer requested more technical evidence.")).toBeInTheDocument();
     expect(screen.getByText(/Fallback: Gather one concrete error signal/i)).toBeInTheDocument();
     expect(screen.getByText(/Queue Job List/i)).toBeInTheDocument();
     expect(screen.getAllByText(/cancel_requested=true/i).length).toBeGreaterThan(0);
     await waitFor(() => {
-      expect(
-        screen.getByText((content) => content.replace(/\s+/g, " ").trim() === "Job #401 · latest status=failed")
-      ).toBeInTheDocument();
+      expect(screen.getAllByText("Job #401").length).toBeGreaterThan(0);
+      expect(screen.getByText("latest status=failed")).toBeInTheDocument();
       expect(screen.getByText(/Observed queue events/i)).toBeInTheDocument();
       expect(screen.getByText("Execution failed: Analyzer timeout")).toBeInTheDocument();
     });
@@ -534,7 +563,7 @@ describe("orchestration workflow", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Cancel Job" })[1]);
     await waitFor(() => {
       expect(screen.getByText("Queue job #402 cancel request accepted.")).toBeInTheDocument();
-      expect(screen.getByText(/Job #402 · latest status=canceled/i)).toBeInTheDocument();
+      expect(screen.getByText("latest status=canceled")).toBeInTheDocument();
     });
   });
 
