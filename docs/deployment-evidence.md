@@ -252,6 +252,35 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - public `GET http://1.117.63.81/health` returned `200`
   - public `/tutorial`, `/dashboard`, `/monetization`, `/orchestrate`, and `/orchestrations` returned `200`
 
+## 2026-05-22 Commercial Monetization Robustness Release Verification
+
+- Implementation commit: `2c42c7a fix: harden commercial monetization flow`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release fixes included:
+  - `/monetization` no longer lets audit-feed or usage refresh timeouts hide a successfully activated subscription profile
+  - Manual Billing V1 lifecycle responses update profile, counters, and audit feed immediately before background refresh completes
+  - `/api/monetization/events` supports optional `subject` filtering so account pages do not load unrelated global audit noise
+  - `/monetization` UI now emphasizes the commercial MVP cockpit: plan, usage, and audit state
+  - reduced idle animation work in the global background/header preview and shortened route transition duration
+  - added browser E2E for commercial plan activation alongside orchestration replay E2E
+- Verified on local gates:
+  - focused frontend monetization and route-transition tests passed
+  - focused backend monetization API tests passed
+  - `make qa-fast` passed with 45 frontend/backend tests and production build
+  - `make qa-visual` passed
+  - `make release-check` passed, including two Playwright E2E flows, security check, and k8s render
+  - desktop and mobile Playwright screenshots were captured locally for `/monetization`
+- Verified on remote:
+  - first deploy attempt failed on a transient Docker registry TLS handshake timeout for `node:20-alpine`; retry succeeded without database reset
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health`, `/monetization`, `/dashboard`, `/orchestrate`, and `/orchestrations` returned `200`
+  - public `POST /api/monetization/checkout/manual` activated a Pro test account
+  - public `GET /api/monetization/events?subject=...&limit=3` returned the account-scoped `checkout_completed` event
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
