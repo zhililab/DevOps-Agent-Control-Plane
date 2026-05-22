@@ -10,6 +10,10 @@ describe("orchestration workflow", () => {
     window.localStorage.clear();
   });
 
+  function transientAbortError(): Error {
+    return Object.assign(new Error("aborted"), { name: "AbortError" });
+  }
+
   test("runs orchestration and renders step replay", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
@@ -284,6 +288,55 @@ describe("orchestration workflow", () => {
       requested_by: "sre-lead",
       approval_actor: "release-manager",
     });
+  });
+
+  test("recovers workflow template loading after a transient browser timeout", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    let templateCalls = 0;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("/orchestrations/entitlement/bootstrap")) {
+        return new Response(JSON.stringify({ detail: "Not found." }), { status: 404 });
+      }
+      if (url.endsWith("/orchestrations/templates")) {
+        templateCalls += 1;
+        if (templateCalls === 1) {
+          throw transientAbortError();
+        }
+        return new Response(
+          JSON.stringify([
+            {
+              id: 701,
+              name: "Transient Recovery Template",
+              description: "Template list should recover after one aborted browser request.",
+              steps: [{ step_name: "Recover Template Load", agent_type: "planner", enabled: true }],
+              tags: ["pattern:sequential", "tier:pro", "risk:low", "approval:none", "tool:none", "work-units:1"],
+              policy: {
+                required_tier: "pro",
+                risk_level: "low",
+                approval_required: false,
+                allowed_tool_scopes: ["none"],
+                billable_work_units: 1,
+              },
+              enabled: true,
+              created_at: "2026-05-22T00:00:00Z",
+              updated_at: "2026-05-22T00:00:00Z",
+            },
+          ]),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestratePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Transient Recovery Template" })).toBeInTheDocument();
+    });
+    expect(templateCalls).toBe(2);
+    expect(screen.queryByText("Request timed out. Please retry.")).not.toBeInTheDocument();
   });
 
   test("runs orchestration then verifies replay in history page", async () => {
@@ -689,6 +742,137 @@ describe("orchestration workflow", () => {
       expect(screen.getByText("Queue job #402 cancel request accepted.")).toBeInTheDocument();
       expect(screen.getByText("latest status=canceled")).toBeInTheDocument();
     });
+  });
+
+  test("recovers orchestration and queue history after transient browser timeouts", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    let historyCalls = 0;
+    let queueHistoryCalls = 0;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.includes("/orchestrations/history")) {
+        historyCalls += 1;
+        if (historyCalls === 1) {
+          throw transientAbortError();
+        }
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 808,
+                status: "success",
+                duration_ms: 75,
+                entry_source: "web_ui",
+                subscription_tier: "pro",
+                team_subject: "platform-team",
+                requested_by: "sre-lead",
+                approval_actor: "release-manager",
+                approval_note: "Recovered from transient timeout.",
+                checkpoint_count: 4,
+                ledger_integrity: {
+                  entity_type: "orchestration",
+                  entity_id: "808",
+                  integrity_status: "valid",
+                  event_count: 4,
+                },
+                summary: {
+                  conclusion: "History recovered after retry.",
+                  risks: [],
+                  next_actions: ["Keep the page usable after a transient network abort."],
+                },
+                steps: [
+                  {
+                    id: 31,
+                    step_name: "Plan The Day",
+                    agent_type: "planner",
+                    status: "success",
+                    input_summary: "{}",
+                    output_summary: "Recovered history item.",
+                    audit: {
+                      conclusion: "Recovered history item.",
+                      evidence: "The GET request retried once.",
+                      risk: "Without retry, the page would stay on timeout.",
+                      next_action: "Render replay after recovery.",
+                    },
+                    fallback_action: "",
+                    started_at: "2026-05-22T00:00:00Z",
+                    finished_at: "2026-05-22T00:00:01Z",
+                    duration_ms: 75,
+                  },
+                ],
+                created_at: "2026-05-22T00:00:00Z",
+                updated_at: "2026-05-22T00:00:01Z",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/orchestrations/queue/history")) {
+        queueHistoryCalls += 1;
+        if (queueHistoryCalls === 1) {
+          throw transientAbortError();
+        }
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 811,
+                status: "succeeded",
+                attempts: 1,
+                max_attempts: 3,
+                cancel_requested: false,
+                orchestration_id: 808,
+                team_subject: "platform-team",
+                requested_by: "sre-lead",
+                approval_actor: "release-manager",
+                approval_note: "Recovered from transient timeout.",
+                error_message: "",
+                created_at: "2026-05-22T00:00:00Z",
+                updated_at: "2026-05-22T00:00:01Z",
+                events: [],
+                checkpoints: [],
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/queue/811")) {
+        return new Response(
+          JSON.stringify({
+            id: 811,
+            status: "succeeded",
+            attempts: 1,
+            max_attempts: 3,
+            cancel_requested: false,
+            orchestration_id: 808,
+            team_subject: "platform-team",
+            requested_by: "sre-lead",
+            approval_actor: "release-manager",
+            approval_note: "Recovered from transient timeout.",
+            error_message: "",
+            created_at: "2026-05-22T00:00:00Z",
+            updated_at: "2026-05-22T00:00:01Z",
+            events: [],
+            checkpoints: [],
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestrationsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Run #808" })).toBeInTheDocument();
+      expect(screen.getByText("Job #811")).toBeInTheDocument();
+    });
+    expect(historyCalls).toBe(2);
+    expect(queueHistoryCalls).toBe(2);
+    expect(screen.queryByText("Request timed out. Please retry.")).not.toBeInTheDocument();
   });
 
   test("enqueues orchestration and displays queue status", async () => {

@@ -35,7 +35,14 @@ import type {
 } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
-const API_TIMEOUT_MS = 10_000;
+const DEFAULT_API_TIMEOUT_MS = 30_000;
+const LONG_API_TIMEOUT_MS = 60_000;
+const GET_RETRY_DELAY_MS = 250;
+
+type ApiRequestOptions = RequestInit & {
+  timeoutMs?: number;
+  retries?: number;
+};
 
 function normalizeErrorMessage(status: number, bodyText: string): string {
   if (status === 404) return "The requested data was not found.";
@@ -66,37 +73,59 @@ function normalizeErrorMessage(status: number, bodyText: string): string {
   return "Request failed.";
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+function isRetryableRequestFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.name === "AbortError" || error.message === "Failed to fetch" || error.message === "NetworkError";
+}
 
-  try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.headers ?? {}),
-      },
-      cache: "no-store",
-      signal: controller.signal,
-    });
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
-    if (!response.ok) {
-      const message = await response.text();
-      throw new Error(normalizeErrorMessage(response.status, message));
-    }
+async function request<T>(path: string, init?: ApiRequestOptions): Promise<T> {
+  const { timeoutMs = DEFAULT_API_TIMEOUT_MS, retries: explicitRetries, ...fetchInit } = init ?? {};
+  const method = (fetchInit.method ?? "GET").toString().toUpperCase();
+  const retries = explicitRetries ?? (method === "GET" ? 1 : 0);
+  let attempt = 0;
 
-    return (await response.json()) as T;
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Request timed out. Please retry.");
+  while (true) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...fetchInit,
+        headers: {
+          "Content-Type": "application/json",
+          ...(fetchInit.headers ?? {}),
+        },
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(normalizeErrorMessage(response.status, message));
+      }
+
+      return (await response.json()) as T;
+    } catch (error) {
+      if (attempt < retries && isRetryableRequestFailure(error)) {
+        attempt += 1;
+        window.clearTimeout(timeoutId);
+        await sleep(GET_RETRY_DELAY_MS * attempt);
+        continue;
+      }
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Request timed out. Please retry.");
+      }
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("Request failed.");
+    } finally {
+      window.clearTimeout(timeoutId);
     }
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error("Request failed.");
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
@@ -277,6 +306,7 @@ export const apiClient = {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
+      timeoutMs: LONG_API_TIMEOUT_MS,
     });
   },
 
@@ -305,11 +335,12 @@ export const apiClient = {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
+      timeoutMs: LONG_API_TIMEOUT_MS,
     });
   },
 
   getWorkflowQueueJob(jobId: number) {
-    return request<WorkflowQueueJob>(`/orchestrations/queue/${jobId}`);
+    return request<WorkflowQueueJob>(`/orchestrations/queue/${jobId}`, { timeoutMs: LONG_API_TIMEOUT_MS });
   },
 
   listWorkflowQueueJobs(params?: { status?: string; team_subject?: string; limit?: number }) {
@@ -318,7 +349,10 @@ export const apiClient = {
     if (params?.team_subject) search.set("team_subject", params.team_subject);
     if (params?.limit) search.set("limit", String(params.limit));
     const suffix = search.toString() ? `?${search.toString()}` : "";
-    return request<WorkflowQueueHistoryResponse>(`/orchestrations/queue/history${suffix}`);
+    return request<WorkflowQueueHistoryResponse>(`/orchestrations/queue/history${suffix}`, {
+      timeoutMs: LONG_API_TIMEOUT_MS,
+      retries: 2,
+    });
   },
 
   retryWorkflowQueueJob(jobId: number, options?: { actor?: string }) {
@@ -355,19 +389,28 @@ export const apiClient = {
     if (params?.include_steps !== undefined) search.set("include_steps", String(params.include_steps));
     if (params?.include_integrity !== undefined) search.set("include_integrity", String(params.include_integrity));
     const suffix = search.toString() ? `?${search.toString()}` : "";
-    return request<WorkflowOrchestrationHistoryResponse>(`/orchestrations/history${suffix}`);
+    return request<WorkflowOrchestrationHistoryResponse>(`/orchestrations/history${suffix}`, {
+      timeoutMs: LONG_API_TIMEOUT_MS,
+      retries: 2,
+    });
   },
 
   getWorkflowOrchestration(orchestrationId: number) {
-    return request<WorkflowOrchestrationRecord>(`/orchestrations/${orchestrationId}`);
+    return request<WorkflowOrchestrationRecord>(`/orchestrations/${orchestrationId}`, { timeoutMs: LONG_API_TIMEOUT_MS });
   },
 
   getWorkflowOrchestrationHistoryEvents(orchestrationId: number) {
-    return request<HistoryIntegrityResponse>(`/orchestrations/${orchestrationId}/history-events`);
+    return request<HistoryIntegrityResponse>(`/orchestrations/${orchestrationId}/history-events`, {
+      timeoutMs: LONG_API_TIMEOUT_MS,
+      retries: 2,
+    });
   },
 
   getWorkflowOrchestrationCheckpoints(orchestrationId: number) {
-    return request<WorkflowCheckpointHistoryResponse>(`/orchestrations/${orchestrationId}/checkpoints`);
+    return request<WorkflowCheckpointHistoryResponse>(`/orchestrations/${orchestrationId}/checkpoints`, {
+      timeoutMs: LONG_API_TIMEOUT_MS,
+      retries: 2,
+    });
   },
 
   getWorkflowOrchestrationMetrics(days = 7) {
@@ -375,7 +418,7 @@ export const apiClient = {
   },
 
   getEntitlementBootstrapToken() {
-    return request<EntitlementBootstrap>("/orchestrations/entitlement/bootstrap");
+    return request<EntitlementBootstrap>("/orchestrations/entitlement/bootstrap", { retries: 1 });
   },
 
   getMonetizationObservability(days = 7) {
@@ -439,11 +482,17 @@ export const apiClient = {
     const search = new URLSearchParams();
     if (params?.enabled !== undefined) search.set("enabled", String(params.enabled));
     const suffix = search.toString() ? `?${search.toString()}` : "";
-    return request<WorkflowTemplate[]>(`/orchestrations/templates${suffix}`);
+    return request<WorkflowTemplate[]>(`/orchestrations/templates${suffix}`, {
+      timeoutMs: LONG_API_TIMEOUT_MS,
+      retries: 2,
+    });
   },
 
   exportWorkflowTemplates() {
-    return request<WorkflowTemplate[]>("/orchestrations/templates/export");
+    return request<WorkflowTemplate[]>("/orchestrations/templates/export", {
+      timeoutMs: LONG_API_TIMEOUT_MS,
+      retries: 2,
+    });
   },
 
   importBuiltinWorkflowTemplates() {

@@ -499,6 +499,8 @@ def test_queue_history_endpoint_lists_jobs(client) -> None:
         assert len(history_items) >= 1
         assert "status" in history_items[0]
         assert "attempts" in history_items[0]
+        assert history_items[0]["events"] == []
+        assert history_items[0]["checkpoints"] == []
 
         filtered_response = client.get("/api/orchestrations/queue/history?team_subject=demo-team&limit=20")
         assert filtered_response.status_code == 200

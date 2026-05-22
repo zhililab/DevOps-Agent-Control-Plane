@@ -47,7 +47,7 @@ export function OrchestrationsHistoryView() {
           status: statusFilter === "all" ? undefined : statusFilter,
           subscription_tier: tierFilter === "all" ? undefined : tierFilter,
           team_subject: teamFilter.trim() || undefined,
-          limit: 50,
+          limit: 25,
         });
         const nextItems = Array.isArray(response.items) ? response.items : [];
         setItems(nextItems);
@@ -78,7 +78,7 @@ export function OrchestrationsHistoryView() {
         const response = await apiClient.listWorkflowQueueJobs({
           status: queueStatusFilter === "all" ? undefined : queueStatusFilter,
           team_subject: teamFilter.trim() || undefined,
-          limit: 50,
+          limit: 25,
         });
         const nextJobs = Array.isArray(response.items) ? response.items : [];
         setQueueJobs(nextJobs);

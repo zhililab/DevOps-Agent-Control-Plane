@@ -12,6 +12,9 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
   await page.goto("/orchestrate");
 
   await expect(page.getByRole("heading", { name: "Workflow Orchestrator" })).toBeVisible();
+  await expect(page.getByLabel("Apply Existing Template")).toBeVisible();
+  await expect(page.getByText("Loading templates...")).toHaveCount(0);
+  await expect(page.getByText("Request timed out. Please retry.")).toHaveCount(0);
   await page.getByLabel("Entry Source").fill(`e2e_browser_${Date.now()}`);
   await page.getByLabel("Tasks (one per line)").fill("Validate browser orchestration flow");
   await page.getByLabel("Priorities (one per line)").fill("Validate browser orchestration flow");
@@ -38,6 +41,9 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
 
   await expect(page).toHaveURL(/\/orchestrations$/);
   await expect(page.getByRole("heading", { name: "Orchestration History" })).toBeVisible();
+  await expect(page.getByText("Loading orchestration history...")).toHaveCount(0);
+  await expect(page.getByText("Loading queue jobs...")).toHaveCount(0);
+  await expect(page.getByText("Request timed out. Please retry.")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: `Run #${runId}` })).toBeVisible();
   const runCard = page.locator(`#orchestration-run-${runId}`);
   await expect(runCard.getByText(/success · pro · \d+ms/)).toBeVisible();
