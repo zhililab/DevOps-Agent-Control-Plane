@@ -2,6 +2,34 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-05-22 Manual Billing V1 Commercialization Release
+
+- Deployed implementation commit: `78fba09 feat: add manual billing monetization flow`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release additions:
+  - Manual Billing V1 lifecycle APIs:
+    - `POST /api/monetization/checkout/manual`
+    - `POST /api/monetization/cancel`
+    - `POST /api/monetization/reactivate`
+  - `/monetization` UI for plan activation, subscription status, usage counters, and billing audit events
+  - smoke coverage for `/monetization` and the manual billing lifecycle APIs
+- Verified local gates:
+  - backend tests: 92 passed
+  - frontend tests: 39 passed
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make release-check` passed
+  - local `make smoke-check` passed with a signed test entitlement token
+- Verified remote deployment:
+  - remote smoke checks passed, including `/monetization` and manual checkout/cancel/reactivate
+  - remote runtime security checks passed
+  - public `curl http://1.117.63.81/health` returned `200`
+  - public `/dashboard` returned `200`
+  - public `/monetization` returned `200`
+
 ## 2026-05-21 Server Release
 
 - Release path: Docker Compose server deployment through `make server-deploy`.
