@@ -269,6 +269,13 @@ async function installStableApiRoutes(page: import("@playwright/test").Page) {
     if (apiPath === "/monetization/events") {
       return fulfillJson({ events: [] });
     }
+    if (apiPath === "/monetization/entitlement") {
+      return fulfillJson({
+        token: "eyJ0aWVyIjoicHJvIiwidXNlcl9pZCI6ImRlbW8tdXNlciIsImV4cCI6MTc4MjA1OTQyOX0.signature",
+        tier: "pro",
+        expires_at: "2026-06-21T00:00:00Z",
+      });
+    }
     if (apiPath === "/monetization/commercial-metrics") {
       return fulfillJson(commercialMetricsPayload);
     }

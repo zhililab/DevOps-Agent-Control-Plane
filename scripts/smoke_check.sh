@@ -210,6 +210,10 @@ main() {
     '{"subject":"smoke-check"}' \
     '"cancel_at_period_end":false'
 
+  assert_api_get_json_contains \
+    "${API_BASE}/monetization/entitlement?subject=smoke-check" \
+    '"tier":"pro"'
+
   log "checking knowledge/template list response shape"
   assert_api_get_is_array "${API_BASE}/knowledge"
   assert_api_get_is_array "${API_BASE}/templates"

@@ -673,6 +673,16 @@ button:focus-visible {
   color: var(--success);
 }
 
+.status-warning {
+  border-color: rgba(245, 186, 95, 0.45);
+  background: rgba(118, 76, 31, 0.24);
+  color: #ffd9a0;
+}
+
+.status-warning button {
+  margin-top: 8px;
+}
+
 .history-plan {
   border: 1px solid #363d63;
   border-radius: 12px;

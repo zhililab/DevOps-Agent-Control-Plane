@@ -17,6 +17,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 
 2. Open `/orchestrate`.
    - Click `Import Curated Templates` if curated workflow templates are not already available.
+   - Load the demo account entitlement from `Billing Subject` before running; Pro should run Pro templates, while Power-only templates should ask for Power or a compatible template.
    - Pick a DevOps-focused template such as `Release Gate And Remote Deploy`, `Production Incident Triage`, or `Query Performance Optimization`.
    - Confirm Team, Requester, Approver, and Approval Note are populated for the small-team trust demo.
    - Point out the selected template pattern and policy line: required tier, risk level, approval status, billable work units, and allowed tool scope.
@@ -62,10 +63,12 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/api/orchestrations/{id}/checkpoints` returns checkpoint snapshots with valid payload hash status.
 - `/api/orchestrations/metrics?days=7` includes billable work units, audited workflow count, approval blocks, template policy upgrade blocks, approved runs, checkpointed runs, and failed jobs needing owner.
 - `/api/monetization/commercial-metrics?days=7` includes subscription summary, usage summary, policy blocks, billable work units, top templates, commercial events, trend, and anomaly hints.
+- `/api/monetization/entitlement?subject=demo-user` issues a signed token for an active Manual Billing subscription.
 - `/orchestrations` does not show `History Ledger: not checked` for runs that already have ledger events.
 - `/orchestrations` shows team/requester/approver context and checkpoint count for the new run.
 - `/monetization` can activate a Pro plan and show usage counters plus `checkout completed` in the audit feed without timeout errors.
 - `/orchestrate` can save a template with explicit commercial policy controls: tier, risk, approval, tool scopes, work units, and enabled state.
+- `/orchestrate` blocks a Pro entitlement before submitting a Power-only template and offers a Pro-compatible template path.
 - Smoke/system records may exist from release checks, but personal history pages hide smoke data by default.
 
 ## Demo Boundaries

@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends, Query
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.database import get_db
 from app.schemas import (
     CommercialMetricsResponse,
+    EntitlementBootstrapResponse,
     ManualCheckoutRequest,
     MonetizationEventRead,
     SubscriptionCancelRequest,
@@ -20,6 +24,7 @@ from app.services.monetization_service import (
     reactivate_subscription,
     start_manual_checkout,
 )
+from app.services.entitlement_service import sign_entitlement_token
 
 router = APIRouter(prefix="/monetization", tags=["monetization"])
 
@@ -47,6 +52,39 @@ def get_monetization_events(
     db: Session = Depends(get_db),
 ) -> dict[str, list[MonetizationEventRead]]:
     return {"events": list_monetization_events(db, limit=limit, subject=subject)}
+
+
+@router.get("/entitlement", response_model=EntitlementBootstrapResponse)
+def get_monetization_entitlement(
+    subject: str = Query(..., min_length=1, max_length=120),
+    db: Session = Depends(get_db),
+) -> EntitlementBootstrapResponse:
+    settings = get_settings()
+    if not settings.entitlement_secret.strip():
+        raise HTTPException(status_code=503, detail="Entitlement signing is unavailable.")
+
+    normalized_subject = subject.strip()
+    profile = get_subscription_profile(db, subject=normalized_subject)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="No subscription profile found for this subject.")
+    if profile.status != "active":
+        raise HTTPException(status_code=409, detail="Subscription is not active.")
+    now = datetime.now(timezone.utc)
+    if profile.current_period_end and profile.current_period_end.replace(tzinfo=timezone.utc) <= now:
+        raise HTTPException(status_code=409, detail="Subscription period has ended.")
+
+    ttl_seconds = max(300, int(settings.public_entitlement_bootstrap_ttl_seconds))
+    token = sign_entitlement_token(
+        secret=settings.entitlement_secret,
+        tier=profile.tier,
+        user_id=normalized_subject,
+        ttl_seconds=ttl_seconds,
+    )
+    return EntitlementBootstrapResponse(
+        token=token,
+        tier=profile.tier,
+        expires_at=now + timedelta(seconds=ttl_seconds),
+    )
 
 
 @router.get("/commercial-metrics", response_model=CommercialMetricsResponse)

@@ -83,6 +83,7 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
   - `GET /api/monetization/profile?subject=...`
   - `GET /api/monetization/usage?subject=...`
   - `GET /api/monetization/events?limit=...&subject=...`
+  - `GET /api/monetization/entitlement?subject=...`
   - `GET /api/monetization/commercial-metrics?days=7|30&subject=...`
 - added Manual Billing V1 subscription lifecycle APIs:
   - `POST /api/monetization/checkout/manual`
@@ -94,6 +95,11 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
   - `/monetization` commercial metrics cockpit with 7D/30D switch, top value templates, and partial-failure resilience
   - `/dashboard` commercial work-unit line trend, policy block KPI, and commercial anomaly hints
 - added Policy Authoring UI V1 on `/orchestrate` so template tier, risk, approval, tool scopes, billable work units, and enabled state are editable without policy tag edits
+- connected Manual Billing V1 subscriptions to signed orchestration entitlement:
+  - active subscription subjects can issue signed free/pro/power entitlement tokens
+  - `/orchestrate` persists the commercial billing subject and can load its subscription entitlement
+  - Pro users are prevented from accidentally running Power-only templates and can switch to a compatible template before submit
+  - subject-scoped Commercial Metrics V2 now matches entitlement-derived workflow usage
 - repositioned frontend title/header to `DevOps Agent Control Plane`
 - added categorized navigation: Operate, Commercial, Learn, Assets, and Personal Loops
 - added animated workflow preview to the global header

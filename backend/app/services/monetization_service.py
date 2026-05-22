@@ -35,6 +35,7 @@ from app.schemas import (
     UsageCounterRead,
     WorkflowTemplatePolicy,
 )
+from app.services.entitlement_service import subject_id_for_entitlement_user
 from app.time_utils import business_date_from_utc, utcnow_naive
 
 
@@ -456,7 +457,8 @@ def _list_monetization_logs(
     rows = query.order_by(AgentRunLog.created_at.desc(), AgentRunLog.id.desc()).all()
     if not subject:
         return rows
-    return [row for row in rows if _log_payload(row).get("subject_id") == subject]
+    expected_subject_ids = {subject, subject_id_for_entitlement_user(subject)}
+    return [row for row in rows if _log_payload(row).get("subject_id") in expected_subject_ids]
 
 
 def _log_payload(log: AgentRunLog) -> dict[str, object]:

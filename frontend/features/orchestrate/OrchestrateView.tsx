@@ -28,6 +28,8 @@ const DEFAULT_STEPS: WorkflowStepDefinition[] = [
 ];
 const DEFAULT_PUBLIC_ENTITLEMENT_TOKEN = process.env.NEXT_PUBLIC_DEFAULT_ENTITLEMENT_TOKEN ?? "";
 const ENTITLEMENT_TOKEN_STORAGE_KEY = "entitlement_token";
+const BILLING_SUBJECT_STORAGE_KEY = "billing_subject";
+const DEFAULT_BILLING_SUBJECT = "demo-user";
 const REFRESHABLE_ENTITLEMENT_ERRORS = new Set([
   "missing entitlement token.",
   "invalid entitlement signature.",
@@ -46,6 +48,7 @@ const WORKFLOW_TEMPLATE_PATTERN_LABELS = {
 } as const;
 const TEMPLATE_RISK_OPTIONS: WorkflowTemplatePolicy["risk_level"][] = ["low", "medium", "high", "critical"];
 const TEMPLATE_TIER_OPTIONS: SubscriptionTier[] = ["free", "pro", "power"];
+const TIER_RANK: Record<SubscriptionTier, number> = { free: 0, pro: 1, power: 2 };
 const DEFAULT_TEMPLATE_POLICY: WorkflowTemplatePolicy = {
   required_tier: "pro",
   risk_level: "medium",
@@ -110,6 +113,38 @@ function normalizeToolScopes(value: string): string[] {
   return scopes.length > 0 ? Array.from(new Set(scopes)) : ["none"];
 }
 
+function normalizeSubscriptionTier(value: unknown): SubscriptionTier | null {
+  if (value === "free" || value === "pro" || value === "power") return value;
+  return null;
+}
+
+function getTemplateRequiredTier(template: WorkflowTemplate | null): SubscriptionTier {
+  return template?.policy?.required_tier ?? "pro";
+}
+
+function canTierRunTemplate(tier: SubscriptionTier, template: WorkflowTemplate | null): boolean {
+  return TIER_RANK[tier] >= TIER_RANK[getTemplateRequiredTier(template)];
+}
+
+function decodeEntitlementTier(token: string): SubscriptionTier | null {
+  if (typeof window === "undefined") return null;
+  const payloadPart = token.trim().split(".", 1)[0];
+  if (!payloadPart) return null;
+  try {
+    const padded = payloadPart + "=".repeat((4 - (payloadPart.length % 4)) % 4);
+    const decoded = window.atob(padded.replaceAll("-", "+").replaceAll("_", "/"));
+    const payload = JSON.parse(decoded) as { tier?: unknown };
+    return normalizeSubscriptionTier(payload.tier);
+  } catch {
+    return null;
+  }
+}
+
+function initialStoredValue(key: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  return window.localStorage.getItem(key)?.trim() || fallback;
+}
+
 export function OrchestrateView() {
   const [entrySource, setEntrySource] = useState("web_ui");
   const [teamSubject, setTeamSubject] = useState("platform-team");
@@ -117,7 +152,12 @@ export function OrchestrateView() {
   const [approvalActor, setApprovalActor] = useState("release-manager");
   const [approvalNote, setApprovalNote] = useState("Approved for trusted DevOps workflow demo execution.");
   const [runMode, setRunMode] = useState<"sync" | "async">("sync");
-  const [entitlementToken, setEntitlementToken] = useState(DEFAULT_PUBLIC_ENTITLEMENT_TOKEN);
+  const [billingSubject, setBillingSubject] = useState(() =>
+    initialStoredValue(BILLING_SUBJECT_STORAGE_KEY, DEFAULT_BILLING_SUBJECT)
+  );
+  const [entitlementToken, setEntitlementToken] = useState(() =>
+    initialStoredValue(ENTITLEMENT_TOKEN_STORAGE_KEY, DEFAULT_PUBLIC_ENTITLEMENT_TOKEN)
+  );
   const [steps, setSteps] = useState<WorkflowStepDefinition[]>(DEFAULT_STEPS);
   const [templateName, setTemplateName] = useState("Default DevOps Loop");
   const [templateDescription, setTemplateDescription] = useState(
@@ -169,13 +209,20 @@ export function OrchestrateView() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const cachedSubject = window.localStorage.getItem(BILLING_SUBJECT_STORAGE_KEY)?.trim() || DEFAULT_BILLING_SUBJECT;
+    setBillingSubject(cachedSubject);
     const cached = window.localStorage.getItem(ENTITLEMENT_TOKEN_STORAGE_KEY)?.trim();
     if (cached) {
       setEntitlementToken(cached);
     } else if (DEFAULT_PUBLIC_ENTITLEMENT_TOKEN.trim()) {
       rememberEntitlementToken(DEFAULT_PUBLIC_ENTITLEMENT_TOKEN);
     }
-    void tryBootstrapEntitlementToken({ showStatus: false });
+    void (async () => {
+      const subscriptionToken = await tryLoadSubscriptionEntitlement(cachedSubject, { showStatus: false });
+      if (!subscriptionToken) {
+        await tryBootstrapEntitlementToken({ showStatus: false });
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -192,6 +239,14 @@ export function OrchestrateView() {
   const selectedWorkflowTemplate = useMemo(
     () => templates.find((template) => String(template.id) === selectedTemplateId) ?? null,
     [selectedTemplateId, templates]
+  );
+  const activeEntitlementTier = useMemo(() => decodeEntitlementTier(entitlementToken), [entitlementToken]);
+  const compatibleTemplate = useMemo(() => {
+    if (!activeEntitlementTier) return null;
+    return templates.find((template) => template.enabled && canTierRunTemplate(activeEntitlementTier, template)) ?? null;
+  }, [activeEntitlementTier, templates]);
+  const selectedTemplateRequiresUpgrade = Boolean(
+    selectedWorkflowTemplate && activeEntitlementTier && !canTierRunTemplate(activeEntitlementTier, selectedWorkflowTemplate)
   );
   const currentTemplatePolicy = useMemo<WorkflowTemplatePolicy>(
     () => ({
@@ -288,6 +343,15 @@ export function OrchestrateView() {
     }
   }
 
+  function rememberBillingSubject(subject: string) {
+    const normalized = subject.trim() || DEFAULT_BILLING_SUBJECT;
+    setBillingSubject(normalized);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(BILLING_SUBJECT_STORAGE_KEY, normalized);
+    }
+    return normalized;
+  }
+
   function forgetEntitlementToken() {
     setEntitlementToken("");
     if (typeof window !== "undefined") {
@@ -311,6 +375,28 @@ export function OrchestrateView() {
       }
       return token;
     } catch {
+      return null;
+    }
+  }
+
+  async function tryLoadSubscriptionEntitlement(
+    subject = billingSubject,
+    options: { showStatus?: boolean } = {}
+  ): Promise<string | null> {
+    try {
+      const normalizedSubject = rememberBillingSubject(subject);
+      const response = await apiClient.getSubscriptionEntitlement(normalizedSubject);
+      const token = typeof response.token === "string" ? response.token.trim() : "";
+      if (!token) return null;
+      rememberEntitlementToken(token);
+      if (options.showStatus) {
+        setStatus(`${normalizedSubject} ${response.tier.toUpperCase()} subscription entitlement loaded.`);
+      }
+      return token;
+    } catch (loadError) {
+      if (options.showStatus) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load subscription entitlement.");
+      }
       return null;
     }
   }
@@ -346,6 +432,13 @@ export function OrchestrateView() {
     event.preventDefault();
     setStatus(null);
     setError(null);
+    if (selectedTemplateRequiresUpgrade && activeEntitlementTier && selectedWorkflowTemplate) {
+      setError(
+        `Current ${activeEntitlementTier.toUpperCase()} entitlement cannot run '${selectedWorkflowTemplate.name}'. ` +
+          `This template requires ${getTemplateRequiredTier(selectedWorkflowTemplate).toUpperCase()}.`
+      );
+      return;
+    }
     setIsSubmitting(true);
     setQueueJob(null);
 
@@ -561,6 +654,26 @@ export function OrchestrateView() {
           </select>
         </label>
         <label>
+          Billing Subject
+          <input value={billingSubject} onChange={(event) => setBillingSubject(event.target.value)} />
+        </label>
+        <div className="button-row compact-controls">
+          <button
+            type="button"
+            onClick={() => {
+              setStatus(null);
+              setError(null);
+              void tryLoadSubscriptionEntitlement(billingSubject, { showStatus: true });
+            }}
+          >
+            Load Subscription Entitlement
+          </button>
+          <p className="muted">
+            Current entitlement: {activeEntitlementTier ? activeEntitlementTier.toUpperCase() : "Unknown"} · account{" "}
+            {billingSubject.trim() || DEFAULT_BILLING_SUBJECT}
+          </p>
+        </div>
+        <label>
           Entitlement Token (signed)
           <input
             value={entitlementToken}
@@ -626,6 +739,19 @@ export function OrchestrateView() {
                   onChange={(event) => setApprovalConfirmed(event.target.checked)}
                 />
               </label>
+            ) : null}
+            {selectedTemplateRequiresUpgrade && activeEntitlementTier ? (
+              <div className="status status-warning">
+                <p>
+                  Current {activeEntitlementTier.toUpperCase()} entitlement cannot run this template. It requires{" "}
+                  {getTemplateRequiredTier(selectedWorkflowTemplate).toUpperCase()}.
+                </p>
+                {compatibleTemplate ? (
+                  <button type="button" onClick={() => applyTemplate(String(compatibleTemplate.id))}>
+                    Use {activeEntitlementTier.toUpperCase()}-compatible template
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </>
         ) : null}
@@ -800,7 +926,7 @@ export function OrchestrateView() {
             onChange={(event) => setPersistTemplate(event.target.checked)}
           />
         </label>
-        <button type="submit" disabled={isSubmitting}>
+        <button type="submit" disabled={isSubmitting || selectedTemplateRequiresUpgrade}>
           {isSubmitting ? "Submitting..." : runMode === "sync" ? "Run Orchestration" : "Enqueue Orchestration"}
         </button>
       </form>

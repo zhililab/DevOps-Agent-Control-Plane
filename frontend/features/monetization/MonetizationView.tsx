@@ -47,6 +47,7 @@ const PLANS: Plan[] = [
 ];
 
 const DEFAULT_SUBJECT = "demo-user";
+const BILLING_SUBJECT_STORAGE_KEY = "billing_subject";
 const METRICS_WINDOW_OPTIONS = [7, 30] as const;
 
 const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
@@ -106,7 +107,10 @@ function eventDetail(event: MonetizationEvent): string {
 }
 
 export function MonetizationView() {
-  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
+  const [subject, setSubject] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_SUBJECT;
+    return window.localStorage.getItem(BILLING_SUBJECT_STORAGE_KEY)?.trim() || DEFAULT_SUBJECT;
+  });
   const [profile, setProfile] = useState<SubscriptionProfile | null>(null);
   const [counters, setCounters] = useState<UsageCounter[]>([]);
   const [events, setEvents] = useState<MonetizationEvent[]>([]);
@@ -222,6 +226,9 @@ export function MonetizationView() {
     event.preventDefault();
     const normalizedSubject = subject.trim() || DEFAULT_SUBJECT;
     setSubject(normalizedSubject);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(BILLING_SUBJECT_STORAGE_KEY, normalizedSubject);
+    }
     setStatus(null);
     await loadMonetization(normalizedSubject);
   }
@@ -233,6 +240,9 @@ export function MonetizationView() {
   ) {
     const normalizedSubject = subject.trim() || DEFAULT_SUBJECT;
     setSubject(normalizedSubject);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(BILLING_SUBJECT_STORAGE_KEY, normalizedSubject);
+    }
     setBusyAction(action);
     setStatus(null);
     setError(null);

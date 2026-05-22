@@ -1,6 +1,7 @@
 import json
 from datetime import date, datetime, timedelta, timezone
 
+from app.config import get_settings
 from app.database import get_db
 from app.main import app
 from app.models import (
@@ -15,6 +16,7 @@ from app.models import (
     WorkflowOrchestration,
     WorkflowTemplate,
 )
+from app.services.entitlement_service import resolve_entitlement_context
 
 
 def _now() -> datetime:
@@ -310,6 +312,79 @@ def test_manual_checkout_creates_active_profile_counters_and_event(client) -> No
     profile_response = client.get("/api/monetization/profile?subject=commercial-user")
     assert profile_response.status_code == 200
     assert profile_response.json()["profile"]["tier"] == "pro"
+
+
+def test_active_manual_subscription_issues_signed_entitlement_and_scopes_metrics(client) -> None:
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "manual-billing-entitlement-secret"
+        settings.entitlement_required = True
+
+        checkout = client.post(
+            "/api/monetization/checkout/manual",
+            json={"subject": "demo-user", "target_tier": "pro"},
+        )
+        assert checkout.status_code == 200
+
+        entitlement = client.get("/api/monetization/entitlement?subject=demo-user")
+        assert entitlement.status_code == 200
+        entitlement_payload = entitlement.json()
+        assert entitlement_payload["tier"] == "pro"
+        assert entitlement_payload["token"]
+
+        context = resolve_entitlement_context(
+            entitlement_payload["token"],
+            secret="manual-billing-entitlement-secret",
+            default_tier="free",
+            required=True,
+        )
+        assert context.tier == "pro"
+
+        run = client.post(
+            "/api/orchestrations/run",
+            headers={"X-Entitlement": entitlement_payload["token"]},
+            json={
+                "entry_source": "manual_billing_subject_test",
+                "steps": [
+                    {"step_name": "Plan Pro Workflow", "agent_type": "planner", "enabled": True},
+                    {"step_name": "Analyze Pro Workflow", "agent_type": "analyzer", "enabled": True},
+                    {"step_name": "Review Pro Workflow", "agent_type": "reviewer", "enabled": True},
+                ],
+                "daily_context": {
+                    "tasks": ["Run pro workflow"],
+                    "meetings": [],
+                    "blockers": [],
+                    "priorities": ["Run pro workflow"],
+                },
+                "technical_input": {
+                    "issue_description": "Registry timeout after artifact upload.",
+                    "errors": ["TimeoutError"],
+                    "logs": "registry timeout",
+                    "code_snippets": ["curl --max-time 30 https://registry/upload"],
+                },
+                "reflection_input": {
+                    "completed": ["Triage complete"],
+                    "unfinished": [],
+                    "blockers": [],
+                    "mood_or_notes": "steady",
+                },
+                "persist_knowledge": False,
+                "persist_template": False,
+            },
+        )
+        assert run.status_code == 200
+
+        metrics = client.get("/api/monetization/commercial-metrics?days=7&subject=demo-user")
+        assert metrics.status_code == 200
+        metrics_payload = metrics.json()
+        assert metrics_payload["usage_summary"]["workflow_runs_used"] == 1
+        assert metrics_payload["billable_work_units"]["total"] == 3
+        assert metrics_payload["top_templates"][0]["template_name"] == "Ad hoc workflow"
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
 
 
 def test_manual_checkout_tier_change_preserves_counter_usage(client) -> None:

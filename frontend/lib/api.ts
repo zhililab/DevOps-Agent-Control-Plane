@@ -422,6 +422,11 @@ export const apiClient = {
     return request<EntitlementBootstrap>("/orchestrations/entitlement/bootstrap", { retries: 1 });
   },
 
+  getSubscriptionEntitlement(subject: string) {
+    const search = new URLSearchParams({ subject });
+    return request<EntitlementBootstrap>(`/monetization/entitlement?${search.toString()}`, { retries: 1 });
+  },
+
   getMonetizationObservability(days = 7) {
     return request<MonetizationObservability>(`/observability/monetization?days=${days}`);
   },

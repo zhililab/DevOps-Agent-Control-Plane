@@ -27,6 +27,7 @@ make e2e-orchestration
 
 Expected:
 - `/orchestrate` submits a signed entitlement orchestration run
+- `/orchestrate` can load a signed entitlement from an active Manual Billing subject and blocks lower-tier users before submitting Power-only templates
 - run replay is visible after submission
 - `/orchestrations` shows the created run and persisted step replay
 - `/orchestrations` can verify the run history ledger and show valid integrity status
@@ -111,7 +112,7 @@ make smoke-check
 This command verifies:
 - frontend routes (`/dashboard`, `/today`, `/reflection`, `/technical-analysis`, `/orchestrate`, `/orchestrations`, `/monetization`, `/tutorial`, `/knowledge`, `/templates`)
 - backend health (`/health`)
-- core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, monetization read APIs, Commercial Metrics V2, and Manual Billing V1 lifecycle APIs
+- core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, monetization entitlement/read APIs, Commercial Metrics V2, and Manual Billing V1 lifecycle APIs
 - browser E2E for orchestration replay and commercial plan activation
 - history ledger integrity and idempotent backfill tests are covered by the local release gate
 - smoke-created daily/reflection/analysis records are tagged with `X-Record-Source: smoke_check`

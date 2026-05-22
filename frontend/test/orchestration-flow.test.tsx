@@ -14,6 +14,15 @@ describe("orchestration workflow", () => {
     return Object.assign(new Error("aborted"), { name: "AbortError" });
   }
 
+  function unsignedEntitlementToken(tier: "free" | "pro" | "power", userId = "demo-user"): string {
+    const payload = window
+      .btoa(JSON.stringify({ tier, user_id: userId, exp: 1782059429 }))
+      .replaceAll("+", "-")
+      .replaceAll("/", "_")
+      .replace(/=+$/, "");
+    return `${payload}.signature`;
+  }
+
   test("runs orchestration and renders step replay", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
@@ -293,6 +302,128 @@ describe("orchestration workflow", () => {
       requested_by: "sre-lead",
       approval_actor: "release-manager",
     });
+  });
+
+  test("loads manual billing entitlement and prevents pro users from running power templates", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const proToken = unsignedEntitlementToken("pro");
+    let runBody: Record<string, unknown> | null = null;
+    let runHeaders: Record<string, string> | null = null;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url.includes("/monetization/entitlement?subject=demo-user")) {
+        return new Response(
+          JSON.stringify({
+            token: proToken,
+            tier: "pro",
+            expires_at: "2026-06-21T00:00:00Z",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/entitlement/bootstrap")) {
+        return new Response(JSON.stringify({ detail: "Not found." }), { status: 404 });
+      }
+      if (url.endsWith("/orchestrations/templates")) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 801,
+              name: "Kubernetes Path Readiness",
+              description: "Power template.",
+              steps: [
+                { step_name: "Plan Cluster Gate", agent_type: "planner", enabled: true },
+                { step_name: "Analyze Manifest Risk", agent_type: "analyzer", enabled: true },
+                { step_name: "Review Deployment Path", agent_type: "reviewer", enabled: true },
+              ],
+              tags: ["pattern:handoff", "tier:power", "risk:high", "approval:required", "tool:kubernetes-readiness", "work-units:5"],
+              policy: {
+                required_tier: "power",
+                risk_level: "high",
+                approval_required: true,
+                allowed_tool_scopes: ["kubernetes-readiness"],
+                billable_work_units: 5,
+              },
+              enabled: true,
+              created_at: "2026-05-22T00:00:00Z",
+              updated_at: "2026-05-22T00:00:00Z",
+            },
+            {
+              id: 802,
+              name: "Production Incident Triage",
+              description: "Pro template.",
+              steps: [
+                { step_name: "Plan Triage Window", agent_type: "planner", enabled: true },
+                { step_name: "Analyze Incident Signals", agent_type: "analyzer", enabled: true },
+                { step_name: "Review Containment Plan", agent_type: "reviewer", enabled: true },
+              ],
+              tags: ["pattern:sequential", "tier:pro", "risk:medium", "approval:none", "tool:read-only-diagnostics", "work-units:3"],
+              policy: {
+                required_tier: "pro",
+                risk_level: "medium",
+                approval_required: false,
+                allowed_tool_scopes: ["read-only-diagnostics"],
+                billable_work_units: 3,
+              },
+              enabled: true,
+              created_at: "2026-05-22T00:00:00Z",
+              updated_at: "2026-05-22T00:00:00Z",
+            },
+          ]),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/run")) {
+        runBody = JSON.parse(String(init?.body ?? "{}"));
+        runHeaders = (init?.headers ?? {}) as Record<string, string>;
+        return new Response(
+          JSON.stringify({
+            id: 802,
+            status: "success",
+            duration_ms: 100,
+            entry_source: "web_ui",
+            subscription_tier: "pro",
+            team_subject: "platform-team",
+            requested_by: "sre-lead",
+            approval_actor: "release-manager",
+            approval_note: "Approved for trusted DevOps workflow demo execution.",
+            checkpoint_count: 4,
+            summary: {
+              conclusion: "Pro incident triage workflow completed.",
+              risks: [],
+              next_actions: ["Review history."],
+            },
+            steps: [],
+            created_at: "2026-05-22T00:00:00Z",
+            updated_at: "2026-05-22T00:00:01Z",
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestratePage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(proToken)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Current entitlement: PRO/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Apply Existing Template"), { target: { value: "801" } });
+    expect(screen.getByText(/Current PRO entitlement cannot run this template/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run Orchestration" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Use PRO-compatible template" }));
+    expect(screen.queryByText(/Current PRO entitlement cannot run this template/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run Orchestration" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Run #802/i)).toBeInTheDocument();
+    });
+    expect(runBody).toMatchObject({ template_id: 802 });
+    expect(runHeaders).toMatchObject({ "X-Entitlement": proToken });
   });
 
   test("saves workflow templates with explicit commercial policy controls", async () => {

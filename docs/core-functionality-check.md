@@ -21,6 +21,7 @@ This document records the current product target and the minimum functionality t
 - Submit queued orchestration work, then inspect queue job state, retry/cancel controls, and timeline replay.
 - Review dashboard orchestration KPIs and monetization observability fallback states.
 - Activate or change a manual subscription on `/monetization`, then confirm usage counters and subject-scoped audit events update.
+- Load the same billing subject on `/orchestrate`; an active Pro/Power subscription should issue a signed entitlement token for compatible workflow runs.
 - Review Commercial Metrics V2 on `/monetization`: billable work units, policy blocks, top value templates, and anomaly hints should load independently from subscription/profile refreshes.
 - Confirm `/dashboard` shows Commercial Work Units and Commercial Policy Blocks from the canonical commercial metrics API.
 - Confirm `/monetization` keeps the active subscription visible if usage or audit-feed refreshes are slow or partially unavailable.
@@ -56,6 +57,7 @@ This document records the current product target and the minimum functionality t
 - `POST /api/orchestrations/templates/import/builtin`
 - `GET /api/observability/monetization?days=...`
 - `GET /api/monetization/profile|usage|events`
+- `GET /api/monetization/entitlement?subject=...`
 - `GET /api/monetization/commercial-metrics?days=7|30&subject=...`
 - `POST /api/monetization/checkout/manual`
 - `POST /api/monetization/cancel`
@@ -92,6 +94,7 @@ This document records the current product target and the minimum functionality t
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 - Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.
 - Commercial Metrics V2 reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view.
+- `/orchestrate` should warn before submit when the current signed entitlement tier is lower than the selected template policy tier, and should offer a compatible template path for Pro users.
 - Global route transition and header preview animations should avoid continuous idle work and respect `prefers-reduced-motion`.
 
 ## Non-Blocking Product Modules

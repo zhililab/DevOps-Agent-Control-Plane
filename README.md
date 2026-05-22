@@ -123,6 +123,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `GET /api/monetization/profile`: read subscription profile by `subject`
 - `GET /api/monetization/usage`: read usage counters by `subject`
 - `GET /api/monetization/events`: read newest-first monetization event audit feed, optionally scoped by `subject`
+- `GET /api/monetization/entitlement`: issue a signed orchestration entitlement from an active Manual Billing subject
 - `GET /api/monetization/commercial-metrics`: read Commercial Metrics V2 (`days=7|30`, optional `subject`) with subscription mix, usage logs, policy blocks, billable work units, top templates, and anomaly hints
 - `POST /api/monetization/checkout/manual`: activate or change a manual billing subscription
 - `POST /api/monetization/cancel`: schedule subscription cancellation at period end
@@ -273,6 +274,7 @@ Effective auth behavior:
 - Expired or signature-invalid tokens return deterministic `401` errors.
 - Free tier capability guard denies multi-step orchestration runs with `403`.
 - The `/orchestrate` frontend uses signed entitlement tokens and no longer emits `X-Subscription-Tier`; the legacy header remains an explicit non-production API fallback only.
+- Manual Billing V1 subjects can now load signed entitlement tokens from `/api/monetization/entitlement?subject=...`, so an activated Pro/Power account can directly run compatible orchestration templates from `/orchestrate`.
 
 Observability and quota contract notes:
 
@@ -282,7 +284,7 @@ Observability and quota contract notes:
 - Orchestration history, queue history, ledger, and monetization audit queries are backed by composite indexes for stable filtering and newest-first paging as data grows.
 - Global request quota/rate-limit boundary returns `429 Too many requests. Please retry later.` once configured per window limit is exceeded.
 - Dashboard contract note: monetization observability backend route is `GET /api/observability/monetization`; the frontend API client uses this canonical route.
-- Commercial Metrics V2 contract note: `/monetization` and `/dashboard` use `GET /api/monetization/commercial-metrics` for billable work units, policy blocks, top value templates, and commercial anomaly hints. The metric source of truth for actual workflow usage is the monetization usage log/ledger; `UsageCounter` provides plan limits.
+- Commercial Metrics V2 contract note: `/monetization` and `/dashboard` use `GET /api/monetization/commercial-metrics` for billable work units, policy blocks, top value templates, and commercial anomaly hints. The metric source of truth for actual workflow usage is the monetization usage log/ledger; `UsageCounter` provides plan limits. Subject-scoped reports match both raw billing subject and entitlement-derived subject id.
 
 Generate a local token for testing:
 

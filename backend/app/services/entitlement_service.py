@@ -69,6 +69,11 @@ def sign_entitlement_token(
     return f"{encoded_payload}.{signature}"
 
 
+def subject_id_for_entitlement_user(user_id: str) -> str:
+    raw_subject = user_id.strip() or "anonymous"
+    return f"ent:{_subject_hash(raw_subject)}"
+
+
 def resolve_tier_from_entitlement(
     token: str | None,
     *,
@@ -121,7 +126,7 @@ def resolve_entitlement_context(
         raw_subject = "anonymous"
     return EntitlementContext(
         tier=normalize_tier(tier),
-        subject_id=f"ent:{_subject_hash(raw_subject)}",
+        subject_id=subject_id_for_entitlement_user(raw_subject),
         source="entitlement",
     )
 
