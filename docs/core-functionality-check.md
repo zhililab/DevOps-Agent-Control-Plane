@@ -18,7 +18,8 @@ This document records the current product target and the minimum functionality t
 - Navigate to `/orchestrations` and verify persisted run history and step replay.
 - Submit queued orchestration work, then inspect queue job state, retry/cancel controls, and timeline replay.
 - Review dashboard orchestration KPIs and monetization observability fallback states.
-- Activate or change a manual subscription on `/monetization`, then confirm usage counters and audit events update.
+- Activate or change a manual subscription on `/monetization`, then confirm usage counters and subject-scoped audit events update.
+- Confirm `/monetization` keeps the active subscription visible if usage or audit-feed refreshes are slow or partially unavailable.
 - Use `/tutorial` to explain the commercial path from workflow run to replay evidence to plan upgrade.
 - Generate and persist daily plans, daily reflections, and technical analysis records.
 - Review daily history with accurate `Asia/Shanghai` business dates while preserving UTC audit timestamps.
@@ -70,6 +71,7 @@ This document records the current product target and the minimum functionality t
 - Backfill of historical orchestration records must be idempotent.
 - Daily plan/reflection/analysis history must hide `record_source=smoke_check|system` by default and expose it only through `include_system=true`.
 - Read-only history endpoints must not create new agent run log records.
+- Manual billing UI refreshes profile, usage counters, and commercial audit feed independently; partial failures must not overwrite a successful lifecycle response.
 
 ## Query Performance Baseline
 
@@ -78,6 +80,8 @@ This document records the current product target and the minimum functionality t
 - Orchestration metrics should use database aggregate queries instead of Python-side full-window scans.
 - Orchestration metrics must include billable work units, successful audited workflows, approval blocks, and template policy upgrade blocks.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
+- Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.
+- Global route transition and header preview animations should avoid continuous idle work and respect `prefers-reduced-motion`.
 
 ## Non-Blocking Product Modules
 

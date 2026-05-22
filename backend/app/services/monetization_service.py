@@ -86,13 +86,14 @@ def list_usage_counters(db: Session, *, subject: str) -> list[UsageCounterRead]:
     return [UsageCounterRead.model_validate(counter) for counter in counters]
 
 
-def list_monetization_events(db: Session, *, limit: int) -> list[MonetizationEventRead]:
-    events = (
-        db.query(MonetizationEvent)
-        .order_by(MonetizationEvent.created_at.desc(), MonetizationEvent.id.desc())
-        .limit(limit)
-        .all()
-    )
+def list_monetization_events(db: Session, *, limit: int, subject: str | None = None) -> list[MonetizationEventRead]:
+    query = db.query(MonetizationEvent)
+    if subject:
+        query = query.join(SubscriptionProfile, MonetizationEvent.subscription_profile_id == SubscriptionProfile.id).filter(
+            SubscriptionProfile.subject == subject
+        )
+
+    events = query.order_by(MonetizationEvent.created_at.desc(), MonetizationEvent.id.desc()).limit(limit).all()
     return [_to_monetization_event_read(event) for event in events]
 
 

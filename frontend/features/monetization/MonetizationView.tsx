@@ -67,24 +67,89 @@ export function MonetizationView() {
   const [events, setEvents] = useState<MonetizationEvent[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadNotice, setLoadNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
   const activePlan = useMemo(() => PLANS.find((plan) => plan.tier === profile?.tier), [profile]);
 
-  async function loadMonetization(currentSubject = subject) {
+  function applyLifecycleResponse(response: {
+    profile: SubscriptionProfile;
+    counters: UsageCounter[];
+    event: MonetizationEvent;
+  }) {
+    setProfile(response.profile);
+    setCounters(Array.isArray(response.counters) ? response.counters : []);
+    setEvents((currentEvents) => [
+      response.event,
+      ...currentEvents.filter((currentEvent) => currentEvent.id !== response.event.id),
+    ].slice(0, 25));
+  }
+
+  function loadFailureMessage(failures: string[]): string {
+    if (failures.length === 0) return "";
+    if (failures.length === 3) {
+      return "Commercial data could not refresh. Showing the latest subscription update when available.";
+    }
+    return `Commercial refresh partially completed. Showing latest available data; missing: ${failures.join(", ")}.`;
+  }
+
+  async function loadMonetization(
+    currentSubject = subject,
+    options: {
+      fallbackProfile?: SubscriptionProfile | null;
+      fallbackCounters?: UsageCounter[];
+      fallbackEvent?: MonetizationEvent;
+    } = {}
+  ) {
     const normalizedSubject = currentSubject.trim() || DEFAULT_SUBJECT;
     setIsLoading(true);
     setError(null);
+    setLoadNotice(null);
     try {
-      const [profileResponse, usageResponse, eventsResponse] = await Promise.all([
+      const [profileResult, usageResult, eventsResult] = await Promise.allSettled([
         apiClient.getSubscriptionProfile(normalizedSubject),
         apiClient.listUsageCounters(normalizedSubject),
-        apiClient.listMonetizationEvents(25),
+        apiClient.listMonetizationEvents(25, normalizedSubject),
       ]);
-      setProfile(profileResponse.profile ?? null);
-      setCounters(Array.isArray(usageResponse.counters) ? usageResponse.counters : []);
-      setEvents(Array.isArray(eventsResponse.events) ? eventsResponse.events : []);
+
+      const failures: string[] = [];
+      if (profileResult.status === "fulfilled") {
+        setProfile(profileResult.value.profile ?? options.fallbackProfile ?? null);
+      } else {
+        failures.push("subscription profile");
+      }
+
+      if (usageResult.status === "fulfilled") {
+        const nextCounters = Array.isArray(usageResult.value.counters) ? usageResult.value.counters : [];
+        setCounters(nextCounters.length > 0 ? nextCounters : options.fallbackCounters ?? []);
+      } else {
+        failures.push("usage counters");
+      }
+
+      if (eventsResult.status === "fulfilled") {
+        const nextEvents = Array.isArray(eventsResult.value.events) ? eventsResult.value.events : [];
+        if (nextEvents.length > 0 || !options.fallbackEvent) {
+          setEvents(nextEvents);
+        } else {
+          setEvents((currentEvents) => [
+            options.fallbackEvent as MonetizationEvent,
+            ...currentEvents.filter((currentEvent) => currentEvent.id !== options.fallbackEvent?.id),
+          ].slice(0, 25));
+        }
+      } else {
+        failures.push("commercial audit feed");
+      }
+
+      if (failures.length > 0) {
+        const hasDisplayableProfile = Boolean(options.fallbackProfile || profile?.subject === normalizedSubject);
+        const message = loadFailureMessage(failures);
+        if (profileResult.status === "rejected" && !hasDisplayableProfile) {
+          setError(profileResult.reason instanceof Error ? profileResult.reason.message : message);
+        } else {
+          setLoadNotice(message);
+        }
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load monetization data.");
     } finally {
@@ -105,13 +170,25 @@ export function MonetizationView() {
     await loadMonetization(normalizedSubject);
   }
 
-  async function runLifecycleAction(action: string, callback: () => Promise<unknown>, successMessage: string) {
+  async function runLifecycleAction(
+    action: string,
+    callback: () => Promise<{ profile: SubscriptionProfile; counters: UsageCounter[]; event: MonetizationEvent }>,
+    successMessage: string
+  ) {
+    const normalizedSubject = subject.trim() || DEFAULT_SUBJECT;
+    setSubject(normalizedSubject);
     setBusyAction(action);
     setStatus(null);
     setError(null);
+    setLoadNotice(null);
     try {
-      await callback();
-      await loadMonetization(subject.trim() || DEFAULT_SUBJECT);
+      const response = await callback();
+      applyLifecycleResponse(response);
+      await loadMonetization(normalizedSubject, {
+        fallbackProfile: response.profile,
+        fallbackCounters: response.counters,
+        fallbackEvent: response.event,
+      });
       setStatus(successMessage);
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Subscription action failed.");
@@ -151,27 +228,35 @@ export function MonetizationView() {
     <PageCard title="Plans & Usage" description="Commercial plans, usage counters, and audit controls for the DevOps agent control plane.">
       {status ? <StatusMessage message={status} tone="success" /> : null}
       {error ? <StatusMessage message={error} tone="error" /> : null}
+      {loadNotice ? <StatusMessage message={loadNotice} /> : null}
       {isLoading ? <p className="muted">Loading monetization data...</p> : null}
 
-      <section className="commercial-value-strip" aria-label="commercial-value-summary">
-        <article>
-          <p className="eyebrow">Free</p>
-          <strong>Evaluate</strong>
-          <span>Single-step replayable workflows.</span>
-        </article>
-        <article>
-          <p className="eyebrow">Pro</p>
-          <strong>Operate</strong>
-          <span>Multi-step DevOps loops for daily execution.</span>
-        </article>
-        <article>
-          <p className="eyebrow">Power</p>
-          <strong>Govern</strong>
-          <span>Approval gates, audit evidence, and higher limits.</span>
-        </article>
+      <section className="monetization-hero" aria-label="commercial-mvp-summary">
+        <div>
+          <p className="eyebrow">COMMERCIAL MVP</p>
+          <h3>Turn trusted DevOps runs into metered plans.</h3>
+          <p className="muted">
+            Manual Billing V1 keeps the launch surface simple: plan state, usage counters, and audit events stay visible
+            without introducing a payment provider yet.
+          </p>
+          <div className="monetization-pill-row" aria-label="commercial-control-loop">
+            <span>Plan</span>
+            <span>Usage</span>
+            <span>Audit</span>
+          </div>
+        </div>
+        <aside className="monetization-status-panel" aria-label="current-commercial-state">
+          <span>Current Plan</span>
+          <strong>{profile ? `${profile.tier.toUpperCase()} · ${profile.status}` : "No active plan"}</strong>
+          <p>
+            {profile
+              ? activePlan?.description ?? "Manual subscription profile is active."
+              : "Choose Free, Pro, or Power to begin commercial tracking."}
+          </p>
+        </aside>
       </section>
 
-      <form className="monetization-subject-form" onSubmit={onSubjectSubmit}>
+      <form className="monetization-subject-form monetization-toolbar" onSubmit={onSubjectSubmit}>
         <label htmlFor="subject">Account Subject</label>
         <div className="inline-form-row">
           <input id="subject" value={subject} onChange={(event) => setSubject(event.target.value)} />

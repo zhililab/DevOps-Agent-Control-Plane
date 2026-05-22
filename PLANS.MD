@@ -82,7 +82,7 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 - added dedicated monetization read APIs:
   - `GET /api/monetization/profile?subject=...`
   - `GET /api/monetization/usage?subject=...`
-  - `GET /api/monetization/events?limit=...`
+  - `GET /api/monetization/events?limit=...&subject=...`
 - added Manual Billing V1 subscription lifecycle APIs:
   - `POST /api/monetization/checkout/manual`
   - `POST /api/monetization/cancel`
@@ -93,6 +93,7 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 - added animated workflow preview to the global header
 - added `/tutorial` page for commercial onboarding and demo storytelling
 - polished the commercial product shell with lighter grouped navigation, stronger first-screen hierarchy, and an interactive tutorial demo path inspired by modern AI product sites
+- optimized commercial MVP runtime UX with independent monetization data refresh, subject-scoped audit feed loading, reduced idle animation work, and a simpler Plans & Usage cockpit focused on plan, usage, and audit state
 - aligned frontend monetization observability client with backend canonical route: `/api/observability/monetization`
 - upgraded `/orchestrate` UI with sync/async run mode, queue job status card, retry/cancel actions
 - upgraded `/orchestrations` UI with queue status filtering and timeline replay from `WorkflowQueueEvent`

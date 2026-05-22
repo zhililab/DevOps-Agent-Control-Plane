@@ -52,6 +52,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - Human approval gate for high-risk workflow templates before sync or queued execution.
 - Monetization observability for capability checks, quota checks, usage events, upgrade blocks, queue health, and KPI aggregation.
 - Buyer-facing commercial UI with a polished control-plane shell, categorized navigation, animated workflow preview, and an interactive tutorial path from workflow run to replay evidence to plan upgrade.
+- Commercial page resilience for partial API timeouts: subscription profile, usage counters, and audit feed refresh independently so a slow audit feed does not hide an active plan.
 - Knowledge and prompt-template utilities that support reuse around orchestration workflows.
 - Existing daily plan, reflection, technical analysis, task, and profile routes remain available for compatibility and personal workflow support.
 
@@ -113,7 +114,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `GET /api/observability/monetization`: monetization observability aggregation (`days=7|30`)
 - `GET /api/monetization/profile`: read subscription profile by `subject`
 - `GET /api/monetization/usage`: read usage counters by `subject`
-- `GET /api/monetization/events`: read newest-first monetization event audit feed
+- `GET /api/monetization/events`: read newest-first monetization event audit feed, optionally scoped by `subject`
 - `POST /api/monetization/checkout/manual`: activate or change a manual billing subscription
 - `POST /api/monetization/cancel`: schedule subscription cancellation at period end
 - `POST /api/monetization/reactivate`: clear a pending manual cancellation

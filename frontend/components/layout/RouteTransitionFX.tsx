@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-const TRANSITION_MS = 820;
+const TRANSITION_MS = 360;
 
 export function RouteTransitionFX() {
   const pathname = usePathname();
@@ -14,6 +14,9 @@ export function RouteTransitionFX() {
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      return;
+    }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
 

@@ -55,6 +55,12 @@ function event(action: string, tier = "pro") {
   };
 }
 
+function abortError() {
+  const error = new Error("aborted");
+  error.name = "AbortError";
+  return error;
+}
+
 describe("monetization flow", () => {
   beforeEach(() => {
     vi.mocked(globalThis.fetch).mockReset();
@@ -84,10 +90,11 @@ describe("monetization flow", () => {
     render(<MonetizationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/PRO · active/)).toBeInTheDocument();
+      expect(screen.getAllByText(/PRO · active/).length).toBeGreaterThan(0);
     });
     expect(screen.getByRole("heading", { name: "Plans & Usage" })).toBeInTheDocument();
-    expect(screen.getByText("Govern")).toBeInTheDocument();
+    expect(screen.getByText("COMMERCIAL MVP")).toBeInTheDocument();
+    expect(screen.getByText("Turn trusted DevOps runs into metered plans.")).toBeInTheDocument();
     expect(screen.getByText("Workflow Runs")).toBeInTheDocument();
     expect(screen.getByText("4 / 300")).toBeInTheDocument();
     expect(screen.getByText("checkout completed")).toBeInTheDocument();
@@ -100,6 +107,73 @@ describe("monetization flow", () => {
     });
     const checkoutCall = fetchMock.mock.calls.find(([input]) => input.toString().endsWith("/monetization/checkout/manual"));
     expect(checkoutCall?.[1]?.body).toBe(JSON.stringify({ subject: "demo-user", target_tier: "power" }));
+  });
+
+  test("keeps profile and usage visible when audit feed refresh times out", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.includes("/monetization/profile")) {
+        return new Response(JSON.stringify({ profile }), { status: 200 });
+      }
+      if (url.includes("/monetization/usage")) {
+        return new Response(JSON.stringify({ counters }), { status: 200 });
+      }
+      if (url.includes("/monetization/events")) {
+        return Promise.reject(abortError());
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    render(<MonetizationPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/PRO · active/).length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText("4 / 300")).toBeInTheDocument();
+    expect(screen.getByText(/missing: commercial audit feed/)).toBeInTheDocument();
+    expect(screen.queryByText("Request timed out. Please retry.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No subscription profile")).not.toBeInTheDocument();
+  });
+
+  test("uses lifecycle response when post-action refresh times out", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    let checkoutCompleted = false;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("/monetization/checkout/manual")) {
+        checkoutCompleted = true;
+        return new Response(JSON.stringify({ profile, counters, event: event("tier_changed") }), { status: 200 });
+      }
+      if (checkoutCompleted && url.includes("/monetization/")) {
+        return Promise.reject(abortError());
+      }
+      if (url.includes("/monetization/profile")) {
+        return new Response(JSON.stringify({ profile: null }), { status: 200 });
+      }
+      if (url.includes("/monetization/usage")) {
+        return new Response(JSON.stringify({ counters: [] }), { status: 200 });
+      }
+      if (url.includes("/monetization/events")) {
+        return new Response(JSON.stringify({ events: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    render(<MonetizationPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No subscription profile")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Activate Pro" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("PRO subscription is active.")).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/PRO · active/).length).toBeGreaterThan(0);
+    expect(screen.getByText("4 / 300")).toBeInTheDocument();
+    expect(screen.getByText("Commercial data could not refresh. Showing the latest subscription update when available.")).toBeInTheDocument();
+    expect(screen.queryByText("Request timed out. Please retry.")).not.toBeInTheDocument();
   });
 
   test("cancel and reactivate subscription controls update visible state", async () => {
@@ -135,7 +209,7 @@ describe("monetization flow", () => {
     render(<MonetizationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/PRO · active/)).toBeInTheDocument();
+      expect(screen.getAllByText(/PRO · active/).length).toBeGreaterThan(0);
     });
     fireEvent.click(screen.getByRole("button", { name: "Cancel At Period End" }));
     await waitFor(() => {

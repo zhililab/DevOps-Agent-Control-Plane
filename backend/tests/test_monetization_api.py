@@ -166,6 +166,79 @@ def test_monetization_events_are_limited_and_sorted_by_newest_first(client) -> N
             updated_at=now,
         )
         db.add(profile)
+        other_profile = SubscriptionProfile(
+            subject="other-events-subject",
+            tier=SubscriptionTier.power,
+            status=SubscriptionStatus.active,
+            entitlements_json="{}",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(other_profile)
+        db.flush()
+        older = MonetizationEvent(
+            subscription_profile_id=profile.id,
+            usage_counter_id=None,
+            event_kind=MonetizationEventKind.subscription_changed,
+            event_json=json.dumps({"version": "older"}),
+            created_at=now - timedelta(minutes=5),
+        )
+        same_time_first = MonetizationEvent(
+            subscription_profile_id=profile.id,
+            usage_counter_id=None,
+            event_kind=MonetizationEventKind.entitlement_checked,
+            event_json=json.dumps({"version": "first"}),
+            created_at=now,
+        )
+        db.add_all([older, same_time_first])
+        db.flush()
+        same_time_second = MonetizationEvent(
+            subscription_profile_id=profile.id,
+            usage_counter_id=None,
+            event_kind=MonetizationEventKind.usage_recorded,
+            event_json=json.dumps({"version": "second"}),
+            created_at=now,
+        )
+        other_subject_event = MonetizationEvent(
+            subscription_profile_id=other_profile.id,
+            usage_counter_id=None,
+            event_kind=MonetizationEventKind.subscription_changed,
+            event_json=json.dumps({"version": "other-subject"}),
+            created_at=now + timedelta(minutes=1),
+        )
+        db.add_all([same_time_second, other_subject_event])
+        db.commit()
+
+        response = client.get("/api/monetization/events?limit=2")
+
+        assert response.status_code == 200
+        events = response.json()["events"]
+        assert [item["event"]["version"] for item in events] == ["other-subject", "second"]
+
+        filtered_response = client.get("/api/monetization/events?subject=events-subject&limit=2")
+        assert filtered_response.status_code == 200
+        filtered_events = filtered_response.json()["events"]
+        assert [item["event"]["version"] for item in filtered_events] == ["second", "first"]
+        assert [item["event_kind"] for item in filtered_events] == ["usage_recorded", "entitlement_checked"]
+    finally:
+        db_generator.close()
+
+
+def test_monetization_events_are_limited_and_sorted_by_newest_first_without_subject_filter(client) -> None:
+    _ = client
+    db_generator = app.dependency_overrides[get_db]()
+    db = next(db_generator)
+    now = _now()
+    try:
+        profile = SubscriptionProfile(
+            subject="events-global-subject",
+            tier=SubscriptionTier.pro,
+            status=SubscriptionStatus.active,
+            entitlements_json="{}",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(profile)
         db.flush()
         older = MonetizationEvent(
             subscription_profile_id=profile.id,

@@ -370,8 +370,12 @@ export const apiClient = {
     return request<{ counters: UsageCounter[] }>(`/monetization/usage?${search.toString()}`);
   },
 
-  listMonetizationEvents(limit = 50) {
-    return request<{ events: MonetizationEvent[] }>(`/monetization/events?limit=${limit}`);
+  listMonetizationEvents(limit = 50, subject?: string) {
+    const search = new URLSearchParams({ limit: String(limit) });
+    if (subject?.trim()) {
+      search.set("subject", subject.trim());
+    }
+    return request<{ events: MonetizationEvent[] }>(`/monetization/events?${search.toString()}`);
   },
 
   startManualCheckout(payload: { subject: string; target_tier: SubscriptionTier }) {

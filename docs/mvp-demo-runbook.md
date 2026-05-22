@@ -38,7 +38,8 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Demonstrate retry/cancel controls only when the selected job status allows the action.
 
 6. Open `/monetization`.
-   - Show `Plans & Usage`, Free/Pro/Power packaging, account subject, usage counters, and `Commercial Audit Feed`.
+   - Show the `Commercial MVP` cockpit: plan state, usage counters, and `Commercial Audit Feed`.
+   - Activate or refresh a Pro/Power plan for a demo account and confirm the audit feed is scoped to that account.
    - Explain that Manual Billing V1 is the current demoable commercial loop before real payment-provider integration.
 
 7. Open `/tutorial`.
@@ -55,6 +56,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/api/orchestrations/history?limit=3` includes `ledger_integrity` for returned runs.
 - `/api/orchestrations/metrics?days=7` includes billable work units, audited workflow count, approval blocks, and template policy upgrade blocks.
 - `/orchestrations` does not show `History Ledger: not checked` for runs that already have ledger events.
+- `/monetization` can activate a Pro plan and show usage counters plus `checkout completed` in the audit feed without timeout errors.
 - Smoke/system records may exist from release checks, but personal history pages hide smoke data by default.
 
 ## Demo Boundaries

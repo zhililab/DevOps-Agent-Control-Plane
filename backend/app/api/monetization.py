@@ -41,9 +41,10 @@ def get_monetization_usage(
 @router.get("/events")
 def get_monetization_events(
     limit: int = Query(default=50, ge=1, le=100),
+    subject: str | None = Query(default=None, min_length=1, max_length=120),
     db: Session = Depends(get_db),
 ) -> dict[str, list[MonetizationEventRead]]:
-    return {"events": list_monetization_events(db, limit=limit)}
+    return {"events": list_monetization_events(db, limit=limit, subject=subject)}
 
 
 @router.post("/checkout/manual", response_model=SubscriptionLifecycleResponse)
