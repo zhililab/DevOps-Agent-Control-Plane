@@ -2,6 +2,39 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-05-24 Release Gate ROI Evidence V1 Deployment
+
+- Implementation commit: `60f0a0a feat: add release gate ROI evidence`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Product value shipped:
+  - orchestration read/history responses now include run-level `roi_evidence`
+  - `/orchestrations` audit report now shows estimated customer value, review/audit time saved, blocked risk value, billable work units, and transparent assumptions
+  - `PLANS.MD` now positions the current iteration around commercial proof, ROI Evidence V1, Real PR/CI Adapter V1, and Pilot Package V1
+- Verified on focused local tests:
+  - `backend/.venv/bin/pytest tests/test_orchestrations.py tests/test_monetization_observability_contracts.py` passed: 24 tests
+  - `npm test -- --run test/orchestration-flow.test.tsx` passed: 10 tests
+  - `npm test -- --run test/tutorial-flow.test.tsx test/monetization-flow.test.tsx` passed: 5 tests
+  - `git diff --check` passed
+- Verified on release gates:
+  - `make release-check` passed
+  - `make release-deploy` reran the full local release gate and passed
+  - frontend unit tests passed: 49 tests
+  - frontend visual baseline passed: 4 tests
+  - Playwright commercial/orchestration E2E passed: 3 tests
+  - backend test suite passed during release gate: 45 tests
+  - `make security-check` passed; npm audit findings remain moderate severity and below the configured high-severity release gate
+  - `kubectl kustomize k8s` rendered 275 lines
+- Verified on remote:
+  - remote smoke checks passed for frontend routes, core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, monetization read APIs, and Manual Billing lifecycle APIs
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `{"status":"ok"}`
+  - public `/orchestrations` returned HTTP `200`
+  - public `GET /api/orchestrations/history?limit=1` returned `roi_evidence` with estimated customer value and transparent assumptions
+  - public `GET /api/orchestrations/templates` returned `AI-generated PR Release Gate` with `required_tier=power`, `risk_level=high`, `approval_required=true`, `allowed_tool_scopes=["ci-cd-release-gate"]`, and `billable_work_units=8`
+
 ## 2026-05-23 Commercial Usage Normalization Release Verification
 
 - Implementation commit: `e0d5ad4 fix: normalize commercial usage accounting`
