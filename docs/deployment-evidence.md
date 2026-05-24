@@ -2,6 +2,43 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-05-24 Pilot ROI Evidence Loop Deployment
+
+- Implementation commit: `ec43c27 feat: add pilot ROI evidence loop`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Product value shipped:
+  - ROI Aggregation V2 in `GET /api/monetization/commercial-metrics?days=7|30&subject=...`
+  - Real PR/CI Adapter V1 inputs on `/orchestrate` with sanitized PR URL, diff summary, CI log summary, target environment, and change risk
+  - buyer-facing `Value Generated`, review time saved, blocked risk value, and value-by-template panels on `/monetization`
+  - dashboard ROI KPI cards for Estimated Value, Review Time Saved, and Blocked Risk Value
+  - redacted run evidence export API and UI action: `GET /api/orchestrations/{id}/evidence` and `Export Evidence`
+  - Pilot Package V1 documentation with pilot goals, demo datasets, success metrics, pricing assumptions, acceptance script, and retro template
+- Verified on focused local tests:
+  - `backend/.venv/bin/pytest tests/test_orchestrations.py tests/test_monetization_api.py` passed: 34 tests
+  - `npm test -- --run test/monetization-flow.test.tsx test/dashboard-monetization-kpi.test.tsx test/tutorial-flow.test.tsx test/orchestration-flow.test.tsx` passed: 17 tests across 4 files
+  - `git diff --check` passed
+- Verified on release gates:
+  - `make qa-fast` passed
+  - `make qa-visual` passed
+  - `make e2e-orchestration` passed: 3 Playwright tests
+  - `make security-check` passed; npm audit findings remain moderate severity and below the configured high-severity release gate
+  - `make release-check` passed, including qa, visual baseline, Playwright E2E, security check, and k8s render
+  - `make release-deploy` reran the full local release gate and passed
+- Verified on remote:
+  - remote smoke checks passed for frontend routes, core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, Manual Billing lifecycle, entitlement, and commercial metrics
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `200` with `{"status":"ok"}` in about `0.070s`
+  - public `/dashboard`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` returned HTTP `200`
+  - public `GET /api/monetization/commercial-metrics?days=7` returned `roi_summary` with `runs_with_roi=76`, `estimated_customer_value_usd=6220`, `review_time_saved_minutes=1040`, and `audit_time_saved_minutes=1448`
+  - public `GET /api/orchestrations/history?limit=1` returned run `#76` with ROI evidence, `ledger_integrity.status=valid`, and `checkpoint_count=7`
+  - public `GET /api/orchestrations/76/evidence` returned redacted Markdown evidence export with PR/CI context, policy gate, ROI evidence, step replay, ledger status, and checkpoints
+  - public `/orchestrate` HTML includes `Real PR/CI Adapter V1`
+  - public `/monetization` HTML includes `Commercial Signal`, `Value Generated`, and `Value By Template`
+  - public `/tutorial` HTML includes the Pilot Demo path and Pilot Dataset entries
+
 ## 2026-05-24 Release Gate ROI Evidence V1 Deployment
 
 - Implementation commit: `60f0a0a feat: add release gate ROI evidence`
