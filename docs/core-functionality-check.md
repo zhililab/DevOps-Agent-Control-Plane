@@ -16,10 +16,12 @@ This document records the current product target and the minimum functionality t
 - Run a sync orchestration from `/orchestrate` with a signed entitlement token.
 - Run `AI-generated PR Release Gate` with PR diff summary, CI logs, change risk, deployment environment, Power entitlement, and explicit human approval.
 - Confirm the release gate returns `approve`, `block`, or `needs human review` with evidence, risk, and next action.
+- Confirm the release gate response includes run-level ROI evidence: review time saved, audit time saved, blocked risk count/value, billable work units, assumptions, and estimated customer value.
 - Capture lightweight team/requester/approver metadata on the run without requiring a login system.
 - Inspect run replay immediately after the orchestration finishes.
 - Navigate to `/orchestrations` and verify persisted run history and step replay.
 - Confirm the run history reads as an audit report with requester/approver, policy gate, queue timeline, step evidence, checkpoint hash, billable work units, and blocked risk.
+- Confirm the audit report shows ROI Evidence with estimated value, time saved, blocked risk value, and transparent assumptions.
 - Load checkpoint timeline for a run and confirm checkpoint payload hashes verify as valid.
 - Submit queued orchestration work, then inspect queue job state, retry/cancel controls, and timeline replay.
 - Review dashboard orchestration KPIs and monetization observability fallback states.
@@ -95,7 +97,7 @@ This document records the current product target and the minimum functionality t
 - Orchestration metrics should use database aggregate queries instead of Python-side full-window scans.
 - Orchestration metrics must include billable work units, successful audited workflows, approval blocks, and template policy upgrade blocks.
 - Orchestration metrics must include Team Trust KPIs: approved runs, checkpointed runs, and failed jobs needing owner.
-- Release-gate ROI evidence should be visible through billable work units, audited workflow counts, policy blocks, and blocked-risk reporting.
+- Release-gate ROI evidence should be visible on each orchestration read/history response and in `/orchestrations`; Commercial Signal aggregation remains the later reporting layer.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 - Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.
 - Commercial Signal reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view. Billing-period Plan Usage comes from `usage_counters`; 7D/30D activity comes from usage audit logs.

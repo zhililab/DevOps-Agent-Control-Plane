@@ -476,6 +476,16 @@ class WorkflowRunPolicyGate(BaseModel):
     decision: str = "needs human review"
 
 
+class WorkflowRoiEvidence(BaseModel):
+    review_time_saved_minutes: int = 0
+    audit_time_saved_minutes: int = 0
+    blocked_risk_count: int = 0
+    blocked_risk_value_usd: int = 0
+    estimated_customer_value_usd: int = 0
+    billable_work_units: int = 1
+    assumptions: list[str] = Field(default_factory=list)
+
+
 class HistoryIntegritySummary(BaseModel):
     entity_type: str
     entity_id: str
@@ -522,6 +532,7 @@ class WorkflowOrchestrationRead(BaseModel):
     approval_note: str = ""
     policy_gate: WorkflowRunPolicyGate | None = None
     billable_work_units: int = 1
+    roi_evidence: WorkflowRoiEvidence | None = None
     summary: WorkflowOrchestrationSummary
     steps: list[WorkflowStepRunRead]
     ledger_integrity: HistoryIntegritySummary | None = None

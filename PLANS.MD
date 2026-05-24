@@ -4,22 +4,42 @@
 DevOps Agent Control Plane
 
 ## Project Goal
-Build a personal AI agent assistant that helps the user turn context into action across work, learning, life planning, reflection, and communication.
+Build an enterprise-grade agent execution trust control layer that lets teams connect agents to CI/CD and incident-response workflows without losing control.
 
-The long-term vision remains a reusable personal operating system for execution, reflection, and repeatable workflows.
+The current commercial product is the **DevOps Agent Control Plane**: deterministic, replayable, policy-gated multi-agent execution with human approval, signed entitlement, queue lifecycle visibility, checkpoint snapshots, ledger evidence, and ROI proof for each governed run.
 
-Current iteration goal: commercialize the DevOps orchestration MVP. The current deployable product is centered on deterministic multi-agent orchestration for personal DevOps workflows, with inspectable step replay/history, queue lifecycle visibility, signed entitlement-aware tier gates, reusable knowledge/templates, Manual Billing V1, and a clearer buyer-facing tutorial path. Communication Assistant and Weekly Review remain planned product modules, but they are not blockers for the current DevOps orchestration MVP deployment.
+The long-term vision remains a reusable personal operating system for execution, reflection, and repeatable workflows. During this commercial phase, that broader vision is intentionally secondary to one saleable proof: enterprises can let coding agents approach release and incident workflows while preserving control, auditability, and measurable business value.
 
 ---
 
-# 0. Current Iteration Snapshot (2026-05-21)
+# 0. Current Iteration Snapshot (2026-05-24)
 
 ## Iteration Theme
-- current iteration target: DevOps orchestration MVP commercialization closeout with Team Trust Layer V1
-- product direction: deterministic personal/small-team DevOps orchestration with inspectable replay, queue lifecycle visibility, signed entitlement-aware tier gates, checkpoint snapshots, and reusable knowledge/templates
-- commercial direction: personal DevOps agent control plane; sell trusted, replayable, policy-gated workflow execution before broad assistant breadth, now with Manual Billing V1 and team-ready audit metadata for subscription lifecycle demos
-- UI direction: DevOps control-plane visual language with categorized navigation, animated workflow preview, and tutorial/commercial onboarding
-- status: core orchestration, queue, entitlement, monetization observability, knowledge, and template foundations are implemented and covered by focused tests; the Docker Compose server deployment path is the current MVP release path, with k3d/k8s retained as follow-up deployment options
+- current iteration target: convert the deployed DevOps orchestration MVP into a commercial proof loop centered on AI-generated PR release control
+- product direction: enterprise agent execution trust control layer for CI/CD and incident response, with inspectable replay, queue lifecycle visibility, signed entitlement-aware gates, checkpoint snapshots, and team-ready audit metadata
+- commercial direction: sell governed agent execution that reduces release risk, shortens human review cycles, preserves compliance evidence, and turns blocked risk into ROI proof
+- UI direction: buyer-readable control plane where `/dashboard`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` tell one story: Coding Agent PR -> Release Gate -> human approval -> execute/block -> ledger/checkpoint/ROI evidence
+- status: the AI-generated PR Release Gate demo path is implemented and deployed; the next work must deepen value proof and real PR/CI ingestion instead of adding broad assistant features
+
+## Commercial Core
+The product should be judged by whether it helps an enterprise make or save money:
+- prevent high-risk AI-generated changes from reaching production without evidence
+- reduce reviewer time by normalizing PR diff, CI log, risk, and environment context into one decision packet
+- shorten release decision cycles while preserving human approval for risky actions
+- produce audit artifacts that reduce compliance and incident-review effort
+- connect billable work units to estimated customer value, not just internal usage counters
+
+## Profit Model V1
+Each commercial run should move toward reporting:
+- blocked risky release count
+- avoided incident cost estimate
+- engineering review time saved
+- deployment cycle time reduction
+- audit/compliance hours saved
+- billable work units consumed
+- estimated customer value generated
+
+The first version can use transparent estimates and operator-provided assumptions. The important requirement is that every enterprise demo ends with a value report, not only an agent transcript.
 
 ## Completed In This Iteration
 - added route-level cinematic transition layer
@@ -171,6 +191,15 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
   - page reloads and redeploys no longer reset verified runs to `History Ledger: not checked`
   - dashboard lightweight history reads opt out of integrity summaries for query performance
 - added MVP demo runbook for the current DevOps orchestration release path: `docs/mvp-demo-runbook.md`
+- added AI-generated PR Release Gate commercial demo:
+  - built-in `AI-generated PR Release Gate` template for PR diff summary, CI logs, change risk, deployment environment, human approval, and audit evidence
+  - Power/high-risk/approval-required policy metadata with `ci-cd-release-gate` tool scope and 8 billable work units
+  - `/dashboard` and `/tutorial` buyer story focused on letting agents into CI/CD and incident response without losing control
+  - `/orchestrate` default commercial template and `/orchestrations` audit-report view for requester, approver, policy gate, queue timeline, step evidence, checkpoint hash, billable work units, and blocked risk
+  - deployed commit: `a3a8017 feat: add agent release gate audit demo`
+- added ROI Evidence V1 for release-gate runs:
+  - orchestration read/history responses include transparent estimates for review time saved, audit time saved, blocked risk value, billable work units, assumptions, and estimated customer value
+  - `/orchestrations` displays ROI Evidence inside the buyer-readable audit report
 - tightened `/orchestrations` MVP closeout UI:
   - clearer run headers, fixed ledger status strip, queue job metadata grouping, and timeline replay status treatment
   - mobile layout guardrails for ledger/run/queue status rows
@@ -189,6 +218,12 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 
 ## Still Pending / Next Tasks
 
+### Commercial Proof Required
+- aggregate ROI Evidence V1 into Commercial Signal once run-level value proof is validated in demos
+- implement Real PR/CI Adapter V1 so the release gate can ingest real GitHub/GitLab PR diff summaries and CI logs behind the existing template, while keeping manual input as a fallback
+- package Pilot Package V1 with demo dataset, buyer runbook, pricing assumptions, success metrics, and a repeatable proof script for enterprise trials
+- keep all new work tied to the commercial proof loop; do not add broad assistant modules unless they strengthen release control, incident control, audit evidence, or ROI reporting
+
 ### Launch Required
 - keep `make qa-all`, `make e2e-orchestration`, `make security-check`, and server smoke checks green before each release
 - capture any future production deployment run in `docs/deployment-evidence.md`
@@ -201,8 +236,8 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 - run full k8s gate on a reachable cluster context when a Kubernetes deployment becomes the selected release path
 
 ### Later Product Completion
-- extend State & Checkpoint V2 from inspectable snapshots to resumable queue restore controls
-- add real billing-provider integration and cohort reporting around commercial work units after Manual Billing V1 proves the flow
+- extend State & Checkpoint V2 from inspectable snapshots to resumable queue restore controls after ROI Evidence V1 is useful in demos
+- add real billing-provider integration and cohort reporting around commercial work units after Manual Billing V1 proves pricing and buyer willingness
 - complete P7 Communication Assistant (not a current deployment blocker)
 - complete P8 Weekly Review (not a current deployment blocker)
 - continue P9 integrations foundation after the orchestration MVP is deployed and audited
@@ -225,6 +260,7 @@ Current iteration goal: commercialize the DevOps orchestration MVP. The current 
 - Each task should have clear acceptance criteria
 - Every completed feature should be testable locally
 - Important workflow changes must update docs
+- During the commercial phase, each iteration must produce a saleable proof: one buyer workflow, one measurable ROI metric, one replay/audit artifact, one gate or policy boundary, and one verification record
 
 ## Reporting Expectations
 At the end of each meaningful task, report:
@@ -239,11 +275,13 @@ At the end of each meaningful task, report:
 # 2. North Star
 
 ## Product North Star
-Turn scattered thoughts, tasks, and problems into:
+Long term, turn scattered thoughts, tasks, and problems into:
 - structured plans
 - actionable next steps
 - reusable knowledge
 - reflective feedback loops
+
+Current commercial north star: make agent execution safe enough for enterprise DevOps teams to put agents near CI/CD and incident response, while preserving human control and producing value evidence.
 
 ## Original MVP North Star
 A user can:
@@ -255,7 +293,7 @@ A user can:
 6. generate communication drafts
 
 ## Current DevOps Orchestration MVP North Star
-A user can run a deterministic DevOps workflow, inspect every step and queue event, replay history, reuse templates/knowledge, and operate within clear free/pro/power entitlement boundaries.
+An enterprise operator can gate an AI-generated pull request before CI/CD execution, require human approval for risky changes, approve/block/route to review, inspect every step and queue event, verify ledger/checkpoint evidence, and see the business value generated by the decision.
 
 ---
 
@@ -277,14 +315,19 @@ A user can run a deterministic DevOps workflow, inspect every step and queue eve
 - lightweight SaaS tier boundary (free/pro/power gate for orchestration)
 - signed entitlement enforcement for production orchestration actions
 - queue lifecycle visibility for queued/running/succeeded/failed/canceled jobs
+- AI-generated PR Release Gate as the primary commercial template
+- buyer-readable audit report for requester, approver, policy gate, queue timeline, step evidence, checkpoint hash, billable work units, and blocked risk
+- ROI evidence for release-gate runs, starting with transparent estimates and commercial metrics
 - deployment-ready smoke/release validation for orchestration APIs and pages
 
 ## Planned but Not Blocking Current Deployment
 - communication draft workflow
 - weekly review workflow
+- broad personal assistant expansion beyond the DevOps control-plane wedge
 
 ## Out of Scope for Current DevOps Orchestration MVP
 - autonomous external actions
+- autonomous CI/CD execution without explicit policy and human approval controls
 - autonomous multi-agent self-planning without user-provided context
 - advanced vector retrieval
 - full calendar/email/Jira sync
@@ -296,9 +339,21 @@ A user can run a deterministic DevOps workflow, inspect every step and queue eve
 # 4. Execution Strategy
 
 ## Strategy
-Build from inner loop to outer loop.
+Build from commercial proof to product breadth.
 
-Order of implementation:
+Current commercial proof loop:
+1. choose one high-value enterprise workflow
+2. define the human owner and policy gate
+3. normalize agent/workflow input into deterministic evidence
+4. approve, block, or require human review
+5. persist replay, ledger, checkpoint, queue, and billing evidence
+6. report ROI in buyer-readable terms
+7. release only when the proof can be replayed and verified
+
+The current high-value workflow is AI-generated PR release control. Additional features should be accepted only when they strengthen release control, incident control, audit evidence, or ROI reporting.
+
+Preserved long-term personal operating system order:
+
 1. scaffold
 2. data model
 3. profile
@@ -311,7 +366,12 @@ Order of implementation:
 10. external integrations
 
 ## Why this order
-This order ensures:
+The commercial proof loop ensures:
+- development produces buyer-visible value before breadth
+- pricing can be defended by measured work units and avoided risk
+- every demo leaves evidence an enterprise can audit
+
+The preserved long-term order ensures:
 - the system becomes usable early
 - the most frequent daily workflows land first
 - later features build on stable data and UI foundations
@@ -322,7 +382,15 @@ This order ensures:
 # 5. Phase Plan Overview
 
 ## Roadmap Status
-The P0-P9 roadmap remains the long-term product map. The current codebase has moved beyond the early daily-use MVP foundation and is now in DevOps orchestration MVP launch closeout. P7 Communication Assistant and P8 Weekly Review are still pending product modules, but they are not required before the current orchestration deployment.
+The P0-P9 roadmap remains the long-term product map. The current codebase has moved beyond the early daily-use MVP foundation and the first DevOps orchestration launch. The active roadmap is now a commercial proof roadmap: ROI Evidence V1, Real PR/CI Adapter V1, and Pilot Package V1.
+
+## Commercial Roadmap Overlay
+
+| Milestone | Goal | Demo Output | Acceptance Criteria |
+| --- | --- | --- | --- |
+| ROI Evidence V1 | Convert each governed release-gate run into business value evidence. | Run-level value report with time saved, blocked risk value, audit effort saved, work units, and estimated customer value. | `/orchestrations` and commercial metrics can explain value without reading raw agent output. |
+| Real PR/CI Adapter V1 | Replace hand-entered demo evidence with real PR and CI context. | Release gate imports PR diff summary and CI log summary from GitHub/GitLab or a controlled adapter input. | Manual fallback remains available; imported evidence is sanitized and replayable. |
+| Pilot Package V1 | Make the product easy to sell and trial. | Demo dataset, runbook, pricing assumptions, success metrics, and trial acceptance checklist. | A buyer can run the AI PR gate and understand ROI in one guided session. |
 
 | Phase | Name | Goal | Demo Output |
 |------|------|------|-------------|
@@ -855,17 +923,24 @@ Before marking a task done, verify:
 - becoming a collection of unrelated AI features
 - weak differentiation between history, knowledge, and templates
 - too much emphasis on generation, too little on workflow closure
+- ROI staying abstract instead of showing time saved, risk blocked, audit effort saved, and value generated
+- manual demo input hiding the need for real PR/CI ingestion
+- pricing based on internal work units without a buyer-facing value story
 
 ## Engineering Risks
 - premature abstractions
 - backend/frontend contract drift
 - insufficient persistence design
 - weak observability for agent runs
+- adapter integrations leaking secrets or oversized logs into audit payloads
+- ROI estimates becoming opaque or impossible to replay
 
 ## Execution Risks
 - too many features in parallel
 - missing demoable milestones
 - no stable “daily use” entry point
+- shipping broad assistant features before the release-gate commercial proof is strong enough to sell
+- treating deployment as success without buyer-readable ledger, checkpoint, and ROI evidence
 
 ---
 
@@ -898,6 +973,9 @@ The current DevOps orchestration MVP is deployable when all of the following are
 - technical analysis can be generated and saved
 - orchestration runs are deterministic and persist inspectable step outputs
 - replay/history views show orchestration and queue lifecycle state clearly
+- AI-generated PR Release Gate can produce approve/block/needs-human-review style evidence from PR diff, CI log, risk, and environment context
+- run history reads as an audit report with requester, approver, policy gate, queue timeline, step evidence, checkpoint hash, billable work units, and blocked risk
+- ROI Evidence V1 explains customer value through transparent estimates for avoided risk, review time saved, audit effort saved, and work units consumed
 - partial-success behavior is tested and understandable
 - retry/cancel behavior is idempotent across queued/running/succeeded/failed/canceled states
 - free/pro/power tier boundaries are enforced through signed entitlement in production
@@ -913,8 +991,9 @@ The current DevOps orchestration MVP is deployable when all of the following are
 # 13. Immediate Next Action
 
 ## Recommended Next Step
-Close the DevOps orchestration MVP launch gate in priority order:
-1. keep `/orchestrate -> /orchestrations` E2E coverage green
-2. keep server deployment evidence current after each `make release-deploy`
-3. verify extended smoke checks against the deployed gateway
-4. defer Communication Assistant and Weekly Review until after the orchestration MVP is deployed
+Build the commercial proof loop in priority order:
+1. implement ROI Evidence V1 for the AI-generated PR Release Gate
+2. add Real PR/CI Adapter V1 behind the existing release-gate template, keeping manual evidence input as fallback
+3. package Pilot Package V1 with buyer runbook, demo dataset, pricing assumptions, success metrics, and trial acceptance checklist
+4. keep `/orchestrate -> /orchestrations`, ledger/checkpoint verification, signed entitlement gates, and server smoke checks green before every release
+5. defer Communication Assistant, Weekly Review, and broad integrations until the release-gate ROI story is strong enough to sell

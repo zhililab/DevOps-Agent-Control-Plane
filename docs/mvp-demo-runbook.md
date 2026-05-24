@@ -36,6 +36,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 4. Open `/orchestrations`.
    - Confirm the new run appears newest-first.
    - Confirm the run reads as an audit report: requester/approver, policy gate, queue timeline, step evidence, checkpoint hash, billable work units, and blocked risk.
+   - Confirm `ROI Evidence` shows estimated customer value, review/audit time saved, blocked risk value, work units, and the first transparent assumption.
    - Confirm the run displays persisted `History Ledger: valid · N event(s)` without first clicking verify.
    - Click `Verify History Ledger` once to show manual re-verification keeps the same persisted status and loads checkpoint timeline snapshots.
    - Reload the page and confirm the ledger status and checkpoint count remain visible.
@@ -73,7 +74,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/orchestrate` can save a template with explicit commercial policy controls: tier, risk, approval, tool scopes, work units, and enabled state.
 - `/orchestrate` blocks a Pro entitlement before submitting a Power-only template and offers a Pro-compatible template path.
 - `/orchestrate` can run `AI-generated PR Release Gate` with Power entitlement and human approval, producing decision/evidence/risk/next action output.
-- `/orchestrations` shows requester/approver, policy gate, queue timeline, checkpoint hash, billable work units, and blocked risk for the release-gate run.
+- `/orchestrations` shows requester/approver, policy gate, queue timeline, checkpoint hash, billable work units, blocked risk, and ROI Evidence for the release-gate run.
 - Smoke/system records may exist from release checks, but personal history pages hide smoke data by default.
 
 ## Demo Boundaries

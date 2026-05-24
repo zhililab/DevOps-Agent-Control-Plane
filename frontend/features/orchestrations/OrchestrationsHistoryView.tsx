@@ -37,6 +37,10 @@ function firstBlockedRisk(item: WorkflowOrchestrationRecord): string {
   return stepRisk || "No blocked risk recorded.";
 }
 
+function formatUsd(value: number): string {
+  return `$${Math.max(0, Math.round(value)).toLocaleString()}`;
+}
+
 export function OrchestrationsHistoryView() {
   const [items, setItems] = useState<WorkflowOrchestrationRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "success" | "partial_success" | "failed" | "canceled">("all");
@@ -288,6 +292,7 @@ export function OrchestrationsHistoryView() {
             const policyGate = item.policy_gate;
             const billableWorkUnits =
               item.billable_work_units ?? policyGate?.billable_work_units ?? Math.max(1, item.steps.length);
+            const roiEvidence = item.roi_evidence;
             return (
               <>
                 <div className="ledger-strip">
@@ -401,6 +406,25 @@ export function OrchestrationsHistoryView() {
                   <article className="audit-report-cell">
                     <p className="eyebrow">Blocked Risk</p>
                     <p>{firstBlockedRisk(item)}</p>
+                  </article>
+                  <article className="audit-report-cell">
+                    <p className="eyebrow">ROI Evidence</p>
+                    {roiEvidence ? (
+                      <>
+                        <p>
+                          {formatUsd(roiEvidence.estimated_customer_value_usd)} estimated value ·{" "}
+                          {roiEvidence.review_time_saved_minutes + roiEvidence.audit_time_saved_minutes}m saved
+                        </p>
+                        <p className="muted">
+                          blocked risk {roiEvidence.blocked_risk_count} · risk value{" "}
+                          {formatUsd(roiEvidence.blocked_risk_value_usd)} · work units{" "}
+                          {roiEvidence.billable_work_units}
+                        </p>
+                        <p className="muted">{roiEvidence.assumptions[0] || "Transparent deterministic estimate."}</p>
+                      </>
+                    ) : (
+                      <p>ROI evidence unavailable for this run.</p>
+                    )}
                   </article>
                 </div>
               </>

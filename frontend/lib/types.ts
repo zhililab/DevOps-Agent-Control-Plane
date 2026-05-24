@@ -218,6 +218,16 @@ export type WorkflowRunPolicyGate = {
   decision: "approve" | "block" | "needs human review" | string;
 };
 
+export type WorkflowRoiEvidence = {
+  review_time_saved_minutes: number;
+  audit_time_saved_minutes: number;
+  blocked_risk_count: number;
+  blocked_risk_value_usd: number;
+  estimated_customer_value_usd: number;
+  billable_work_units: number;
+  assumptions: string[];
+};
+
 export type WorkflowOrchestrationRecord = {
   id: number;
   status: WorkflowOrchestrationStatus;
@@ -230,6 +240,7 @@ export type WorkflowOrchestrationRecord = {
   approval_note: string;
   policy_gate?: WorkflowRunPolicyGate | null;
   billable_work_units?: number;
+  roi_evidence?: WorkflowRoiEvidence | null;
   summary: WorkflowOrchestrationSummary;
   steps: WorkflowStepRun[];
   ledger_integrity?: HistoryIntegritySummary | null;

@@ -37,6 +37,7 @@ from app.schemas import (
     WorkflowOrchestrationRead,
     WorkflowOrchestrationRunRequest,
     WorkflowOrchestrationSummary,
+    WorkflowRoiEvidence,
     WorkflowRunPolicyGate,
     WorkflowStepDefinition,
     WorkflowStepRunRead,
@@ -79,6 +80,13 @@ DEFAULT_STEPS = [
 BUILTIN_WORKFLOW_TEMPLATES_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "workflow_templates_v1.json"
 TIER_RANK = {"free": 0, "pro": 1, "power": 2}
 VALID_TEMPLATE_RISKS = {"low", "medium", "high", "critical"}
+ENGINEERING_REVIEW_RATE_USD_PER_HOUR = 150
+BLOCKED_RISK_VALUE_BY_LEVEL = {
+    "low": 250,
+    "medium": 1000,
+    "high": 5000,
+    "critical": 15000,
+}
 
 
 def _utcnow() -> datetime:
@@ -1427,6 +1435,11 @@ def _to_orchestration_read(
         approval_note=record.approval_note,
         policy_gate=policy_gate,
         billable_work_units=policy_gate.billable_work_units,
+        roi_evidence=_roi_evidence_from_run(
+            summary=summary,
+            policy_gate=policy_gate,
+            checkpoint_count=checkpoint_count,
+        ),
         summary=summary,
         steps=steps,
         ledger_integrity=ledger_integrity,
@@ -1484,6 +1497,46 @@ def _decision_from_summary(summary: WorkflowOrchestrationSummary) -> str:
     if decision in {"approve", "block", "needs human review"}:
         return decision
     return "needs human review"
+
+
+def _roi_evidence_from_run(
+    *,
+    summary: WorkflowOrchestrationSummary,
+    policy_gate: WorkflowRunPolicyGate,
+    checkpoint_count: int,
+) -> WorkflowRoiEvidence:
+    billable_work_units = max(1, policy_gate.billable_work_units)
+    review_time_saved_minutes = billable_work_units * 6 + (15 if policy_gate.approval_required else 5)
+    audit_time_saved_minutes = billable_work_units * 3 + min(20, max(0, checkpoint_count) * 2) + 10
+
+    blocked_risk_count = sum(1 for risk in summary.risks if "blocked risk" in risk.lower())
+    if policy_gate.decision == "block":
+        blocked_risk_count = max(blocked_risk_count, 1)
+    if blocked_risk_count == 0 and policy_gate.approval_required and policy_gate.risk_level in {"high", "critical"}:
+        blocked_risk_count = 1
+
+    blocked_risk_value = blocked_risk_count * BLOCKED_RISK_VALUE_BY_LEVEL[policy_gate.risk_level]
+    time_value = int(
+        ((review_time_saved_minutes + audit_time_saved_minutes) / 60)
+        * ENGINEERING_REVIEW_RATE_USD_PER_HOUR
+        + 0.5
+    )
+    estimated_customer_value = blocked_risk_value + time_value
+
+    return WorkflowRoiEvidence(
+        review_time_saved_minutes=review_time_saved_minutes,
+        audit_time_saved_minutes=audit_time_saved_minutes,
+        blocked_risk_count=blocked_risk_count,
+        blocked_risk_value_usd=blocked_risk_value,
+        estimated_customer_value_usd=estimated_customer_value,
+        billable_work_units=billable_work_units,
+        assumptions=[
+            "Engineering review time is estimated at 6 minutes per billable work unit plus approval overhead.",
+            "Audit time is estimated from work units and checkpoint-ready evidence.",
+            "Blocked risk value uses low=$250, medium=$1000, high=$5000, critical=$15000 per blocked risk.",
+            "ROI evidence is directional for buyer demos and pilot review, not billing data.",
+        ],
+    )
 
 
 def _trust_metadata_from_payload(payload: WorkflowOrchestrationRunRequest) -> dict[str, str]:

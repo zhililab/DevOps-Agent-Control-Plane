@@ -564,6 +564,18 @@ describe("orchestration workflow", () => {
         billable_work_units: 8,
         decision: "needs human review",
       },
+      roi_evidence: {
+        review_time_saved_minutes: 63,
+        audit_time_saved_minutes: 50,
+        blocked_risk_count: 1,
+        blocked_risk_value_usd: 5000,
+        estimated_customer_value_usd: 5283,
+        billable_work_units: 8,
+        assumptions: [
+          "Engineering review time is estimated at 6 minutes per billable work unit plus approval overhead.",
+          "Audit time is estimated from work units and checkpoint-ready evidence.",
+        ],
+      },
       summary: {
         conclusion: "Planner created a deployable orchestration checklist.",
         risks: ["Blocked risk: generated PR change can affect production without release ownership."],
@@ -708,6 +720,9 @@ describe("orchestration workflow", () => {
     expect(screen.getByText(/decision=needs human review/i)).toBeInTheDocument();
     expect(screen.getByText("Work Units: 8")).toBeInTheDocument();
     expect(screen.getByText(/Blocked risk: generated PR change can affect production/i)).toBeInTheDocument();
+    expect(screen.getByText("ROI Evidence")).toBeInTheDocument();
+    expect(screen.getByText(/\$5,283 estimated value · 113m saved/i)).toBeInTheDocument();
+    expect(screen.getByText(/blocked risk 1 · risk value \$5,000 · work units 8/i)).toBeInTheDocument();
     expect(screen.getByText(/Checkpoints: 3/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Verify History Ledger" }));
     await waitFor(() => {

@@ -313,6 +313,20 @@ def test_ai_generated_pr_release_gate_returns_policy_decision_and_roi_evidence(c
     assert "Decision: needs human review" in record["summary"]["conclusion"]
     assert any("Blocked risk" in risk for risk in record["summary"]["risks"])
     assert all(step["audit"]["evidence"] for step in record["steps"])
+    assert record["roi_evidence"] == {
+        "review_time_saved_minutes": 63,
+        "audit_time_saved_minutes": 50,
+        "blocked_risk_count": 1,
+        "blocked_risk_value_usd": 5000,
+        "estimated_customer_value_usd": 5283,
+        "billable_work_units": 8,
+        "assumptions": [
+            "Engineering review time is estimated at 6 minutes per billable work unit plus approval overhead.",
+            "Audit time is estimated from work units and checkpoint-ready evidence.",
+            "Blocked risk value uses low=$250, medium=$1000, high=$5000, critical=$15000 per blocked risk.",
+            "ROI evidence is directional for buyer demos and pilot review, not billing data.",
+        ],
+    }
 
 
 def test_template_policy_required_tier_blocks_lower_tier(client) -> None:
