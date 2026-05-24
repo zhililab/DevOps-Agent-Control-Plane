@@ -602,18 +602,19 @@ export function DashboardView() {
   return (
     <PageCard
       title="Control Dashboard"
-      description="Track orchestration KPIs, policy blocks, commercial work units, and release readiness."
+      description="Let enterprises connect agents to CI/CD and incident response without losing control."
     >
       <section className="hero-obsidian animate-enter">
         <div className="hero-copy">
-          <p className="eyebrow">COMMERCIAL DEVOPS CONTROL LOOP</p>
-          <h3 className="hero-title">Run trusted agent workflows with replay, policy, and usage evidence.</h3>
+          <p className="eyebrow">ENTERPRISE AGENT CONTROL LAYER</p>
+          <h3 className="hero-title">Let teams put agents into CI/CD and incident response without losing control.</h3>
           <p className="muted">
-            See workflow throughput, ledger health, approval blocks, and monetization signals in one operating view.
+            Gate AI-generated PRs, require human approval for risky releases, and keep replayable ledger, checkpoint,
+            and ROI evidence for every agent action.
           </p>
           <div className="hero-actions">
             <Link className="nav-link nav-link-active" href="/orchestrate">
-              Run Workflow
+              Run PR Release Gate
             </Link>
             <Link className="nav-link" href="/monetization">
               View Plans

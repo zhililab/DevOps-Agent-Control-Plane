@@ -743,6 +743,28 @@ button:focus-visible {
   border-left: 3px solid #7f62ff;
 }
 
+.audit-report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.audit-report-cell {
+  border: 1px solid rgba(102, 210, 171, 0.22);
+  border-radius: 12px;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(23, 29, 47, 0.96), rgba(18, 22, 36, 0.96));
+}
+
+.audit-report-cell p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.audit-report-cell p + p {
+  margin-top: 6px;
+}
+
 .queue-job-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1773,6 +1795,10 @@ pre {
   .queue-job-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .audit-report-grid {
+    grid-template-columns: 1fr;
   }
 
   .ledger-badges,

@@ -4,8 +4,9 @@ Last reviewed: 2026-05-22.
 
 ## Positioning
 
-The current MVP should be positioned as a **Personal DevOps Agent Control Plane**: a deterministic, replayable, policy-gated orchestration surface for DevOps/SRE workflows. It is not a generic chatbot and not yet a broad personal operating system release. The commercial wedge is narrower and sharper:
+The current MVP should be positioned as an **Enterprise Agent Execution Trust Control Layer** for DevOps: a deterministic, replayable, policy-gated orchestration surface that lets teams connect agents to CI/CD and incident response without losing control. It is not a generic chatbot and not yet a broad personal operating system release. The commercial wedge is narrower and sharper:
 
+- gate AI-generated pull requests before CI/CD execution
 - turn operational context into auditable Planner -> Analyzer -> Reviewer runs
 - preserve step replay, queue lifecycle, ledger integrity, and entitlement evidence
 - package reusable workflow templates around release, incident, security, history, and deployment work
@@ -46,6 +47,7 @@ The technical references reinforce starting simple and only adding coordination 
 | Customer Pain | MVP Capability | Value Proof |
 | --- | --- | --- |
 | AI outputs are hard to trust. | Step replay, audit blocks, history ledger verification. | Users can inspect conclusion, evidence, risk, and next action. |
+| AI-generated PRs need a release boundary. | `AI-generated PR Release Gate` template with PR diff, CI log, risk, environment, approval, and decision evidence. | The gate returns approve, block, or needs human review with ledger/checkpoint proof. |
 | DevOps work needs repeatable gates. | Release/security/smoke templates and `make release-check`. | Same workflow can be rerun before each deploy. |
 | Async work disappears after submit. | Queue list, status timeline, retry/cancel controls. | Operators can see lifecycle and recover failed jobs. |
 | Pricing needs a usage boundary. | Signed entitlement and free/pro/power gates. | Capability limits can be enforced without plain tier headers. |
@@ -67,14 +69,14 @@ The technical references reinforce starting simple and only adding coordination 
 - Human Approval Gate for approval-required templates before sync or queued execution
 - commercial work-unit counters in orchestration metrics and dashboard KPIs
 - Manual Billing V1 subscription lifecycle: manual checkout, tier changes, cancellation/reactivation, usage counters, audit feed, and `/monetization` UI
+- AI-generated PR Release Gate demo path: Coding Agent PR context -> policy gate -> human approval -> execution/blocked risk -> ledger/checkpoint/ROI evidence
 
 ### Next High-Value Requirements
 
-- State & Checkpoint V2: resumable queue jobs and explicit checkpoint snapshots per step.
 - Agent Communication Contract: standardized inter-step message schema beyond current audit block.
 - Tool Isolation: scoped credentials and deny-by-default external tool execution.
-- Policy Authoring UI: first-class controls for editing template policy without typing tags.
-- Commercial Metrics V2: real billing-provider integration and cohort reporting around billable work units.
+- Real PR/CI adapter: GitHub/GitLab PR diff and CI log ingestion behind the existing release-gate template.
+- Commercial Metrics V3: ROI reporting by gated PR, blocked risk, and recovered engineering time.
 
 ## Packaging Direction
 

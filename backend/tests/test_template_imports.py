@@ -50,8 +50,9 @@ def test_workflow_template_builtin_import_upserts(client) -> None:
     init_response = client.get("/api/orchestrations/templates/init/json")
     assert init_response.status_code == 200
     templates = init_response.json()
-    assert len(templates) >= 12
+    assert len(templates) >= 13
     names = {item["name"] for item in templates}
+    assert "AI-generated PR Release Gate" in names
     assert "Release Gate And Remote Deploy" in names
     assert "Query Performance Optimization" in names
     assert "Free Tier Smoke Check" in names
@@ -67,14 +68,14 @@ def test_workflow_template_builtin_import_upserts(client) -> None:
     first = client.post("/api/orchestrations/templates/import/builtin")
     assert first.status_code == 200
     first_payload = first.json()
-    assert first_payload["total"] >= 12
-    assert first_payload["imported"] >= 12
+    assert first_payload["total"] >= 13
+    assert first_payload["imported"] >= 13
 
     second = client.post("/api/orchestrations/templates/import/builtin")
     assert second.status_code == 200
     second_payload = second.json()
     assert second_payload["total"] == first_payload["total"]
-    assert second_payload["updated"] >= 12
+    assert second_payload["updated"] >= 13
 
     listed = client.get("/api/orchestrations/templates")
     assert listed.status_code == 200
@@ -85,6 +86,15 @@ def test_workflow_template_builtin_import_upserts(client) -> None:
     assert len([step for step in free_tier["steps"] if step["enabled"]]) == 1
     history_audit = next(item for item in listed_items if item["name"] == "History Accuracy Audit")
     assert "pattern:maker-checker" in history_audit["tags"]
+    ai_pr_gate = next(item for item in listed_items if item["name"] == "AI-generated PR Release Gate")
+    assert ai_pr_gate["policy"] == {
+        "required_tier": "power",
+        "risk_level": "high",
+        "approval_required": True,
+        "allowed_tool_scopes": ["ci-cd-release-gate"],
+        "billable_work_units": 8,
+    }
+    assert "pattern:maker-checker" in ai_pr_gate["tags"]
     release_gate = next(item for item in listed_items if item["name"] == "Release Gate And Remote Deploy")
     assert release_gate["policy"] == {
         "required_tier": "power",

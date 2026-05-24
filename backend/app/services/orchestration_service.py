@@ -6,6 +6,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
 from statistics import quantiles
+from typing import Literal
 
 from fastapi import HTTPException
 from sqlalchemy import case, func
@@ -36,6 +37,7 @@ from app.schemas import (
     WorkflowOrchestrationRead,
     WorkflowOrchestrationRunRequest,
     WorkflowOrchestrationSummary,
+    WorkflowRunPolicyGate,
     WorkflowStepDefinition,
     WorkflowStepRunRead,
     WorkflowTemplateCreate,
@@ -249,7 +251,7 @@ def run_orchestration(
             occurred_at=step_started,
             uid_hint=f"step:{step_index}:started",
         )
-        audit, step_status, fallback = _execute_step(step.agent_type, payload, previous_audits)
+        audit, step_status, fallback = _execute_step(step.step_name, step.agent_type, payload, previous_audits)
         step_finished = _utcnow()
 
         if step_status == "failed":
@@ -345,7 +347,14 @@ def run_orchestration(
             },
             outcome="usage recorded after workflow execution",
         )
-    return _to_orchestration_read(record, step_records, summary, checkpoint_count=2 + len(step_records) * 2)
+    templates_by_id = _templates_for_request_json(db, [record.request_json])
+    return _to_orchestration_read(
+        record,
+        step_records,
+        summary,
+        checkpoint_count=2 + len(step_records) * 2,
+        templates_by_id=templates_by_id,
+    )
 
 
 def enforce_monetization_policy_for_run(
@@ -540,6 +549,7 @@ def list_orchestrations(
             WorkflowOrchestration.requested_by,
             WorkflowOrchestration.approval_actor,
             WorkflowOrchestration.approval_note,
+            WorkflowOrchestration.request_json,
             WorkflowOrchestration.result_json,
             WorkflowOrchestration.created_at,
             WorkflowOrchestration.updated_at,
@@ -578,6 +588,7 @@ def list_orchestrations(
         }
 
     checkpoint_counts = summarize_checkpoint_counts(db, [record.id for record in records]) if records else {}
+    templates_by_id = _templates_for_request_json(db, [record.request_json for record in records]) if records else {}
 
     items = []
     for record in records:
@@ -590,6 +601,7 @@ def list_orchestrations(
                 summary,
                 ledger_integrity=integrity_by_orchestration_id.get(record.id),
                 checkpoint_count=checkpoint_counts.get(record.id, 0),
+                templates_by_id=templates_by_id,
             )
         )
     return WorkflowOrchestrationHistoryResponse(items=items)
@@ -709,7 +721,14 @@ def get_orchestration(db: Session, orchestration_id: int) -> WorkflowOrchestrati
     )
     summary = _safe_orchestration_summary(record)
     checkpoint_counts = summarize_checkpoint_counts(db, [record.id])
-    return _to_orchestration_read(record, steps, summary, checkpoint_count=checkpoint_counts.get(record.id, 0))
+    templates_by_id = _templates_for_request_json(db, [record.request_json])
+    return _to_orchestration_read(
+        record,
+        steps,
+        summary,
+        checkpoint_count=checkpoint_counts.get(record.id, 0),
+        templates_by_id=templates_by_id,
+    )
 
 
 def get_orchestration_checkpoints(db: Session, orchestration_id: int) -> WorkflowCheckpointHistoryResponse:
@@ -1112,6 +1131,18 @@ def _billable_work_units_from_request_json(value: str, templates_by_id: dict[int
     return 1
 
 
+def _templates_for_request_json(db: Session, request_json_values: list[str]) -> dict[int, WorkflowTemplate]:
+    template_ids = {
+        template_id
+        for template_id in (_template_id_from_request_json(value) for value in request_json_values)
+        if template_id is not None
+    }
+    if not template_ids:
+        return {}
+    records = db.query(WorkflowTemplate).filter(WorkflowTemplate.id.in_(template_ids)).all()
+    return {record.id: record for record in records}
+
+
 def _count_monetization_logs(db: Session, *, task_type: str, window_start: datetime) -> int:
     return int(
         db.query(func.count(AgentRunLog.id))
@@ -1160,10 +1191,14 @@ def _build_step_input(
 
 
 def _execute_step(
+    step_name: str,
     agent_type: str,
     payload: WorkflowOrchestrationRunRequest,
     previous_audits: list[WorkflowAuditBlock],
 ) -> tuple[WorkflowAuditBlock, StepStatus, str]:
+    if _is_release_gate_step(step_name):
+        return _execute_release_gate_step(step_name, agent_type, payload, previous_audits)
+
     if agent_type == "planner":
         context = payload.daily_context or DailyContextInput(tasks=[], meetings=[], blockers=[], priorities=[])
         top_task = (context.priorities or context.tasks or ["Clarify today's top objective"])[0]
@@ -1219,6 +1254,97 @@ def _execute_step(
     return audit, "success", ""
 
 
+def _is_release_gate_step(step_name: str) -> bool:
+    normalized = step_name.strip().lower()
+    return (
+        "release gate" in normalized
+        or "pr release" in normalized
+        or "pr change" in normalized
+        or "deployment risk" in normalized
+        or "deploy risk" in normalized
+        or "ci and deployment" in normalized
+    )
+
+
+def _release_gate_decision(payload: WorkflowOrchestrationRunRequest) -> str:
+    technical = payload.technical_input
+    context = payload.daily_context
+    combined = " ".join(
+        [
+            technical.issue_description if technical else "",
+            technical.logs if technical else "",
+            " ".join(technical.errors) if technical else "",
+            " ".join(context.blockers) if context else "",
+        ]
+    ).lower()
+    if any(marker in combined for marker in ("secret", "credential", "data loss", "rollback failed", "security critical")):
+        return "block"
+    if any(marker in combined for marker in ("failed", "timeout", "migration", "production", "prod", "high risk")):
+        return "needs human review"
+    return "approve"
+
+
+def _execute_release_gate_step(
+    step_name: str,
+    agent_type: str,
+    payload: WorkflowOrchestrationRunRequest,
+    previous_audits: list[WorkflowAuditBlock],
+) -> tuple[WorkflowAuditBlock, StepStatus, str]:
+    decision = _release_gate_decision(payload)
+    context = payload.daily_context or DailyContextInput(tasks=[], meetings=[], blockers=[], priorities=[])
+    technical = payload.technical_input
+    env = context.priorities[0] if context.priorities else "deployment environment not specified"
+    diff_summary = context.tasks[0] if context.tasks else "No PR diff summary supplied."
+    blocker_summary = ", ".join(context.blockers[:2]) if context.blockers else "No blocking dependency captured."
+
+    if agent_type == "planner":
+        audit = WorkflowAuditBlock(
+            conclusion="Planner normalized the AI-generated PR into a release-gate checklist.",
+            evidence=f"PR diff summary: {diff_summary[:160]}. Target: {env}.",
+            risk=f"Gate quality depends on explicit CI, risk, and environment signals: {blocker_summary}.",
+            next_action="Run CI and deployment-risk evaluation before allowing execution.",
+        )
+        return audit, "success", ""
+
+    if agent_type == "analyzer":
+        if technical is None or (
+            not technical.issue_description.strip()
+            and not technical.logs.strip()
+            and not any(item.strip() for item in technical.errors)
+            and not any(item.strip() for item in technical.code_snippets)
+        ):
+            audit = WorkflowAuditBlock(
+                conclusion="Analyzer cannot score the release gate without CI logs or risk evidence.",
+                evidence="No PR diff, CI log, error, or deployment-risk signal was supplied to the analyzer.",
+                risk="An AI-generated PR could merge without validated test or deployment evidence.",
+                next_action="Block the gate until CI logs and deployment environment are attached.",
+            )
+            return audit, "failed", "Attach CI logs and rerun the release-gate analyzer."
+        top_error = technical.errors[0] if technical.errors else "No explicit CI error string supplied."
+        audit = WorkflowAuditBlock(
+            conclusion=f"Analyzer classified the PR release gate decision as '{decision}'.",
+            evidence=f"CI signal: {top_error}. Log length={len(technical.logs.strip())}. Environment={env}.",
+            risk="Risk increases when generated code touches deployment paths without a human-owned approval trail.",
+            next_action="Forward the decision, evidence, and risk to the release approver.",
+        )
+        return audit, "success", ""
+
+    if decision == "approve":
+        next_action = "Approve the PR for deployment and keep the ledger checkpoint for audit review."
+    elif decision == "block":
+        next_action = "Block execution, assign the risky change back to the requester, and rerun after remediation."
+    else:
+        next_action = "Require human release-manager review before execution or blocking."
+    upstream = previous_audits[-1].conclusion if previous_audits else "No analyzer decision recorded."
+    audit = WorkflowAuditBlock(
+        conclusion=f"Decision: {decision}. Release gate captured requester, approver, evidence, risk, and next action.",
+        evidence=f"Upstream gate signal: {upstream[:160]}. Approval confirmed={payload.approval_confirmed}.",
+        risk=f"Blocked risk: generated PR change can affect {env} without sufficient release ownership.",
+        next_action=next_action,
+    )
+    return audit, "success", ""
+
+
 def _compose_summary(audits: list[WorkflowAuditBlock]) -> WorkflowOrchestrationSummary:
     conclusion = audits[-1].conclusion if audits else "No workflow step executed."
     risks = [audit.risk for audit in audits]
@@ -1264,7 +1390,15 @@ def _to_orchestration_read(
     *,
     ledger_integrity: HistoryIntegritySummary | None = None,
     checkpoint_count: int = 0,
+    templates_by_id: dict[int, WorkflowTemplate] | None = None,
 ) -> WorkflowOrchestrationRead:
+    templates = templates_by_id or {}
+    policy_gate = _policy_gate_from_request_json(
+        record.request_json,
+        subscription_tier=normalize_tier(record.subscription_tier),
+        summary=summary,
+        templates_by_id=templates,
+    )
     steps = [
         WorkflowStepRunRead(
             id=step.id,
@@ -1291,6 +1425,8 @@ def _to_orchestration_read(
         requested_by=record.requested_by,
         approval_actor=record.approval_actor,
         approval_note=record.approval_note,
+        policy_gate=policy_gate,
+        billable_work_units=policy_gate.billable_work_units,
         summary=summary,
         steps=steps,
         ledger_integrity=ledger_integrity,
@@ -1298,6 +1434,56 @@ def _to_orchestration_read(
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
+
+
+def _policy_gate_from_request_json(
+    value: str,
+    *,
+    subscription_tier: SubscriptionTier,
+    summary: WorkflowOrchestrationSummary,
+    templates_by_id: dict[int, WorkflowTemplate],
+) -> WorkflowRunPolicyGate:
+    payload = _safe_json_dict(value)
+    template_id = payload.get("template_id")
+    approval_confirmed = bool(payload.get("approval_confirmed", False))
+    if isinstance(template_id, int) and template_id in templates_by_id:
+        template = templates_by_id[template_id]
+        policy = _template_policy_from_record(template)
+        return WorkflowRunPolicyGate(
+            template_id=template.id,
+            template_name=template.name,
+            required_tier=policy.required_tier,
+            risk_level=policy.risk_level,
+            approval_required=policy.approval_required,
+            approval_confirmed=approval_confirmed,
+            allowed_tool_scopes=policy.allowed_tool_scopes,
+            billable_work_units=policy.billable_work_units,
+            decision=_decision_from_summary(summary),
+        )
+
+    billable_work_units = _billable_work_units_from_request_json(value, templates_by_id)
+    risk_level: Literal["low", "medium", "high", "critical"] = "medium" if billable_work_units > 1 else "low"
+    return WorkflowRunPolicyGate(
+        template_id=template_id if isinstance(template_id, int) else None,
+        template_name="Custom workflow",
+        required_tier=subscription_tier,
+        risk_level=risk_level,
+        approval_required=False,
+        approval_confirmed=approval_confirmed,
+        allowed_tool_scopes=["none"],
+        billable_work_units=billable_work_units,
+        decision=_decision_from_summary(summary),
+    )
+
+
+def _decision_from_summary(summary: WorkflowOrchestrationSummary) -> str:
+    normalized = summary.conclusion.lower()
+    if "decision:" not in normalized:
+        return "needs human review"
+    decision = normalized.split("decision:", 1)[1].split(".", 1)[0].strip()
+    if decision in {"approve", "block", "needs human review"}:
+        return decision
+    return "needs human review"
 
 
 def _trust_metadata_from_payload(payload: WorkflowOrchestrationRunRequest) -> dict[str, str]:

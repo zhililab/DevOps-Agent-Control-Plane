@@ -5,7 +5,7 @@ This document records the current product target and the minimum functionality t
 ## Current Product Target
 
 - Current release target: deterministic DevOps personal/small-team workflow orchestration MVP.
-- Commercial wedge: personal DevOps agent control plane for trusted, replayable, checkpointed, policy-gated workflow execution.
+- Commercial wedge: enterprise agent execution trust control layer for trusted, replayable, checkpointed, policy-gated CI/CD and incident-response workflows.
 - Primary surfaces: `/orchestrate`, `/orchestrations`, `/dashboard`, `/monetization`, and `/tutorial`.
 - Release path: Docker Compose server deployment through `make release-deploy`.
 - Public entrypoint: `http://1.117.63.81`.
@@ -14,9 +14,12 @@ This document records the current product target and the minimum functionality t
 ## Core User Flows
 
 - Run a sync orchestration from `/orchestrate` with a signed entitlement token.
+- Run `AI-generated PR Release Gate` with PR diff summary, CI logs, change risk, deployment environment, Power entitlement, and explicit human approval.
+- Confirm the release gate returns `approve`, `block`, or `needs human review` with evidence, risk, and next action.
 - Capture lightweight team/requester/approver metadata on the run without requiring a login system.
 - Inspect run replay immediately after the orchestration finishes.
 - Navigate to `/orchestrations` and verify persisted run history and step replay.
+- Confirm the run history reads as an audit report with requester/approver, policy gate, queue timeline, step evidence, checkpoint hash, billable work units, and blocked risk.
 - Load checkpoint timeline for a run and confirm checkpoint payload hashes verify as valid.
 - Submit queued orchestration work, then inspect queue job state, retry/cancel controls, and timeline replay.
 - Review dashboard orchestration KPIs and monetization observability fallback states.
@@ -32,6 +35,7 @@ This document records the current product target and the minimum functionality t
 - Import or refresh curated orchestration workflow templates for the current DevOps operating loop.
 - Confirm selected workflow templates expose their orchestration pattern metadata (`pattern:sequential`, `pattern:maker-checker`, or `pattern:handoff`).
 - Confirm selected workflow templates expose policy metadata: required tier, risk level, human approval requirement, allowed tool scopes, and billable work units.
+- Confirm `AI-generated PR Release Gate` is a Power, high-risk, approval-required template with `ci-cd-release-gate` tool scope and 8 billable work units.
 - Confirm approval-required templates cannot run until explicit human approval is submitted.
 - Verify orchestration history ledger integrity for a run and confirm event count/status.
 - Confirm `/orchestrations` keeps ledger valid status and checkpoint count visible after reload/redeploy.
@@ -91,6 +95,7 @@ This document records the current product target and the minimum functionality t
 - Orchestration metrics should use database aggregate queries instead of Python-side full-window scans.
 - Orchestration metrics must include billable work units, successful audited workflows, approval blocks, and template policy upgrade blocks.
 - Orchestration metrics must include Team Trust KPIs: approved runs, checkpointed runs, and failed jobs needing owner.
+- Release-gate ROI evidence should be visible through billable work units, audited workflow counts, policy blocks, and blocked-risk reporting.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 - Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.
 - Commercial Signal reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view. Billing-period Plan Usage comes from `usage_counters`; 7D/30D activity comes from usage audit logs.

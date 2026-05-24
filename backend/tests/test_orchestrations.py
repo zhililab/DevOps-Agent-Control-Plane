@@ -50,6 +50,9 @@ def test_orchestration_run_success_and_history_and_get(client) -> None:
     assert created["team_subject"] == "platform-team"
     assert created["requested_by"] == "alice@sre"
     assert created["approval_actor"] == "bob@platform"
+    assert created["policy_gate"]["template_name"] == "Custom workflow"
+    assert created["policy_gate"]["decision"] == "needs human review"
+    assert created["billable_work_units"] == 3
     assert created["checkpoint_count"] >= 8
     assert len(created["steps"]) == 3
     for step in created["steps"]:
@@ -76,6 +79,7 @@ def test_orchestration_run_success_and_history_and_get(client) -> None:
     detail = detail_response.json()
     assert detail["id"] == created["id"]
     assert len(detail["steps"]) == 3
+    assert detail["policy_gate"]["billable_work_units"] == 3
 
     checkpoint_response = client.get(f"/api/orchestrations/{created['id']}/checkpoints")
     assert checkpoint_response.status_code == 200
@@ -235,6 +239,80 @@ def test_template_policy_requires_human_approval(client) -> None:
     )
     assert approved.status_code == 200
     assert approved.json()["status"] == "success"
+
+
+def test_ai_generated_pr_release_gate_returns_policy_decision_and_roi_evidence(client) -> None:
+    import_response = client.post("/api/orchestrations/templates/import/builtin")
+    assert import_response.status_code == 200
+    templates_response = client.get("/api/orchestrations/templates")
+    assert templates_response.status_code == 200
+    ai_pr_template = next(
+        item for item in templates_response.json() if item["name"] == "AI-generated PR Release Gate"
+    )
+
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "ai-pr-release-gate-secret"
+        settings.entitlement_required = True
+        token = sign_entitlement_token(secret="ai-pr-release-gate-secret", tier="power", ttl_seconds=600)
+
+        response = client.post(
+            "/api/orchestrations/run",
+            json={
+                "entry_source": "test-suite",
+                "template_id": ai_pr_template["id"],
+                "steps": None,
+                "team_subject": "platform-team",
+                "requested_by": "coding-agent",
+                "approval_actor": "release-manager",
+                "approval_note": "Human approved the PR release gate after CI review.",
+                "approval_confirmed": True,
+                "daily_context": {
+                    "tasks": ["PR diff: Coding Agent changed CI/CD release workflow."],
+                    "meetings": ["Release manager review"],
+                    "blockers": ["Human approval required before production rollout"],
+                    "priorities": ["staging -> production"],
+                },
+                "technical_input": {
+                    "logs": "tests passed\nrelease gate waiting for approval",
+                    "errors": ["CI warning: production release needs approval"],
+                    "code_snippets": ["git diff --stat origin/main...HEAD"],
+                    "issue_description": "AI-generated PR changes production deployment behavior.",
+                },
+                "reflection_input": {
+                    "completed": ["PR diff summarized", "CI logs attached"],
+                    "unfinished": ["Release manager approval"],
+                    "blockers": ["Production remains blocked without approval"],
+                    "mood_or_notes": "Decision must be approve, block, or needs human review.",
+                },
+            },
+            headers={"X-Entitlement": token},
+        )
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
+
+    assert response.status_code == 200
+    record = response.json()
+    assert record["status"] == "success"
+    assert record["subscription_tier"] == "power"
+    assert record["billable_work_units"] == 8
+    assert record["policy_gate"] == {
+        "template_id": ai_pr_template["id"],
+        "template_name": "AI-generated PR Release Gate",
+        "required_tier": "power",
+        "risk_level": "high",
+        "approval_required": True,
+        "approval_confirmed": True,
+        "allowed_tool_scopes": ["ci-cd-release-gate"],
+        "billable_work_units": 8,
+        "decision": "needs human review",
+    }
+    assert "Decision: needs human review" in record["summary"]["conclusion"]
+    assert any("Blocked risk" in risk for risk in record["summary"]["risks"])
+    assert all(step["audit"]["evidence"] for step in record["steps"])
 
 
 def test_template_policy_required_tier_blocks_lower_tier(client) -> None:

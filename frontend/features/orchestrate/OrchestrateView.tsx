@@ -22,9 +22,9 @@ function splitLines(value: string): string[] {
 }
 
 const DEFAULT_STEPS: WorkflowStepDefinition[] = [
-  { step_name: "Plan The Day", agent_type: "planner", enabled: true },
-  { step_name: "Analyze Technical Signals", agent_type: "analyzer", enabled: true },
-  { step_name: "Review And Reflect", agent_type: "reviewer", enabled: true },
+  { step_name: "Normalize PR Change Request", agent_type: "planner", enabled: true },
+  { step_name: "Evaluate CI And Deployment Risk", agent_type: "analyzer", enabled: true },
+  { step_name: "Decide PR Release Gate", agent_type: "reviewer", enabled: true },
 ];
 const DEFAULT_PUBLIC_ENTITLEMENT_TOKEN = process.env.NEXT_PUBLIC_DEFAULT_ENTITLEMENT_TOKEN ?? "";
 const ENTITLEMENT_TOKEN_STORAGE_KEY = "entitlement_token";
@@ -159,36 +159,38 @@ export function OrchestrateView() {
     initialStoredValue(ENTITLEMENT_TOKEN_STORAGE_KEY, DEFAULT_PUBLIC_ENTITLEMENT_TOKEN)
   );
   const [steps, setSteps] = useState<WorkflowStepDefinition[]>(DEFAULT_STEPS);
-  const [templateName, setTemplateName] = useState("Default DevOps Loop");
+  const [templateName, setTemplateName] = useState("AI-generated PR Release Gate");
   const [templateDescription, setTemplateDescription] = useState(
-    "Plan -> Analyze -> Review deterministic orchestration for daily DevOps execution."
+    "Gate an AI-authored pull request before CI/CD execution with evidence, risk, approval, and audit replay."
   );
-  const [templateTags, setTemplateTags] = useState("orchestration,devops,daily");
-  const [templateRequiredTier, setTemplateRequiredTier] = useState<SubscriptionTier>(DEFAULT_TEMPLATE_POLICY.required_tier);
+  const [templateTags, setTemplateTags] = useState("pr,ci-cd,release-gate,audit");
+  const [templateRequiredTier, setTemplateRequiredTier] = useState<SubscriptionTier>("power");
   const [templateRiskLevel, setTemplateRiskLevel] = useState<WorkflowTemplatePolicy["risk_level"]>(
-    DEFAULT_TEMPLATE_POLICY.risk_level
+    "high"
   );
-  const [templateApprovalRequired, setTemplateApprovalRequired] = useState(DEFAULT_TEMPLATE_POLICY.approval_required);
-  const [templateToolScopes, setTemplateToolScopes] = useState(DEFAULT_TEMPLATE_POLICY.allowed_tool_scopes.join(","));
-  const [templateBillableWorkUnits, setTemplateBillableWorkUnits] = useState(String(DEFAULT_TEMPLATE_POLICY.billable_work_units));
+  const [templateApprovalRequired, setTemplateApprovalRequired] = useState(true);
+  const [templateToolScopes, setTemplateToolScopes] = useState("ci-cd-release-gate");
+  const [templateBillableWorkUnits, setTemplateBillableWorkUnits] = useState("8");
   const [templateEnabled, setTemplateEnabled] = useState(true);
 
-  const [tasksText, setTasksText] = useState("Stabilize release pipeline\nPrepare deployment checklist");
-  const [meetingsText, setMeetingsText] = useState("10:30 Platform sync");
-  const [blockersText, setBlockersText] = useState("Waiting for approval from infra");
-  const [prioritiesText, setPrioritiesText] = useState("Stabilize release pipeline");
+  const [tasksText, setTasksText] = useState(
+    "PR diff: Coding Agent updated deploy workflow and release checklist\nChanged files: backend/app/services/orchestration_service.py, k8s/backend.yaml"
+  );
+  const [meetingsText, setMeetingsText] = useState("15:00 Release manager review");
+  const [blockersText, setBlockersText] = useState("Human approval required before production rollout");
+  const [prioritiesText, setPrioritiesText] = useState("staging -> production");
 
   const [issueDescription, setIssueDescription] = useState(
-    "Deployment stage intermittently fails after artifact upload."
+    "AI-generated PR modifies CI/CD release behavior and needs a deployment gate before execution."
   );
-  const [errorsText, setErrorsText] = useState("TimeoutError: upstream did not respond");
-  const [logsText, setLogsText] = useState("stage: upload\nregistry call timeout\njob failed");
-  const [codeSnippetsText, setCodeSnippetsText] = useState("curl --max-time 30 https://registry/upload");
+  const [errorsText, setErrorsText] = useState("CI warning: deployment dry run requires release-manager approval");
+  const [logsText, setLogsText] = useState("tests passed\nk8s dry-run passed\nrelease gate waiting for human approval");
+  const [codeSnippetsText, setCodeSnippetsText] = useState("git diff --stat origin/main...HEAD");
 
-  const [completedText, setCompletedText] = useState("Triaged incident timeline");
-  const [unfinishedText, setUnfinishedText] = useState("Verify registry retries in staging");
-  const [reflectionBlockersText, setReflectionBlockersText] = useState("Missing owner for validation");
-  const [moodNotes, setMoodNotes] = useState("Steady focus, but context switching after meetings.");
+  const [completedText, setCompletedText] = useState("PR diff summarized\nCI logs attached\nDeployment risk identified");
+  const [unfinishedText, setUnfinishedText] = useState("Release manager must approve or block execution");
+  const [reflectionBlockersText, setReflectionBlockersText] = useState("Production deployment remains blocked without approval");
+  const [moodNotes, setMoodNotes] = useState("Decision must be approve, block, or needs human review.");
 
   const [persistKnowledge, setPersistKnowledge] = useState(true);
   const [persistTemplate, setPersistTemplate] = useState(false);
@@ -620,7 +622,7 @@ export function OrchestrateView() {
   return (
     <PageCard
       title="Workflow Orchestrator"
-      description="Run deterministic DevOps workflows with signed entitlement, policy checks, and replayable output."
+      description="Gate AI-generated PRs before CI/CD execution with signed entitlement, human approval, and replayable evidence."
     >
       <section className="result-block">
         <h3>Orchestration Controls</h3>

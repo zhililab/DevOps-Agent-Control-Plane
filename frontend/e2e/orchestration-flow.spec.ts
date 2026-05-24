@@ -18,8 +18,8 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
   await expect(page.getByText("Loading templates...")).toHaveCount(0);
   await expect(page.getByText("Request timed out. Please retry.")).toHaveCount(0);
   await page.getByLabel("Entry Source").fill(`e2e_browser_${Date.now()}`);
-  await page.getByLabel("Tasks (one per line)").fill("Validate browser orchestration flow");
-  await page.getByLabel("Priorities (one per line)").fill("Validate browser orchestration flow");
+  await page.getByLabel("Tasks (one per line)").fill("PR diff: validate browser orchestration release gate");
+  await page.getByLabel("Priorities (one per line)").fill("staging -> production");
   await page.getByLabel("Persist To Knowledge").uncheck();
 
   await page.getByRole("button", { name: "Run Orchestration" }).click();
@@ -35,9 +35,9 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
   expect(runHeaders?.["x-entitlement"]).toBeTruthy();
   expect(runHeaders?.["x-subscription-tier"]).toBeUndefined();
 
-  await expect(page.getByText("Plan The Day (planner) - success")).toBeVisible();
-  await expect(page.getByText("Analyze Technical Signals (analyzer) - success")).toBeVisible();
-  await expect(page.getByText("Review And Reflect (reviewer) - success")).toBeVisible();
+  await expect(page.getByText("Normalize PR Change Request (planner) - success")).toBeVisible();
+  await expect(page.getByText("Evaluate CI And Deployment Risk (analyzer) - success")).toBeVisible();
+  await expect(page.getByText("Decide PR Release Gate (reviewer) - success")).toBeVisible();
 
   await page.getByRole("link", { name: "View Orchestration History" }).click();
 
@@ -50,10 +50,14 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
   const runCard = page.locator(`#orchestration-run-${runId}`);
   await expect(runCard.getByText(/success · pro · \d+ms/)).toBeVisible();
   await expect(runCard.getByText(/Team: platform-team · requested by sre-lead/)).toBeVisible();
+  await expect(runCard.getByText("Audit Report")).toBeVisible();
+  await expect(runCard.getByText(/Policy Gate/)).toBeVisible();
+  await expect(runCard.getByText(/Billable Work Units/)).toBeVisible();
+  await expect(runCard.getByText(/Blocked Risk/)).toBeVisible();
   await expect(runCard.getByText(/Checkpoints: [1-9]\d*/)).toBeVisible();
-  await expect(runCard.getByText("Plan The Day (planner) - success")).toBeVisible();
-  await expect(runCard.getByText("Analyze Technical Signals (analyzer) - success")).toBeVisible();
-  await expect(runCard.getByText("Review And Reflect (reviewer) - success")).toBeVisible();
+  await expect(runCard.getByText("Normalize PR Change Request (planner) - success")).toBeVisible();
+  await expect(runCard.getByText("Evaluate CI And Deployment Risk (analyzer) - success")).toBeVisible();
+  await expect(runCard.getByText("Decide PR Release Gate (reviewer) - success")).toBeVisible();
 
   await runCard.getByRole("button", { name: "Verify History Ledger" }).click();
   await expect(runCard.getByText(/History Ledger: valid · \d+ event\(s\)/)).toBeVisible();

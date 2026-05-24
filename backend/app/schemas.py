@@ -464,6 +464,18 @@ class WorkflowOrchestrationSummary(BaseModel):
     next_actions: list[str]
 
 
+class WorkflowRunPolicyGate(BaseModel):
+    template_id: int | None = None
+    template_name: str = ""
+    required_tier: SubscriptionTier
+    risk_level: Literal["low", "medium", "high", "critical"]
+    approval_required: bool = False
+    approval_confirmed: bool = False
+    allowed_tool_scopes: list[str] = Field(default_factory=list)
+    billable_work_units: int = 1
+    decision: str = "needs human review"
+
+
 class HistoryIntegritySummary(BaseModel):
     entity_type: str
     entity_id: str
@@ -508,6 +520,8 @@ class WorkflowOrchestrationRead(BaseModel):
     requested_by: str = ""
     approval_actor: str = ""
     approval_note: str = ""
+    policy_gate: WorkflowRunPolicyGate | None = None
+    billable_work_units: int = 1
     summary: WorkflowOrchestrationSummary
     steps: list[WorkflowStepRunRead]
     ledger_integrity: HistoryIntegritySummary | None = None

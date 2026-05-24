@@ -206,6 +206,18 @@ export type WorkflowOrchestrationSummary = {
   next_actions: string[];
 };
 
+export type WorkflowRunPolicyGate = {
+  template_id: number | null;
+  template_name: string;
+  required_tier: SubscriptionTier;
+  risk_level: "low" | "medium" | "high" | "critical";
+  approval_required: boolean;
+  approval_confirmed: boolean;
+  allowed_tool_scopes: string[];
+  billable_work_units: number;
+  decision: "approve" | "block" | "needs human review" | string;
+};
+
 export type WorkflowOrchestrationRecord = {
   id: number;
   status: WorkflowOrchestrationStatus;
@@ -216,6 +228,8 @@ export type WorkflowOrchestrationRecord = {
   requested_by: string;
   approval_actor: string;
   approval_note: string;
+  policy_gate?: WorkflowRunPolicyGate | null;
+  billable_work_units?: number;
   summary: WorkflowOrchestrationSummary;
   steps: WorkflowStepRun[];
   ledger_integrity?: HistoryIntegritySummary | null;

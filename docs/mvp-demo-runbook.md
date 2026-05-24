@@ -1,6 +1,6 @@
 # MVP Demo Runbook
 
-This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focused on the current release scope.
+This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focused on the current release scope: AI-generated PR -> release gate -> human approval -> execute or block -> ledger/checkpoint/ROI evidence.
 
 ## Demo Target
 
@@ -18,7 +18,8 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 2. Open `/orchestrate`.
    - Click `Import Curated Templates` if curated workflow templates are not already available.
    - Load the demo account entitlement from `Billing Subject` before running; Pro should run Pro templates, while Power-only templates should ask for Power or a compatible template.
-   - Pick a DevOps-focused template such as `Release Gate And Remote Deploy`, `Production Incident Triage`, or `Query Performance Optimization`.
+   - Pick `AI-generated PR Release Gate` as the primary buyer story. Use `Release Gate And Remote Deploy`, `Production Incident Triage`, or `Query Performance Optimization` only as secondary templates.
+   - Confirm the PR evidence inputs are populated: PR diff summary, CI logs, change risk, and deployment environment.
    - Confirm Team, Requester, Approver, and Approval Note are populated for the small-team trust demo.
    - Point out the selected template pattern and policy line: required tier, risk level, approval status, billable work units, and allowed tool scope.
    - If creating a new template, use the Policy Authoring controls instead of editing policy tags directly.
@@ -28,11 +29,13 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 
 3. Review the immediate replay.
    - Confirm the result includes `Run Replay`, run id, summary, and step audit blocks.
+   - Confirm the release gate decision is one of `approve`, `block`, or `needs human review`.
    - Confirm each step exposes conclusion, evidence, risk, and next action.
    - Confirm the replay summary shows team/requester/approver context and a non-zero checkpoint count.
 
 4. Open `/orchestrations`.
    - Confirm the new run appears newest-first.
+   - Confirm the run reads as an audit report: requester/approver, policy gate, queue timeline, step evidence, checkpoint hash, billable work units, and blocked risk.
    - Confirm the run displays persisted `History Ledger: valid · N event(s)` without first clicking verify.
    - Click `Verify History Ledger` once to show manual re-verification keeps the same persisted status and loads checkpoint timeline snapshots.
    - Reload the page and confirm the ledger status and checkpoint count remain visible.
@@ -53,7 +56,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 
 8. Close with commercial KPIs on `/dashboard`.
    - Show `Billable Work Units`, `Audited Workflows`, `Policy Blocks`, `Approved Runs`, `Checkpointed Runs`, and `Jobs Needing Owner`.
-   - Explain that these counters are the current bridge from technical workflow execution to pricing and packaging.
+   - Explain that these counters are the current bridge from governed agent execution to pricing, packaging, and ROI.
 
 ## Acceptance Checks
 
@@ -69,6 +72,8 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/monetization` can activate a Pro plan and show usage counters plus `checkout completed` in the audit feed without timeout errors.
 - `/orchestrate` can save a template with explicit commercial policy controls: tier, risk, approval, tool scopes, work units, and enabled state.
 - `/orchestrate` blocks a Pro entitlement before submitting a Power-only template and offers a Pro-compatible template path.
+- `/orchestrate` can run `AI-generated PR Release Gate` with Power entitlement and human approval, producing decision/evidence/risk/next action output.
+- `/orchestrations` shows requester/approver, policy gate, queue timeline, checkpoint hash, billable work units, and blocked risk for the release-gate run.
 - Smoke/system records may exist from release checks, but personal history pages hide smoke data by default.
 
 ## Demo Boundaries

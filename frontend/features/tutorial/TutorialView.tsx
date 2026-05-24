@@ -8,28 +8,28 @@ import { PageCard } from "@/components/ui/PageCard";
 const workflowSteps = [
   {
     id: "pick",
-    label: "Pick workflow",
-    title: "Start from a proven DevOps control loop",
-    body: "Choose a release gate, incident triage, security hardening, or query performance template instead of writing a blank prompt.",
-    metric: "12 curated templates",
+    label: "Pick gate",
+    title: "Start with the AI-generated PR Release Gate",
+    body: "Use PR diff summary, CI logs, change risk, and deployment environment as the required evidence package before an agent can affect CI/CD.",
+    metric: "PR release gate",
     stage: "Template",
-    preview: ["Release gate readiness", "Incident triage replay", "Query performance audit"],
+    preview: ["PR diff summary", "CI log evidence", "Deployment environment"],
   },
   {
     id: "run",
     label: "Run with policy",
-    title: "Execute only after the tier and policy boundary are clear",
-    body: "Signed entitlement selects Free, Pro, or Power before the workflow starts, so high-risk runs can require approval first.",
-    metric: "free/pro/power gate",
+    title: "Let policy decide whether the agent can proceed",
+    body: "Signed entitlement, required tier, risk level, allowed tool scope, and approval requirement are checked before execution.",
+    metric: "power approval gate",
     stage: "Policy",
-    preview: ["Signed entitlement verified", "Power approval required", "No legacy tier header"],
+    preview: ["Signed entitlement verified", "CI/CD scope limited", "No plain tier header"],
   },
   {
     id: "approve",
     label: "Capture team approval",
-    title: "Record who requested and approved the trusted run",
-    body: "Team, requester, approver, and approval note travel with the run so a small team can see responsibility without a full login system.",
-    metric: "team audit metadata",
+    title: "Record who requested and who approved the gate",
+    body: "Requester, approver, team, and approval note travel with the run so release responsibility is inspectable after the fact.",
+    metric: "human approval",
     stage: "Trust",
     preview: ["Team platform-team", "Requested by SRE lead", "Approved by release manager"],
   },
@@ -44,21 +44,21 @@ const workflowSteps = [
   },
   {
     id: "replay",
-    label: "Inspect replay",
-    title: "Turn the run into evidence someone can inspect",
-    body: "Each step preserves conclusion, evidence, risk, next action, duration, and ledger integrity signals for later review.",
-    metric: "ledger integrity visible",
+    label: "Audit replay",
+    title: "Turn the run into a buyer-readable audit report",
+    body: "Each run shows requester, approver, policy gate, queue timeline, step evidence, checkpoint hash, work units, and blocked risk.",
+    metric: "audit report",
     stage: "Replay",
-    preview: ["Planner conclusion", "Analyzer evidence", "Reviewer next action"],
+    preview: ["Policy gate decision", "Checkpoint hash", "Blocked risk"],
   },
   {
     id: "upgrade",
     label: "Track value",
-    title: "Connect trusted execution to a billable work unit",
-    body: "Plans & Usage records subscription state, usage counters, and commercial audit events without adding payment complexity yet.",
-    metric: "manual billing ready",
+    title: "Connect governed execution to ROI evidence",
+    body: "Billable work units, audited workflow counts, policy blocks, and commercial events make the control layer easy to package.",
+    metric: "ROI evidence",
     stage: "Commercial",
-    preview: ["Usage counter updated", "Audit event recorded", "Upgrade path clear"],
+    preview: ["Usage counter updated", "Audit event recorded", "Work units captured"],
   },
 ];
 
@@ -78,15 +78,15 @@ export function TutorialView() {
   return (
     <PageCard
       title="Tutorial"
-      description="A short commercial onboarding path for trusted DevOps agent orchestration."
+      description="A buyer story for letting agents into CI/CD and incident response without losing control."
     >
       <section className="tutorial-showcase" aria-label="tutorial-overview">
         <div className="tutorial-showcase-copy">
-          <p className="eyebrow">FROM DEMO TO PAID WORKFLOW</p>
-          <h3>Run, approve, checkpoint, replay, verify, then show the upgrade path.</h3>
+          <p className="eyebrow">BUYER STORY</p>
+          <h3>Let enterprises connect agents to CI/CD and incident response without losing control.</h3>
           <p className="muted">
-            The MVP is strongest when one operational task visibly becomes trusted replay evidence and a measurable
-            commercial work unit.
+            The commercial demo is one closed loop: Coding Agent generates a PR, the control plane gates the release,
+            a human approves, execution is allowed or blocked, and the audit ledger proves what happened.
           </p>
           <div className="tutorial-actions">
             <Link className="nav-link nav-link-active" href="/orchestrate">

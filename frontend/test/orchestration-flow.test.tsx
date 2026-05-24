@@ -197,10 +197,10 @@ describe("orchestration workflow", () => {
       if (url.endsWith("/orchestrations/templates/import/builtin")) {
         return new Response(
           JSON.stringify({
-            imported: 12,
+            imported: 13,
             updated: 0,
             skipped: 0,
-            total: 12,
+            total: 13,
           }),
           { status: 200 }
         );
@@ -213,29 +213,31 @@ describe("orchestration workflow", () => {
             : [
                 {
                   id: 501,
-                  name: "Release Gate And Remote Deploy",
-                  description: "Run the full local release gate and remote rollout verification.",
+                  name: "AI-generated PR Release Gate",
+                  description: "Gate an AI-authored pull request before CI/CD execution.",
                   steps: [
-                    { step_name: "Plan Release Gate", agent_type: "planner", enabled: true },
-                    { step_name: "Analyze Deploy Risk", agent_type: "analyzer", enabled: true },
-                    { step_name: "Review Remote Evidence", agent_type: "reviewer", enabled: true },
+                    { step_name: "Normalize PR Change Request", agent_type: "planner", enabled: true },
+                    { step_name: "Evaluate CI And Deployment Risk", agent_type: "analyzer", enabled: true },
+                    { step_name: "Decide PR Release Gate", agent_type: "reviewer", enabled: true },
                   ],
                   tags: [
-                    "pattern:sequential",
+                    "pattern:maker-checker",
                     "tier:power",
                     "risk:high",
                     "approval:required",
-                    "tool:server-deploy",
-                    "work-units:5",
-                    "release",
-                    "deploy",
+                    "tool:ci-cd-release-gate",
+                    "work-units:8",
+                    "pr",
+                    "ci-cd",
+                    "release-gate",
+                    "audit",
                   ],
                   policy: {
                     required_tier: "power",
                     risk_level: "high",
                     approval_required: true,
-                    allowed_tool_scopes: ["server-deploy"],
-                    billable_work_units: 5,
+                    allowed_tool_scopes: ["ci-cd-release-gate"],
+                    billable_work_units: 8,
                   },
                   enabled: true,
                   created_at: "2026-05-22T00:00:00Z",
@@ -277,19 +279,19 @@ describe("orchestration workflow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Import Curated Templates" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Curated templates imported: imported=12, updated=0.")).toBeInTheDocument();
+      expect(screen.getByText("Curated templates imported: imported=13, updated=0.")).toBeInTheDocument();
     });
-    expect(screen.getByRole("option", { name: "Release Gate And Remote Deploy" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "AI-generated PR Release Gate" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Apply Existing Template"), { target: { value: "501" } });
-    expect(screen.getByText("Pattern: Sequential · Tags: release, deploy")).toBeInTheDocument();
+    expect(screen.getByText("Pattern: Maker-checker · Tags: pr, ci-cd, release-gate, audit")).toBeInTheDocument();
     expect(
-      screen.getAllByText("Policy: tier=power · risk high · approval required · work units 5 · tools server-deploy")
+      screen.getAllByText("Policy: tier=power · risk high · approval required · work units 8 · tools ci-cd-release-gate")
         .length
     ).toBeGreaterThan(0);
     expect(screen.getByLabelText("Required Tier")).toHaveValue("power");
     expect(screen.getByLabelText("Risk Level")).toHaveValue("high");
-    expect(screen.getByLabelText("Billable Work Units")).toHaveValue(5);
-    expect(screen.getByLabelText("Allowed Tool Scopes")).toHaveValue("server-deploy");
+    expect(screen.getByLabelText("Billable Work Units")).toHaveValue(8);
+    expect(screen.getByLabelText("Allowed Tool Scopes")).toHaveValue("ci-cd-release-gate");
     fireEvent.click(screen.getByLabelText("Human Approval Confirmed"));
     fireEvent.click(screen.getByRole("button", { name: "Run Orchestration" }));
     await waitFor(() => {
@@ -470,7 +472,6 @@ describe("orchestration workflow", () => {
     fireEvent.change(screen.getByLabelText("Risk Level"), { target: { value: "critical" } });
     fireEvent.change(screen.getByLabelText("Billable Work Units"), { target: { value: "9" } });
     fireEvent.change(screen.getByLabelText("Allowed Tool Scopes"), { target: { value: "server-deploy" } });
-    fireEvent.click(screen.getByLabelText("Approval Required"));
     fireEvent.click(screen.getByRole("button", { name: "Save Template" }));
 
     await waitFor(() => {
@@ -551,9 +552,21 @@ describe("orchestration workflow", () => {
       approval_actor: "release-manager",
       approval_note: "Approved for trusted DevOps workflow demo execution.",
       checkpoint_count: 3,
+      billable_work_units: 8,
+      policy_gate: {
+        template_id: 501,
+        template_name: "AI-generated PR Release Gate",
+        required_tier: "power",
+        risk_level: "high",
+        approval_required: true,
+        approval_confirmed: true,
+        allowed_tool_scopes: ["ci-cd-release-gate"],
+        billable_work_units: 8,
+        decision: "needs human review",
+      },
       summary: {
         conclusion: "Planner created a deployable orchestration checklist.",
-        risks: ["Deployment evidence still needs capture."],
+        risks: ["Blocked risk: generated PR change can affect production without release ownership."],
         next_actions: ["Open orchestration history and verify replay."],
       },
       steps: [
@@ -691,12 +704,17 @@ describe("orchestration workflow", () => {
     expect(screen.getByText("Planner produced launch validation steps.")).toBeInTheDocument();
     expect(screen.getByText(/History Ledger: valid · 3 event\(s\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Team: platform-team · requested by sre-lead · approved by release-manager/i)).toBeInTheDocument();
+    expect(screen.getByText(/AI-generated PR Release Gate · tier=power · risk high/i)).toBeInTheDocument();
+    expect(screen.getByText(/decision=needs human review/i)).toBeInTheDocument();
+    expect(screen.getByText("Work Units: 8")).toBeInTheDocument();
+    expect(screen.getByText(/Blocked risk: generated PR change can affect production/i)).toBeInTheDocument();
     expect(screen.getByText(/Checkpoints: 3/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Verify History Ledger" }));
     await waitFor(() => {
       expect(screen.getByText(/History Ledger: valid · 3 event\(s\)/i)).toBeInTheDocument();
     });
     expect(screen.getByText("orchestration.accepted")).toBeInTheDocument();
+    expect(screen.getByText(/hash abc/i)).toBeInTheDocument();
     expect(screen.getByText("Plan The Day · success")).toBeInTheDocument();
   });
 

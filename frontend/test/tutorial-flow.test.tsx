@@ -7,12 +7,13 @@ describe("tutorial flow", () => {
     render(<TutorialPage />);
 
     expect(screen.getByRole("heading", { name: "Tutorial" })).toBeInTheDocument();
-    expect(screen.getByText("12 curated templates")).toBeInTheDocument();
+    expect(screen.getByText("PR release gate")).toBeInTheDocument();
+    expect(screen.getByText(/Let enterprises connect agents to CI\/CD/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Inspect replay/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Audit replay/ }));
 
-    expect(screen.getByText("ledger integrity visible")).toBeInTheDocument();
-    expect(screen.getByText("Planner conclusion")).toBeInTheDocument();
+    expect(screen.getByText("audit report")).toBeInTheDocument();
+    expect(screen.getByText("Policy gate decision")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Compare Plans" })).toHaveAttribute("href", "/monetization");
   });
 });

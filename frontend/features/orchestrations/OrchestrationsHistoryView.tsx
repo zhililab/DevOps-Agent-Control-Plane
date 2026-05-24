@@ -19,6 +19,24 @@ function formatTimestamp(value: string): string {
   return parsed.toLocaleString();
 }
 
+function formatShortHash(value: string): string {
+  if (!value.trim()) return "unavailable";
+  return value.slice(0, 12);
+}
+
+function statusClassForDecision(decision: string): string {
+  if (decision === "approve") return "status-success";
+  if (decision === "block") return "status-error";
+  return "status-default";
+}
+
+function firstBlockedRisk(item: WorkflowOrchestrationRecord): string {
+  const explicit = item.summary.risks.find((risk) => risk.toLowerCase().includes("blocked risk"));
+  if (explicit) return explicit;
+  const stepRisk = item.steps.map((step) => step.audit.risk).find((risk) => risk.trim());
+  return stepRisk || "No blocked risk recorded.";
+}
+
 export function OrchestrationsHistoryView() {
   const [items, setItems] = useState<WorkflowOrchestrationRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "success" | "partial_success" | "failed" | "canceled">("all");
@@ -222,7 +240,7 @@ export function OrchestrationsHistoryView() {
   return (
     <PageCard
       title="Orchestration History"
-      description="Replay runs, verify ledger integrity, and inspect queue lifecycle."
+      description="Review agent execution as an audit report with approval, policy, queue, checkpoint, and ROI evidence."
     >
       <section className="result-block">
         <h3>Filters</h3>
@@ -265,6 +283,11 @@ export function OrchestrationsHistoryView() {
           {(() => {
             const integrity = historyIntegrityByRunId[item.id] ?? item.ledger_integrity;
             const checkpoints = checkpointsByRunId[item.id] ?? [];
+            const latestCheckpoint = checkpoints[checkpoints.length - 1];
+            const associatedQueueJob = queueJobs.find((job) => job.orchestration_id === item.id);
+            const policyGate = item.policy_gate;
+            const billableWorkUnits =
+              item.billable_work_units ?? policyGate?.billable_work_units ?? Math.max(1, item.steps.length);
             return (
               <>
                 <div className="ledger-strip">
@@ -276,6 +299,7 @@ export function OrchestrationsHistoryView() {
                         : "not checked"}
                     </p>
                     <p className="status status-default">Checkpoints: {checkpoints.length || item.checkpoint_count || 0}</p>
+                    <p className="status status-default">Work Units: {billableWorkUnits}</p>
                   </div>
                   <div className="button-row">
                     <button
@@ -306,28 +330,82 @@ export function OrchestrationsHistoryView() {
                           {formatTimestamp(checkpoint.created_at)} · by {checkpoint.created_by} ·{" "}
                           {checkpoint.integrity_status}
                         </p>
+                        <p className="muted">hash {formatShortHash(checkpoint.payload_sha256)}</p>
                       </article>
                     ))}
                   </div>
                 ) : null}
+                <div className="run-heading">
+                  <div>
+                    <p className="eyebrow">Audit Report</p>
+                    <h3>Run #{item.id}</h3>
+                    <p>{item.summary.conclusion}</p>
+                  </div>
+                  <p className="run-meta">
+                    {item.status} · {item.subscription_tier} · {item.duration_ms}ms
+                  </p>
+                </div>
+                <div className="audit-report-grid" aria-label={`audit-report-${item.id}`}>
+                  <article className="audit-report-cell">
+                    <p className="eyebrow">Requester / Approver</p>
+                    <p>
+                      Team: {item.team_subject || "unassigned"} · requested by {item.requested_by || "unknown"}
+                      {item.approval_actor ? ` · approved by ${item.approval_actor}` : " · approval pending"}
+                    </p>
+                    {item.approval_note ? <p className="muted">Approval note: {item.approval_note}</p> : null}
+                  </article>
+                  <article className="audit-report-cell">
+                    <p className="eyebrow">Policy Gate</p>
+                    {policyGate ? (
+                      <>
+                        <p>
+                          {policyGate.template_name || "Custom workflow"} · tier={policyGate.required_tier} · risk{" "}
+                          {policyGate.risk_level}
+                        </p>
+                        <p className={`status ${statusClassForDecision(policyGate.decision)}`}>
+                          decision={policyGate.decision} · approval_required={String(policyGate.approval_required)} ·
+                          approval_confirmed={String(policyGate.approval_confirmed)}
+                        </p>
+                        <p className="muted">tools {policyGate.allowed_tool_scopes.join(", ") || "none"}</p>
+                      </>
+                    ) : (
+                      <p>
+                        Custom workflow · tier={item.subscription_tier} · decision=needs human review · work units{" "}
+                        {billableWorkUnits}
+                      </p>
+                    )}
+                  </article>
+                  <article className="audit-report-cell">
+                    <p className="eyebrow">Queue Timeline</p>
+                    {associatedQueueJob ? (
+                      <p>
+                        Job #{associatedQueueJob.id} · {associatedQueueJob.status} · attempts{" "}
+                        {associatedQueueJob.attempts}/{associatedQueueJob.max_attempts}
+                      </p>
+                    ) : (
+                      <p>No queue job linked to this run.</p>
+                    )}
+                  </article>
+                  <article className="audit-report-cell">
+                    <p className="eyebrow">Checkpoint Hash</p>
+                    <p>
+                      {latestCheckpoint
+                        ? `${latestCheckpoint.checkpoint_type} · ${formatShortHash(latestCheckpoint.payload_sha256)}`
+                        : `${item.checkpoint_count || 0} checkpoint(s) recorded`}
+                    </p>
+                  </article>
+                  <article className="audit-report-cell">
+                    <p className="eyebrow">Billable Work Units</p>
+                    <p>{billableWorkUnits}</p>
+                  </article>
+                  <article className="audit-report-cell">
+                    <p className="eyebrow">Blocked Risk</p>
+                    <p>{firstBlockedRisk(item)}</p>
+                  </article>
+                </div>
               </>
             );
           })()}
-          <div className="run-heading">
-            <div>
-              <h3>Run #{item.id}</h3>
-              <p>{item.summary.conclusion}</p>
-            </div>
-            <p className="run-meta">
-              {item.status} · {item.subscription_tier} · {item.duration_ms}ms
-            </p>
-          </div>
-          <p className="muted">
-            Source: {item.entry_source} · Team: {item.team_subject || "unassigned"} · requested by{" "}
-            {item.requested_by || "unknown"}
-            {item.approval_actor ? ` · approved by ${item.approval_actor}` : ""}
-          </p>
-          {item.approval_note ? <p className="muted">Approval note: {item.approval_note}</p> : null}
 
           <div className="result-grid">
             {item.steps.map((step) => (

@@ -1,5 +1,16 @@
 [
   {
+    "name": "AI-generated PR Release Gate",
+    "description": "Gate an AI-authored pull request before CI/CD execution using PR diff summary, CI logs, change risk, deployment environment, human approval, and audit evidence.",
+    "steps": [
+      { "step_name": "Normalize PR Change Request", "agent_type": "planner", "enabled": true },
+      { "step_name": "Evaluate CI And Deployment Risk", "agent_type": "analyzer", "enabled": true },
+      { "step_name": "Decide PR Release Gate", "agent_type": "reviewer", "enabled": true }
+    ],
+    "tags": ["pattern:maker-checker", "tier:power", "risk:high", "approval:required", "tool:ci-cd-release-gate", "work-units:8", "pr", "ci-cd", "release-gate", "audit"],
+    "enabled": true
+  },
+  {
     "name": "Release Gate And Remote Deploy",
     "description": "Run the full local release gate, prepare deployment notes, and verify the Docker Compose server rollout.",
     "steps": [
