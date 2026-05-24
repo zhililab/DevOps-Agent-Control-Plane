@@ -96,6 +96,14 @@ export type TechnicalAnalysisInput = {
   issue_description: string;
 };
 
+export type ReleaseGatePrCiInput = {
+  pr_url: string;
+  pr_diff_summary: string;
+  ci_log_summary: string;
+  target_environment: string;
+  change_risk: string;
+};
+
 export type StructuredAnalysisResult = {
   problem_statement: string;
   likely_causes: string[];
@@ -435,6 +443,22 @@ export type CommercialMetricsResponse = {
     audited_workflows: number;
     average_per_run: number;
   };
+  roi_summary: {
+    runs_with_roi: number;
+    estimated_customer_value_usd: number;
+    review_time_saved_minutes: number;
+    audit_time_saved_minutes: number;
+    blocked_risk_count: number;
+    blocked_risk_value_usd: number;
+    billable_work_units: number;
+    work_units_by_template: Array<{
+      template_id: number | null;
+      template_name: string;
+      runs: number;
+      billable_work_units: number;
+      estimated_customer_value_usd: number;
+    }>;
+  };
   top_templates: Array<{
     template_id: number | null;
     template_name: string;
@@ -455,6 +479,14 @@ export type CommercialMetricsResponse = {
     severity: "info" | "warning" | "critical";
     message: string;
   }>;
+};
+
+export type WorkflowEvidenceExport = {
+  orchestration_id: number;
+  generated_at: string;
+  format: "markdown";
+  markdown: string;
+  data: Record<string, unknown>;
 };
 
 export type SubscriptionLifecycleResponse = {

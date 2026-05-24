@@ -8,6 +8,7 @@ import type {
   EntitlementBootstrap,
   HistoryIntegrityResponse,
   CommercialMetricsResponse,
+  ReleaseGatePrCiInput,
   MonetizationObservability,
   MonetizationEvent,
   NoteEntry,
@@ -25,6 +26,7 @@ import type {
   WorkflowOrchestrationHistoryResponse,
   WorkflowOrchestrationMetrics,
   WorkflowOrchestrationRecord,
+  WorkflowEvidenceExport,
   WorkflowCheckpointHistoryResponse,
   WorkflowQueueHistoryResponse,
   WorkflowQueueJob,
@@ -294,6 +296,7 @@ export const apiClient = {
       daily_context?: DailyContextInput;
       technical_input?: TechnicalAnalysisInput;
       reflection_input?: DailyReflectionInput;
+      release_gate_input?: ReleaseGatePrCiInput;
       persist_knowledge?: boolean;
       persist_template?: boolean;
       approval_confirmed?: boolean;
@@ -323,6 +326,7 @@ export const apiClient = {
       daily_context?: DailyContextInput;
       technical_input?: TechnicalAnalysisInput;
       reflection_input?: DailyReflectionInput;
+      release_gate_input?: ReleaseGatePrCiInput;
       persist_knowledge?: boolean;
       persist_template?: boolean;
       approval_confirmed?: boolean;
@@ -409,6 +413,13 @@ export const apiClient = {
 
   getWorkflowOrchestrationCheckpoints(orchestrationId: number) {
     return request<WorkflowCheckpointHistoryResponse>(`/orchestrations/${orchestrationId}/checkpoints`, {
+      timeoutMs: LONG_API_TIMEOUT_MS,
+      retries: 2,
+    });
+  },
+
+  getWorkflowEvidenceExport(orchestrationId: number) {
+    return request<WorkflowEvidenceExport>(`/orchestrations/${orchestrationId}/evidence`, {
       timeoutMs: LONG_API_TIMEOUT_MS,
       retries: 2,
     });

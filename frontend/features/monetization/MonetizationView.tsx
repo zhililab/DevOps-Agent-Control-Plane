@@ -87,6 +87,16 @@ const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
     audited_workflows: 0,
     average_per_run: 0,
   },
+  roi_summary: {
+    runs_with_roi: 0,
+    estimated_customer_value_usd: 0,
+    review_time_saved_minutes: 0,
+    audit_time_saved_minutes: 0,
+    blocked_risk_count: 0,
+    blocked_risk_value_usd: 0,
+    billable_work_units: 0,
+    work_units_by_template: [],
+  },
   top_templates: [],
   trend: [],
   anomaly_hints: [],
@@ -116,6 +126,16 @@ function eventDetail(event: MonetizationEvent): string {
   return [typeof nextTier === "string" ? `tier=${nextTier}` : null, typeof tier === "string" ? `tier=${tier}` : null, typeof provider === "string" ? `provider=${provider}` : null]
     .filter(Boolean)
     .join(" · ");
+}
+
+const USD_FORMATTER = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+function formatUsd(value: number): string {
+  return USD_FORMATTER.format(value);
 }
 
 export function MonetizationView() {
@@ -433,6 +453,21 @@ export function MonetizationView() {
         </div>
         <div className="commercial-metric-grid">
           <article className="result-block">
+            <p className="eyebrow">Value Generated</p>
+            <h3>{formatUsd(commercialMetrics.roi_summary.estimated_customer_value_usd)}</h3>
+            <p className="muted">
+              {commercialMetrics.roi_summary.runs_with_roi} ROI-backed run(s) ·{" "}
+              {commercialMetrics.roi_summary.review_time_saved_minutes +
+                commercialMetrics.roi_summary.audit_time_saved_minutes}
+              m saved
+            </p>
+          </article>
+          <article className="result-block">
+            <p className="eyebrow">Blocked Risk Value</p>
+            <h3>{formatUsd(commercialMetrics.roi_summary.blocked_risk_value_usd)}</h3>
+            <p className="muted">{commercialMetrics.roi_summary.blocked_risk_count} blocked risk signal(s)</p>
+          </article>
+          <article className="result-block">
             <p className="eyebrow">Billable Work Units</p>
             <h3>{commercialMetrics.billable_work_units.total}</h3>
             <p className="muted">
@@ -479,6 +514,26 @@ export function MonetizationView() {
           <p className="muted">No commercial anomalies detected in this window.</p>
         )}
         <div className="commercial-summary">
+          <article className="result-block">
+            <h3>Value By Template</h3>
+            {commercialMetrics.roi_summary.work_units_by_template.length > 0 ? (
+              <div className="event-feed">
+                {commercialMetrics.roi_summary.work_units_by_template.map((template) => (
+                  <article className="event-row" key={`${template.template_id ?? "adhoc"}-${template.template_name}-roi`}>
+                    <div>
+                      <strong>{template.template_name}</strong>
+                      <p className="muted">
+                        {template.runs} run(s) · {template.billable_work_units} work units
+                      </p>
+                    </div>
+                    <span>{formatUsd(template.estimated_customer_value_usd)}</span>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">No ROI-backed release gate value yet.</p>
+            )}
+          </article>
           <article className="result-block">
             <h3>Top Value Templates</h3>
             {commercialMetrics.top_templates.length > 0 ? (

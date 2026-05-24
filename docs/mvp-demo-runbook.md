@@ -37,6 +37,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Confirm the new run appears newest-first.
    - Confirm the run reads as an audit report: requester/approver, policy gate, queue timeline, step evidence, checkpoint hash, billable work units, and blocked risk.
    - Confirm `ROI Evidence` shows estimated customer value, review/audit time saved, blocked risk value, work units, and the first transparent assumption.
+   - Click `Export Evidence` and confirm the redacted Markdown bundle includes PR/CI context, approval, policy gate, step replay, ledger/checkpoint status, and ROI assumptions.
    - Confirm the run displays persisted `History Ledger: valid · N event(s)` without first clicking verify.
    - Click `Verify History Ledger` once to show manual re-verification keeps the same persisted status and loads checkpoint timeline snapshots.
    - Reload the page and confirm the ledger status and checkpoint count remain visible.
@@ -48,12 +49,13 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 
 6. Open `/monetization`.
    - Show the `Commercial MVP` cockpit: plan state, `Plan Usage`, and `Commercial Audit Feed`.
-   - Show `Commercial Signal`: billable work units, 7D/30D activity, policy blocks, top value templates, lifecycle events, and the window switch.
+   - Show `Commercial Signal`: Value Generated, review time saved, blocked risk value, billable work units, 7D/30D activity, policy blocks, top value templates, lifecycle events, and the window switch.
    - Activate or refresh a Pro/Power plan for a demo account and confirm the audit feed is scoped to that account.
    - Explain that Manual Billing V1 is the current demoable commercial loop before real payment-provider integration.
 
 7. Open `/tutorial`.
-   - Use the run -> replay -> verify -> upgrade path as the short buyer story.
+   - Use the Pilot Demo path: Import PR context -> Run Gate -> Verify Evidence -> See ROI -> Compare Plan.
+   - Point to the built-in Pilot Dataset entries: high-risk PR, low-risk PR, flaky CI, missing approval, and rollback-sensitive release.
 
 8. Close with commercial KPIs on `/dashboard`.
    - Show `Billable Work Units`, `Audited Workflows`, `Policy Blocks`, `Approved Runs`, `Checkpointed Runs`, and `Jobs Needing Owner`.
@@ -67,6 +69,8 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/api/orchestrations/{id}/checkpoints` returns checkpoint snapshots with valid payload hash status.
 - `/api/orchestrations/metrics?days=7` includes billable work units, audited workflow count, approval blocks, template policy upgrade blocks, approved runs, checkpointed runs, and failed jobs needing owner.
 - `/api/monetization/commercial-metrics?days=7` includes subscription summary, usage summary, policy blocks, billable work units, top templates, commercial events, trend, and anomaly hints.
+- `/api/monetization/commercial-metrics?days=7` includes ROI summary with estimated customer value, review/audit time saved, blocked risk value, and work units by template.
+- `/api/orchestrations/{id}/evidence` returns a redacted Markdown evidence export for a run.
 - `/api/monetization/entitlement?subject=demo-user` issues a signed token for an active Manual Billing subscription.
 - `/orchestrations` does not show `History Ledger: not checked` for runs that already have ledger events.
 - `/orchestrations` shows team/requester/approver context and checkpoint count for the new run.

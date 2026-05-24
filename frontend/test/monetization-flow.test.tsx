@@ -81,6 +81,24 @@ const commercialMetrics = {
     audited_workflows: 4,
     average_per_run: 5.25,
   },
+  roi_summary: {
+    runs_with_roi: 4,
+    estimated_customer_value_usd: 12600,
+    review_time_saved_minutes: 120,
+    audit_time_saved_minutes: 80,
+    blocked_risk_count: 2,
+    blocked_risk_value_usd: 10000,
+    billable_work_units: 21,
+    work_units_by_template: [
+      {
+        template_id: 7,
+        template_name: "Release Gate And Remote Deploy",
+        runs: 3,
+        billable_work_units: 15,
+        estimated_customer_value_usd: 9600,
+      },
+    ],
+  },
   top_templates: [
     {
       template_id: 7,
@@ -159,7 +177,10 @@ describe("monetization flow", () => {
     expect(screen.queryByText("Commercial Metrics V2")).not.toBeInTheDocument();
     expect(screen.getByText("Commercial Signal")).toBeInTheDocument();
     expect(screen.getByText("7D activity & ROI")).toBeInTheDocument();
-    expect(screen.getByText("Release Gate And Remote Deploy")).toBeInTheDocument();
+    expect(screen.getByText("Value Generated")).toBeInTheDocument();
+    expect(screen.getByText("$12,600")).toBeInTheDocument();
+    expect(screen.getByText("Value By Template")).toBeInTheDocument();
+    expect(screen.getAllByText("Release Gate And Remote Deploy").length).toBeGreaterThan(0);
     expect(screen.getAllByText("21").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Activate Power" }));

@@ -11,6 +11,7 @@ from app.schemas import (
     EntitlementBootstrapResponse,
     HistoryIntegrityResponse,
     WorkflowCheckpointHistoryResponse,
+    WorkflowEvidenceExportResponse,
     WorkflowOrchestrationHistoryResponse,
     WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
@@ -44,6 +45,7 @@ from app.services.orchestration_service import (
     export_workflow_templates,
     get_orchestration,
     get_orchestration_checkpoints,
+    get_orchestration_evidence_export,
     get_orchestration_metrics,
     import_builtin_workflow_templates,
     import_workflow_templates,
@@ -250,6 +252,14 @@ def get_orchestration_checkpoints_endpoint(
     db: Session = Depends(get_db),
 ) -> WorkflowCheckpointHistoryResponse:
     return get_orchestration_checkpoints(db, orchestration_id)
+
+
+@router.get("/{orchestration_id}/evidence", response_model=WorkflowEvidenceExportResponse)
+def get_orchestration_evidence_export_endpoint(
+    orchestration_id: int,
+    db: Session = Depends(get_db),
+) -> WorkflowEvidenceExportResponse:
+    return get_orchestration_evidence_export(db, orchestration_id)
 
 
 @router.post("/templates", response_model=WorkflowTemplateRead)

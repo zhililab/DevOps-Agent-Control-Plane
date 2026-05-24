@@ -1,10 +1,27 @@
 from datetime import date, datetime
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from app.time_utils import format_utc_datetime
+
+
+_AUTH_PAIR_PATTERN = re.compile(
+    r"(?i)(authorization)\s*[:=]\s*(Bearer\s+[A-Za-z0-9\-._~+/]+=*|[^,\n;]+)"
+)
+_SECRET_PAIR_PATTERN = re.compile(
+    r"(?i)(password|passwd|secret|token|api[_-]?key)\s*[:=]\s*([^,\s;\n]+)"
+)
+_BEARER_PATTERN = re.compile(r"(?i)\bBearer\s+([A-Za-z0-9\-._~+/]+=*)")
+
+
+def _sanitize_user_text(value: str) -> str:
+    text = value.strip()
+    text = _AUTH_PAIR_PATTERN.sub(lambda match: f"{match.group(1)}=<redacted>", text)
+    text = _SECRET_PAIR_PATTERN.sub(lambda match: f"{match.group(1)}=<redacted>", text)
+    return _BEARER_PATTERN.sub("Bearer <redacted>", text)
 
 
 class BaseModel(PydanticBaseModel):
@@ -222,6 +239,19 @@ class TechnicalAnalysisInput(BaseModel):
                 "Provide at least one of logs, errors, code_snippets, or issue_description."
             )
         return self
+
+
+class ReleaseGatePrCiInput(BaseModel):
+    pr_url: str = Field(default="", max_length=500)
+    pr_diff_summary: str = Field(default="", max_length=2000)
+    ci_log_summary: str = Field(default="", max_length=4000)
+    target_environment: str = Field(default="", max_length=200)
+    change_risk: str = Field(default="", max_length=1000)
+
+    @field_validator("pr_url", "pr_diff_summary", "ci_log_summary", "target_environment", "change_risk")
+    @classmethod
+    def sanitize_adapter_text(cls, value: str) -> str:
+        return _sanitize_user_text(value)
 
 
 class StructuredAnalysisResult(BaseModel):
@@ -507,6 +537,7 @@ class WorkflowOrchestrationRunRequest(BaseModel):
     daily_context: DailyContextInput | None = None
     technical_input: TechnicalAnalysisInput | None = None
     reflection_input: DailyReflectionInput | None = None
+    release_gate_input: ReleaseGatePrCiInput | None = None
     persist_knowledge: bool = True
     persist_template: bool = False
     approval_confirmed: bool = False
@@ -753,6 +784,25 @@ class CommercialMetricsBillableWorkUnits(BaseModel):
     average_per_run: float
 
 
+class CommercialMetricsRoiTemplateBreakdown(BaseModel):
+    template_id: int | None = None
+    template_name: str
+    runs: int
+    billable_work_units: int
+    estimated_customer_value_usd: int
+
+
+class CommercialMetricsRoiSummary(BaseModel):
+    runs_with_roi: int
+    estimated_customer_value_usd: int
+    review_time_saved_minutes: int
+    audit_time_saved_minutes: int
+    blocked_risk_count: int
+    blocked_risk_value_usd: int
+    billable_work_units: int
+    work_units_by_template: list[CommercialMetricsRoiTemplateBreakdown] = Field(default_factory=list)
+
+
 class CommercialMetricsTopTemplate(BaseModel):
     template_id: int | None = None
     template_name: str
@@ -786,9 +836,18 @@ class CommercialMetricsResponse(BaseModel):
     commercial_events: list[CommercialMetricsEventSummary] = Field(default_factory=list)
     policy_blocks: CommercialMetricsPolicyBlocks
     billable_work_units: CommercialMetricsBillableWorkUnits
+    roi_summary: CommercialMetricsRoiSummary
     top_templates: list[CommercialMetricsTopTemplate] = Field(default_factory=list)
     trend: list[CommercialMetricsTrendPoint] = Field(default_factory=list)
     anomaly_hints: list[CommercialMetricsAnomalyHint] = Field(default_factory=list)
+
+
+class WorkflowEvidenceExportResponse(BaseModel):
+    orchestration_id: int
+    generated_at: datetime
+    format: Literal["markdown"] = "markdown"
+    markdown: str
+    data: dict[str, Any] = Field(default_factory=dict)
 
 
 class ManualCheckoutRequest(BaseModel):

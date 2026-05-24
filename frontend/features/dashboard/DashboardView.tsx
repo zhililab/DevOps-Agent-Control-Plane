@@ -98,6 +98,16 @@ const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
     audited_workflows: 0,
     average_per_run: 0,
   },
+  roi_summary: {
+    runs_with_roi: 0,
+    estimated_customer_value_usd: 0,
+    review_time_saved_minutes: 0,
+    audit_time_saved_minutes: 0,
+    blocked_risk_count: 0,
+    blocked_risk_value_usd: 0,
+    billable_work_units: 0,
+    work_units_by_template: [],
+  },
   top_templates: [],
   trend: [],
   anomaly_hints: [],
@@ -265,6 +275,7 @@ function hasCommercialMetricsPayload(value: unknown): value is CommercialMetrics
     isRecord(value.plan_usage) &&
     isRecord(value.policy_blocks) &&
     isRecord(value.billable_work_units) &&
+    isRecord(value.roi_summary) &&
     Array.isArray(value.top_templates) &&
     Array.isArray(value.trend) &&
     Array.isArray(value.anomaly_hints)
@@ -732,6 +743,25 @@ export function DashboardView() {
           <p className="kpi-label">Commercial Policy Blocks</p>
           <p className="muted">Approvals + upgrades + quota</p>
           <p className="kpi-value">{state.commercialMetrics.policy_blocks.total}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Estimated Value</p>
+          <p className="muted">Release-gate ROI evidence</p>
+          <p className="kpi-value">{formatUsd(state.commercialMetrics.roi_summary.estimated_customer_value_usd)}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Review Time Saved</p>
+          <p className="muted">Review + audit minutes</p>
+          <p className="kpi-value">
+            {state.commercialMetrics.roi_summary.review_time_saved_minutes +
+              state.commercialMetrics.roi_summary.audit_time_saved_minutes}
+            m
+          </p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Blocked Risk Value</p>
+          <p className="muted">{state.commercialMetrics.roi_summary.blocked_risk_count} blocked signal(s)</p>
+          <p className="kpi-value">{formatUsd(state.commercialMetrics.roi_summary.blocked_risk_value_usd)}</p>
         </article>
       </section>
 

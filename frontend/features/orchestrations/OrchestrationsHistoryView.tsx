@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/api";
 import type {
   HistoryIntegrityResponse,
   WorkflowCheckpoint,
+  WorkflowEvidenceExport,
   WorkflowOrchestrationRecord,
   WorkflowQueueJob,
   WorkflowQueueJobStatus,
@@ -61,6 +62,8 @@ export function OrchestrationsHistoryView() {
   const [activeHistoryCheckRunId, setActiveHistoryCheckRunId] = useState<number | null>(null);
   const [checkpointsByRunId, setCheckpointsByRunId] = useState<Record<number, WorkflowCheckpoint[]>>({});
   const [activeCheckpointRunId, setActiveCheckpointRunId] = useState<number | null>(null);
+  const [evidenceExportByRunId, setEvidenceExportByRunId] = useState<Record<number, WorkflowEvidenceExport>>({});
+  const [activeEvidenceExportRunId, setActiveEvidenceExportRunId] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -241,6 +244,22 @@ export function OrchestrationsHistoryView() {
     }
   }
 
+  async function onExportEvidence(runId: number) {
+    setError(null);
+    setActiveEvidenceExportRunId(runId);
+    try {
+      const response = await apiClient.getWorkflowEvidenceExport(runId);
+      setEvidenceExportByRunId((current) => ({
+        ...current,
+        [runId]: response,
+      }));
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : "Failed to export evidence bundle.");
+    } finally {
+      setActiveEvidenceExportRunId(null);
+    }
+  }
+
   return (
     <PageCard
       title="Orchestration History"
@@ -290,6 +309,7 @@ export function OrchestrationsHistoryView() {
             const latestCheckpoint = checkpoints[checkpoints.length - 1];
             const associatedQueueJob = queueJobs.find((job) => job.orchestration_id === item.id);
             const policyGate = item.policy_gate;
+            const evidenceExport = evidenceExportByRunId[item.id];
             const billableWorkUnits =
               item.billable_work_units ?? policyGate?.billable_work_units ?? Math.max(1, item.steps.length);
             const roiEvidence = item.roi_evidence;
@@ -320,6 +340,13 @@ export function OrchestrationsHistoryView() {
                       disabled={activeCheckpointRunId === item.id}
                     >
                       {activeCheckpointRunId === item.id ? "Loading Checkpoints..." : "Load Checkpoint Timeline"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onExportEvidence(item.id)}
+                      disabled={activeEvidenceExportRunId === item.id}
+                    >
+                      {activeEvidenceExportRunId === item.id ? "Exporting Evidence..." : "Export Evidence"}
                     </button>
                   </div>
                 </div>
@@ -427,6 +454,15 @@ export function OrchestrationsHistoryView() {
                     )}
                   </article>
                 </div>
+                {evidenceExport ? (
+                  <article className="result-block" aria-label={`evidence-export-${item.id}`}>
+                    <h3>Evidence Export</h3>
+                    <p className="muted">
+                      Markdown evidence bundle generated at {formatTimestamp(evidenceExport.generated_at)}.
+                    </p>
+                    <pre>{evidenceExport.markdown}</pre>
+                  </article>
+                ) : null}
               </>
             );
           })()}

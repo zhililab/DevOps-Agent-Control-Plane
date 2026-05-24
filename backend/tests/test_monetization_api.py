@@ -756,6 +756,15 @@ def test_commercial_metrics_aggregates_subject_scoped_usage_policy_blocks_and_te
         assert payload["policy_blocks"]["total"] == 1
         assert payload["billable_work_units"]["total"] == 7
         assert payload["billable_work_units"]["audited_workflows"] == 1
+        assert payload["roi_summary"]["runs_with_roi"] == 1
+        assert payload["roi_summary"]["estimated_customer_value_usd"] == 5220
+        assert payload["roi_summary"]["review_time_saved_minutes"] == 57
+        assert payload["roi_summary"]["audit_time_saved_minutes"] == 31
+        assert payload["roi_summary"]["blocked_risk_count"] == 1
+        assert payload["roi_summary"]["blocked_risk_value_usd"] == 5000
+        assert payload["roi_summary"]["billable_work_units"] == 7
+        assert payload["roi_summary"]["work_units_by_template"][0]["template_name"] == "Power Release Gate"
+        assert payload["roi_summary"]["work_units_by_template"][0]["estimated_customer_value_usd"] == 5220
         assert payload["top_templates"][0]["template_name"] == "Power Release Gate"
         assert payload["top_templates"][0]["billable_work_units"] == 7
         assert payload["commercial_events"] == [{"action": "checkout completed", "count": 1}]

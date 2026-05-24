@@ -99,6 +99,16 @@ describe("dashboard monetization kpi", () => {
               audited_workflows: 8,
               average_per_run: 3.88,
             },
+            roi_summary: {
+              runs_with_roi: 8,
+              estimated_customer_value_usd: 18400,
+              review_time_saved_minutes: 220,
+              audit_time_saved_minutes: 140,
+              blocked_risk_count: 3,
+              blocked_risk_value_usd: 15000,
+              billable_work_units: 31,
+              work_units_by_template: [],
+            },
             top_templates: [],
             trend: [{ date: "2026-05-22", billable_work_units: 31, audited_workflows: 8, policy_blocks: 3 }],
             anomaly_hints: [{ code: "policy_blocks_high", severity: "warning", message: "3 policy block(s) appeared in this window." }],
@@ -150,8 +160,14 @@ describe("dashboard monetization kpi", () => {
     expect(within(failedPaymentCard!).getByText("4.0%")).toBeInTheDocument();
     const commercialWorkUnitsCard = screen.getAllByText("Commercial Work Units")[0].closest("article");
     const commercialPolicyBlocksCard = screen.getByText("Commercial Policy Blocks").closest("article");
+    const estimatedValueCard = screen.getByText("Estimated Value").closest("article");
+    const reviewTimeSavedCard = screen.getByText("Review Time Saved").closest("article");
+    const blockedRiskValueCard = screen.getByText("Blocked Risk Value").closest("article");
     expect(within(commercialWorkUnitsCard!).getByText("31")).toBeInTheDocument();
     expect(within(commercialPolicyBlocksCard!).getByText("3")).toBeInTheDocument();
+    expect(within(estimatedValueCard!).getByText("$18,400.00")).toBeInTheDocument();
+    expect(within(reviewTimeSavedCard!).getByText("360m")).toBeInTheDocument();
+    expect(within(blockedRiskValueCard!).getByText("$15,000.00")).toBeInTheDocument();
     expect(screen.getByText(/3 policy block\(s\) appeared/)).toBeInTheDocument();
   });
 

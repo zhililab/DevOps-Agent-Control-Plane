@@ -8,16 +8,16 @@ import { PageCard } from "@/components/ui/PageCard";
 const workflowSteps = [
   {
     id: "pick",
-    label: "Pick gate",
-    title: "Start with the AI-generated PR Release Gate",
-    body: "Use PR diff summary, CI logs, change risk, and deployment environment as the required evidence package before an agent can affect CI/CD.",
-    metric: "PR release gate",
-    stage: "Template",
-    preview: ["PR diff summary", "CI log evidence", "Deployment environment"],
+    label: "Import PR context",
+    title: "Start from a controlled PR and CI evidence packet",
+    body: "Use PR URL, diff summary, CI log summary, target environment, and change risk as the auditable packet before an agent can affect CI/CD.",
+    metric: "PR/CI adapter",
+    stage: "Adapter",
+    preview: ["PR URL", "CI log summary", "Deployment environment"],
   },
   {
     id: "run",
-    label: "Run with policy",
+    label: "Run gate",
     title: "Let policy decide whether the agent can proceed",
     body: "Signed entitlement, required tier, risk level, allowed tool scope, and approval requirement are checked before execution.",
     metric: "power approval gate",
@@ -44,7 +44,7 @@ const workflowSteps = [
   },
   {
     id: "replay",
-    label: "Audit replay",
+    label: "Verify evidence",
     title: "Turn the run into a buyer-readable audit report",
     body: "Each run shows requester, approver, policy gate, queue timeline, step evidence, checkpoint hash, work units, and blocked risk.",
     metric: "audit report",
@@ -53,13 +53,21 @@ const workflowSteps = [
   },
   {
     id: "upgrade",
-    label: "Track value",
+    label: "See ROI",
     title: "Connect governed execution to ROI evidence",
     body: "Billable work units, audited workflow counts, policy blocks, and commercial events make the control layer easy to package.",
     metric: "ROI evidence",
     stage: "Commercial",
     preview: ["Usage counter updated", "Audit event recorded", "Work units captured"],
   },
+];
+
+const pilotDatasets = [
+  { name: "High-risk generated PR", signal: "deployment workflow changed; production ownership required" },
+  { name: "Low-risk docs PR", signal: "non-runtime change, no CI regression signal" },
+  { name: "CI flaky release", signal: "timeout after artifact upload, retry evidence needed" },
+  { name: "Missing approval", signal: "Power gate blocks until release manager approves" },
+  { name: "Rollback-sensitive rollout", signal: "migration path requires explicit blocked-risk evidence" },
 ];
 
 const commercialLadders = [
@@ -90,7 +98,7 @@ export function TutorialView() {
           </p>
           <div className="tutorial-actions">
             <Link className="nav-link nav-link-active" href="/orchestrate">
-              Run Workflow
+              Run Pilot Gate
             </Link>
             <Link className="nav-link" href="/orchestrations">
               Inspect Replay
@@ -128,6 +136,16 @@ export function TutorialView() {
             <strong>{step.label}</strong>
             <p>{step.body}</p>
           </button>
+        ))}
+      </section>
+
+      <section className="tutorial-grid tutorial-grid-three" aria-label="pilot-demo-datasets">
+        {pilotDatasets.map((item) => (
+          <article className="tutorial-card" key={item.name}>
+            <p className="eyebrow">Pilot Dataset</p>
+            <h3>{item.name}</h3>
+            <p>{item.signal}</p>
+          </article>
         ))}
       </section>
 

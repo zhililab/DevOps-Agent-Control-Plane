@@ -31,6 +31,24 @@ const commercialMetricsPayload = {
   ],
   policy_blocks: { approval_required: 2, upgrade_required: 3, quota_exceeded: 0, total: 5 },
   billable_work_units: { total: 21, audited_workflows: 6, average_per_run: 3.5 },
+  roi_summary: {
+    runs_with_roi: 6,
+    estimated_customer_value_usd: 16800,
+    review_time_saved_minutes: 180,
+    audit_time_saved_minutes: 120,
+    blocked_risk_count: 3,
+    blocked_risk_value_usd: 15000,
+    billable_work_units: 21,
+    work_units_by_template: [
+      {
+        template_id: 7,
+        template_name: "Power Release Gate",
+        runs: 3,
+        billable_work_units: 12,
+        estimated_customer_value_usd: 9800,
+      },
+    ],
+  },
   top_templates: [
     {
       template_id: 7,

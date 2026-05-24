@@ -49,11 +49,14 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - Smoke/system records are tagged by `record_source` and hidden from default personal history views.
 - Async queue lifecycle with status timeline, retry, and cancel behavior.
 - Workflow templates for reusable orchestration step definitions, with pattern metadata and policy metadata for required tier, risk level, approval requirement, tool scope, and billable work units.
+- Real PR/CI Adapter V1 captures PR URL, diff summary, CI log summary, target environment, and change risk as an auditable release-gate evidence packet.
 - Signed entitlement token support for free/pro/power tier boundaries.
 - Human approval gate for high-risk workflow templates before sync or queued execution.
 - Monetization observability for capability checks, quota checks, usage events, upgrade blocks, queue health, and KPI aggregation.
 - Buyer-facing commercial UI with a polished control-plane shell, categorized navigation, animated workflow preview, and an interactive tutorial path from workflow run to replay evidence to plan upgrade.
-- Commercial page resilience for partial API timeouts: subscription profile, usage counters, and audit feed refresh independently so a slow audit feed does not hide an active plan.
+- Commercial page resilience for partial API timeouts: subscription profile, usage counters, audit feed, and Commercial Signal refresh independently so a slow feed does not hide an active plan.
+- ROI Aggregation V2 rolls run-level release-gate value into Commercial Signal and dashboard KPIs.
+- Evidence Export V1 exposes redacted Markdown/JSON evidence bundles for buyer pilots.
 - Knowledge and prompt-template utilities that support reuse around orchestration workflows.
 - Existing daily plan, reflection, technical analysis, task, and profile routes remain available for compatibility and personal workflow support.
 
@@ -106,6 +109,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `GET /api/orchestrations/{id}`: get orchestration run detail with step replay
 - `GET /api/orchestrations/{id}/history-events`: inspect immutable ledger events and integrity status for a run
 - `GET /api/orchestrations/{id}/checkpoints`: inspect checkpoint snapshots and payload hash status for a run
+- `GET /api/orchestrations/{id}/evidence`: export a redacted Markdown/JSON evidence bundle for a run
 - `GET /api/orchestrations/metrics`: orchestration KPI metrics (`days=7|30|...`)
 - `POST /api/orchestrations/queue/run`: enqueue orchestration run (async)
 - `GET /api/orchestrations/queue/history`: list queue jobs (status/team/attempts snapshot)
@@ -124,7 +128,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `GET /api/monetization/usage`: read usage counters by `subject`
 - `GET /api/monetization/events`: read newest-first monetization event audit feed, optionally scoped by `subject`
 - `GET /api/monetization/entitlement`: issue a signed orchestration entitlement from an active Manual Billing subject
-- `GET /api/monetization/commercial-metrics`: read Commercial Signal (`days=7|30`, optional `subject`) with billing-period plan usage, window activity, policy blocks, billable work units, top templates, and anomaly hints
+- `GET /api/monetization/commercial-metrics`: read Commercial Signal (`days=7|30`, optional `subject`) with billing-period plan usage, window activity, policy blocks, billable work units, ROI summary, top templates, and anomaly hints
 - `POST /api/monetization/checkout/manual`: activate or change a manual billing subscription
 - `POST /api/monetization/cancel`: schedule subscription cancellation at period end
 - `POST /api/monetization/reactivate`: clear a pending manual cancellation
@@ -284,7 +288,7 @@ Observability and quota contract notes:
 - Orchestration history, queue history, ledger, and monetization audit queries are backed by composite indexes for stable filtering and newest-first paging as data grows.
 - Global request quota/rate-limit boundary returns `429 Too many requests. Please retry later.` once configured per window limit is exceeded.
 - Dashboard contract note: monetization observability backend route is `GET /api/observability/monetization`; the frontend API client uses this canonical route.
-- Commercial Signal contract note: `/monetization` and `/dashboard` use `GET /api/monetization/commercial-metrics` for billable work units, policy blocks, top value templates, and commercial anomaly hints. `UsageCounter` is the billing-period source of truth for plan usage and quota; `usage_summary` remains a bounded 7D/30D activity window. Subject-scoped reports match both raw billing subject and entitlement-derived subject id.
+- Commercial Signal contract note: `/monetization` and `/dashboard` use `GET /api/monetization/commercial-metrics` for billable work units, ROI summary, policy blocks, top value templates, and commercial anomaly hints. `UsageCounter` is the billing-period source of truth for plan usage and quota; `usage_summary` remains a bounded 7D/30D activity window. Subject-scoped reports match both raw billing subject and entitlement-derived subject id.
 
 Generate a local token for testing:
 
@@ -479,7 +483,7 @@ CI is configured in `.github/workflows/ci.yml` with parallel jobs:
 Design/motion reuse guidance is documented in `docs/visual-guidelines.md`.
 Release gate checklist is documented in `docs/release-checklist.md`.
 Core functionality checks are documented in `docs/core-functionality-check.md`.
-MVP demo flow is documented in `docs/mvp-demo-runbook.md`.
+MVP demo flow is documented in `docs/mvp-demo-runbook.md`; the enterprise trial package is in `docs/pilot-package-v1.md`.
 Deployment evidence is recorded in `docs/deployment-evidence.md`.
 K3d online deployment guide is documented in `docs/deploy-k3d-online.md`.
 

@@ -7,10 +7,12 @@ describe("tutorial flow", () => {
     render(<TutorialPage />);
 
     expect(screen.getByRole("heading", { name: "Tutorial" })).toBeInTheDocument();
-    expect(screen.getByText("PR release gate")).toBeInTheDocument();
+    expect(screen.getByText("PR/CI adapter")).toBeInTheDocument();
     expect(screen.getByText(/Let enterprises connect agents to CI\/CD/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Pilot Dataset").length).toBeGreaterThan(0);
+    expect(screen.getByText("High-risk generated PR")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Audit replay/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Verify evidence/ }));
 
     expect(screen.getByText("audit report")).toBeInTheDocument();
     expect(screen.getByText("Policy gate decision")).toBeInTheDocument();

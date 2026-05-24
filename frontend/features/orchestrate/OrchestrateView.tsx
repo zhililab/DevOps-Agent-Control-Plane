@@ -179,6 +179,15 @@ export function OrchestrateView() {
   const [meetingsText, setMeetingsText] = useState("15:00 Release manager review");
   const [blockersText, setBlockersText] = useState("Human approval required before production rollout");
   const [prioritiesText, setPrioritiesText] = useState("staging -> production");
+  const [prUrl, setPrUrl] = useState("https://github.com/example/platform/pull/1842");
+  const [prDiffSummary, setPrDiffSummary] = useState(
+    "Coding Agent updated CI/CD release workflow and deployment checklist."
+  );
+  const [ciLogSummary, setCiLogSummary] = useState("tests passed; k8s dry-run passed; release gate waiting for human approval");
+  const [targetEnvironment, setTargetEnvironment] = useState("staging -> production");
+  const [changeRisk, setChangeRisk] = useState(
+    "Generated deployment path change touches release ownership and rollback-sensitive production rollout."
+  );
 
   const [issueDescription, setIssueDescription] = useState(
     "AI-generated PR modifies CI/CD release behavior and needs a deployment gate before execution."
@@ -288,6 +297,13 @@ export function OrchestrateView() {
         blockers: string[];
         mood_or_notes: string;
       };
+      release_gate_input: {
+        pr_url: string;
+        pr_diff_summary: string;
+        ci_log_summary: string;
+        target_environment: string;
+        change_risk: string;
+      };
       persist_knowledge: boolean;
       persist_template: boolean;
       approval_confirmed: boolean;
@@ -315,6 +331,13 @@ export function OrchestrateView() {
         unfinished: splitLines(unfinishedText),
         blockers: splitLines(reflectionBlockersText),
         mood_or_notes: moodNotes.trim(),
+      },
+      release_gate_input: {
+        pr_url: prUrl.trim(),
+        pr_diff_summary: prDiffSummary.trim(),
+        ci_log_summary: ciLogSummary.trim(),
+        target_environment: targetEnvironment.trim(),
+        change_risk: changeRisk.trim(),
       },
       persist_knowledge: persistKnowledge,
       persist_template: persistTemplate,
@@ -854,6 +877,37 @@ export function OrchestrateView() {
       </section>
 
       <form onSubmit={onRun}>
+        <section className="result-block" aria-label="real-pr-ci-adapter">
+          <p className="eyebrow">Real PR/CI Adapter V1</p>
+          <h3>Controlled PR evidence packet</h3>
+          <p className="muted">
+            Paste sanitized PR and CI context for the release gate. V1 records an auditable snapshot and keeps manual
+            input as fallback.
+          </p>
+          <label>
+            PR URL
+            <input value={prUrl} onChange={(event) => setPrUrl(event.target.value)} />
+          </label>
+          <label>
+            PR Diff Summary
+            <textarea value={prDiffSummary} rows={3} onChange={(event) => setPrDiffSummary(event.target.value)} />
+          </label>
+          <label>
+            CI Log Summary
+            <textarea value={ciLogSummary} rows={3} onChange={(event) => setCiLogSummary(event.target.value)} />
+          </label>
+          <div className="trust-grid">
+            <label>
+              Target Environment
+              <input value={targetEnvironment} onChange={(event) => setTargetEnvironment(event.target.value)} />
+            </label>
+            <label>
+              Change Risk
+              <input value={changeRisk} onChange={(event) => setChangeRisk(event.target.value)} />
+            </label>
+          </div>
+        </section>
+
         <h3>Planner Input</h3>
         <label>
           Tasks (one per line)

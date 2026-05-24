@@ -25,6 +25,8 @@ from app.schemas import (
     CommercialMetricsPlanUsage,
     CommercialMetricsPolicyBlocks,
     CommercialMetricsResponse,
+    CommercialMetricsRoiSummary,
+    CommercialMetricsRoiTemplateBreakdown,
     CommercialMetricsSubscriptionSummary,
     CommercialMetricsTopTemplate,
     CommercialMetricsTrendPoint,
@@ -37,6 +39,8 @@ from app.schemas import (
     WorkflowTemplatePolicy,
 )
 from app.services.entitlement_service import subject_id_for_entitlement_user
+from app.services.roi_service import compute_workflow_roi_evidence, decision_from_summary_text
+from app.services.workflow_checkpoints import summarize_checkpoint_counts
 from app.time_utils import business_date_from_utc, utcnow_naive
 
 
@@ -304,7 +308,9 @@ def get_commercial_metrics(
         subject_orchestration_ids=subject_orchestration_ids,
     )
     templates_by_id = _templates_by_id_for_orchestrations(db, orchestration_records)
+    checkpoint_counts = summarize_checkpoint_counts(db, [record.id for record in orchestration_records])
     top_templates = _build_top_templates(orchestration_records, templates_by_id)
+    roi_summary = _build_roi_summary(orchestration_records, templates_by_id, checkpoint_counts)
     billable_total = sum(item.billable_work_units for item in top_templates)
     audited_workflows = len(
         [record for record in orchestration_records if record.status in {"success", "partial_success"}]
@@ -369,6 +375,7 @@ def get_commercial_metrics(
             if orchestration_records
             else 0.0,
         ),
+        roi_summary=roi_summary,
         top_templates=top_templates,
         trend=trend,
         anomaly_hints=anomaly_hints,
@@ -729,6 +736,98 @@ def _build_top_templates(
             key=lambda item: (-int(item["billable_work_units"]), -(int(item["template_id"] or 0))),
         )[:5]
     ]
+
+
+def _build_roi_summary(
+    records: list[WorkflowOrchestration],
+    templates_by_id: dict[int, WorkflowTemplate],
+    checkpoint_counts: dict[int, int],
+) -> CommercialMetricsRoiSummary:
+    totals = {
+        "runs_with_roi": 0,
+        "estimated_customer_value_usd": 0,
+        "review_time_saved_minutes": 0,
+        "audit_time_saved_minutes": 0,
+        "blocked_risk_count": 0,
+        "blocked_risk_value_usd": 0,
+        "billable_work_units": 0,
+    }
+    template_stats: dict[int | None, dict[str, object]] = {}
+    for record in records:
+        if record.status not in {"success", "partial_success"}:
+            continue
+        summary = _summary_from_result_json(record.result_json)
+        policy = _policy_for_record(record, templates_by_id)
+        roi = compute_workflow_roi_evidence(
+            risks=summary["risks"],
+            decision=decision_from_summary_text(summary["conclusion"]),
+            risk_level=policy.risk_level,
+            approval_required=policy.approval_required,
+            billable_work_units=policy.billable_work_units,
+            checkpoint_count=checkpoint_counts.get(record.id, 0),
+        )
+        totals["runs_with_roi"] += 1
+        totals["estimated_customer_value_usd"] += roi.estimated_customer_value_usd
+        totals["review_time_saved_minutes"] += roi.review_time_saved_minutes
+        totals["audit_time_saved_minutes"] += roi.audit_time_saved_minutes
+        totals["blocked_risk_count"] += roi.blocked_risk_count
+        totals["blocked_risk_value_usd"] += roi.blocked_risk_value_usd
+        totals["billable_work_units"] += roi.billable_work_units
+
+        template_id = _template_id_from_request_json(record.request_json)
+        template = templates_by_id.get(template_id) if template_id is not None else None
+        key = template.id if template is not None else None
+        if key not in template_stats:
+            template_stats[key] = {
+                "template_id": key,
+                "template_name": template.name if template is not None else "Ad hoc workflow",
+                "runs": 0,
+                "billable_work_units": 0,
+                "estimated_customer_value_usd": 0,
+            }
+        template_stats[key]["runs"] = int(template_stats[key]["runs"]) + 1
+        template_stats[key]["billable_work_units"] = int(template_stats[key]["billable_work_units"]) + roi.billable_work_units
+        template_stats[key]["estimated_customer_value_usd"] = (
+            int(template_stats[key]["estimated_customer_value_usd"]) + roi.estimated_customer_value_usd
+        )
+
+    breakdown = [
+        CommercialMetricsRoiTemplateBreakdown.model_validate(item)
+        for item in sorted(
+            template_stats.values(),
+            key=lambda item: (-int(item["estimated_customer_value_usd"]), -(int(item["template_id"] or 0))),
+        )[:5]
+    ]
+    return CommercialMetricsRoiSummary(
+        runs_with_roi=totals["runs_with_roi"],
+        estimated_customer_value_usd=totals["estimated_customer_value_usd"],
+        review_time_saved_minutes=totals["review_time_saved_minutes"],
+        audit_time_saved_minutes=totals["audit_time_saved_minutes"],
+        blocked_risk_count=totals["blocked_risk_count"],
+        blocked_risk_value_usd=totals["blocked_risk_value_usd"],
+        billable_work_units=totals["billable_work_units"],
+        work_units_by_template=breakdown,
+    )
+
+
+def _policy_for_record(
+    record: WorkflowOrchestration,
+    templates_by_id: dict[int, WorkflowTemplate],
+) -> WorkflowTemplatePolicy:
+    template_id = _template_id_from_request_json(record.request_json)
+    if template_id is not None and template_id in templates_by_id:
+        return _template_policy_from_template(templates_by_id[template_id])
+    return _policy_from_request_json(record.request_json)
+
+
+def _summary_from_result_json(value: str) -> dict[str, object]:
+    payload = _safe_json_dict(value)
+    conclusion = payload.get("conclusion")
+    risks = payload.get("risks")
+    return {
+        "conclusion": conclusion if isinstance(conclusion, str) else "",
+        "risks": [risk for risk in risks if isinstance(risk, str)] if isinstance(risks, list) else [],
+    }
 
 
 def _build_commercial_events(

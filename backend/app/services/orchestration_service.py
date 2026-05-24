@@ -27,11 +27,13 @@ from app.schemas import (
     DailyContextInput,
     DailyReflectionInput,
     HistoryIntegritySummary,
+    ReleaseGatePrCiInput,
     StepStatus,
     SubscriptionTier,
     TechnicalAnalysisInput,
     WorkflowAuditBlock,
     WorkflowCheckpointHistoryResponse,
+    WorkflowEvidenceExportResponse,
     WorkflowOrchestrationHistoryResponse,
     WorkflowOrchestrationMetricsResponse,
     WorkflowOrchestrationRead,
@@ -62,6 +64,8 @@ from app.services.monetization_service import (
     record_plan_usage,
     usage_metric_for_endpoint,
 )
+from app.services.roi_service import compute_workflow_roi_evidence, decision_from_summary_text
+from app.services.security_utils import sanitize_for_log
 from app.services.workflow_checkpoints import (
     append_orchestration_checkpoint,
     list_checkpoints_for_orchestration,
@@ -80,13 +84,7 @@ DEFAULT_STEPS = [
 BUILTIN_WORKFLOW_TEMPLATES_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "workflow_templates_v1.json"
 TIER_RANK = {"free": 0, "pro": 1, "power": 2}
 VALID_TEMPLATE_RISKS = {"low", "medium", "high", "critical"}
-ENGINEERING_REVIEW_RATE_USD_PER_HOUR = 150
-BLOCKED_RISK_VALUE_BY_LEVEL = {
-    "low": 250,
-    "medium": 1000,
-    "high": 5000,
-    "critical": 15000,
-}
+SENSITIVE_EXPORT_KEYWORDS = ("authorization", "password", "passwd", "secret", "token", "api_key", "apikey")
 
 
 def _utcnow() -> datetime:
@@ -745,6 +743,32 @@ def get_orchestration_checkpoints(db: Session, orchestration_id: int) -> Workflo
     return WorkflowCheckpointHistoryResponse(items=[to_checkpoint_read(checkpoint) for checkpoint in checkpoints])
 
 
+def get_orchestration_evidence_export(db: Session, orchestration_id: int) -> WorkflowEvidenceExportResponse:
+    record = db.query(WorkflowOrchestration).filter(WorkflowOrchestration.id == orchestration_id).first()
+    if record is None:
+        raise HTTPException(status_code=404, detail="Orchestration not found.")
+
+    detail = get_orchestration(db, orchestration_id)
+    ledger_summary = summarize_orchestration_histories(db, [orchestration_id]).get(orchestration_id)
+    checkpoints = [to_checkpoint_read(item) for item in list_checkpoints_for_orchestration(db, orchestration_id)]
+    request_snapshot = _redact_export_value(_safe_json_dict(record.request_json))
+    release_gate_input = request_snapshot.get("release_gate_input") if isinstance(request_snapshot, dict) else None
+    evidence_data: dict[str, object] = {
+        "orchestration": detail.model_dump(mode="json"),
+        "request": request_snapshot,
+        "release_gate_input": release_gate_input if isinstance(release_gate_input, dict) else {},
+        "ledger_integrity": ledger_summary or None,
+        "checkpoints": [checkpoint.model_dump(mode="json") for checkpoint in checkpoints],
+    }
+    markdown = _build_evidence_markdown(detail, evidence_data)
+    return WorkflowEvidenceExportResponse(
+        orchestration_id=detail.id,
+        generated_at=_utcnow(),
+        markdown=markdown,
+        data=_redact_export_value(evidence_data),
+    )
+
+
 def get_monetization_observability(db: Session, *, days: int = 7) -> dict[str, object]:
     period_days = 30 if int(days) == 30 else 7
     window_start = _utcnow() - timedelta(days=period_days)
@@ -1277,12 +1301,17 @@ def _is_release_gate_step(step_name: str) -> bool:
 def _release_gate_decision(payload: WorkflowOrchestrationRunRequest) -> str:
     technical = payload.technical_input
     context = payload.daily_context
+    adapter = payload.release_gate_input
     combined = " ".join(
         [
             technical.issue_description if technical else "",
             technical.logs if technical else "",
             " ".join(technical.errors) if technical else "",
             " ".join(context.blockers) if context else "",
+            adapter.pr_diff_summary if adapter else "",
+            adapter.ci_log_summary if adapter else "",
+            adapter.change_risk if adapter else "",
+            adapter.target_environment if adapter else "",
         ]
     ).lower()
     if any(marker in combined for marker in ("secret", "credential", "data loss", "rollback failed", "security critical")):
@@ -1299,28 +1328,33 @@ def _execute_release_gate_step(
     previous_audits: list[WorkflowAuditBlock],
 ) -> tuple[WorkflowAuditBlock, StepStatus, str]:
     decision = _release_gate_decision(payload)
-    context = payload.daily_context or DailyContextInput(tasks=[], meetings=[], blockers=[], priorities=[])
     technical = payload.technical_input
-    env = context.priorities[0] if context.priorities else "deployment environment not specified"
-    diff_summary = context.tasks[0] if context.tasks else "No PR diff summary supplied."
-    blocker_summary = ", ".join(context.blockers[:2]) if context.blockers else "No blocking dependency captured."
+    gate_context = _release_gate_context(payload)
+    env = gate_context["target_environment"]
+    diff_summary = gate_context["pr_diff_summary"]
+    ci_log_summary = gate_context["ci_log_summary"]
+    change_risk = gate_context["change_risk"]
+    blocker_summary = gate_context["blocker_summary"]
+    pr_url = gate_context["pr_url"]
 
     if agent_type == "planner":
         audit = WorkflowAuditBlock(
             conclusion="Planner normalized the AI-generated PR into a release-gate checklist.",
-            evidence=f"PR diff summary: {diff_summary[:160]}. Target: {env}.",
+            evidence=f"PR diff summary: {diff_summary[:160]}. Target: {env}. PR: {pr_url}.",
             risk=f"Gate quality depends on explicit CI, risk, and environment signals: {blocker_summary}.",
             next_action="Run CI and deployment-risk evaluation before allowing execution.",
         )
         return audit, "success", ""
 
     if agent_type == "analyzer":
-        if technical is None or (
-            not technical.issue_description.strip()
-            and not technical.logs.strip()
-            and not any(item.strip() for item in technical.errors)
-            and not any(item.strip() for item in technical.code_snippets)
-        ):
+        has_technical_signal = technical is not None and (
+            technical.issue_description.strip()
+            or technical.logs.strip()
+            or any(item.strip() for item in technical.errors)
+            or any(item.strip() for item in technical.code_snippets)
+        )
+        has_adapter_signal = bool(ci_log_summary.strip() and ci_log_summary != "No CI log summary supplied.")
+        if not has_technical_signal and not has_adapter_signal:
             audit = WorkflowAuditBlock(
                 conclusion="Analyzer cannot score the release gate without CI logs or risk evidence.",
                 evidence="No PR diff, CI log, error, or deployment-risk signal was supplied to the analyzer.",
@@ -1328,11 +1362,11 @@ def _execute_release_gate_step(
                 next_action="Block the gate until CI logs and deployment environment are attached.",
             )
             return audit, "failed", "Attach CI logs and rerun the release-gate analyzer."
-        top_error = technical.errors[0] if technical.errors else "No explicit CI error string supplied."
+        top_error = technical.errors[0] if technical and technical.errors else "No explicit CI error string supplied."
         audit = WorkflowAuditBlock(
             conclusion=f"Analyzer classified the PR release gate decision as '{decision}'.",
-            evidence=f"CI signal: {top_error}. Log length={len(technical.logs.strip())}. Environment={env}.",
-            risk="Risk increases when generated code touches deployment paths without a human-owned approval trail.",
+            evidence=f"CI signal: {top_error}. Adapter CI summary: {ci_log_summary[:160]}. Environment={env}.",
+            risk=f"Risk increases when generated code touches deployment paths without ownership: {change_risk[:160]}.",
             next_action="Forward the decision, evidence, and risk to the release approver.",
         )
         return audit, "success", ""
@@ -1351,6 +1385,30 @@ def _execute_release_gate_step(
         next_action=next_action,
     )
     return audit, "success", ""
+
+
+def _release_gate_context(payload: WorkflowOrchestrationRunRequest) -> dict[str, str]:
+    adapter = payload.release_gate_input or ReleaseGatePrCiInput()
+    context = payload.daily_context or DailyContextInput(tasks=[], meetings=[], blockers=[], priorities=[])
+    technical = payload.technical_input
+    pr_url = adapter.pr_url or "manual evidence packet"
+    diff_summary = adapter.pr_diff_summary or (context.tasks[0] if context.tasks else "No PR diff summary supplied.")
+    ci_log_summary = adapter.ci_log_summary or (technical.logs.strip() if technical and technical.logs.strip() else "No CI log summary supplied.")
+    target_environment = adapter.target_environment or (
+        context.priorities[0] if context.priorities else "deployment environment not specified"
+    )
+    change_risk = adapter.change_risk or (
+        technical.issue_description.strip() if technical and technical.issue_description.strip() else "No explicit change risk supplied."
+    )
+    blocker_summary = ", ".join(context.blockers[:2]) if context.blockers else "No blocking dependency captured."
+    return {
+        "pr_url": sanitize_for_log(pr_url, max_chars=500) or "manual evidence packet",
+        "pr_diff_summary": sanitize_for_log(diff_summary, max_chars=2000) or "No PR diff summary supplied.",
+        "ci_log_summary": sanitize_for_log(ci_log_summary, max_chars=4000) or "No CI log summary supplied.",
+        "target_environment": sanitize_for_log(target_environment, max_chars=200) or "deployment environment not specified",
+        "change_risk": sanitize_for_log(change_risk, max_chars=1000) or "No explicit change risk supplied.",
+        "blocker_summary": sanitize_for_log(blocker_summary, max_chars=500) or "No blocking dependency captured.",
+    }
 
 
 def _compose_summary(audits: list[WorkflowAuditBlock]) -> WorkflowOrchestrationSummary:
@@ -1490,13 +1548,7 @@ def _policy_gate_from_request_json(
 
 
 def _decision_from_summary(summary: WorkflowOrchestrationSummary) -> str:
-    normalized = summary.conclusion.lower()
-    if "decision:" not in normalized:
-        return "needs human review"
-    decision = normalized.split("decision:", 1)[1].split(".", 1)[0].strip()
-    if decision in {"approve", "block", "needs human review"}:
-        return decision
-    return "needs human review"
+    return decision_from_summary_text(summary.conclusion)
 
 
 def _roi_evidence_from_run(
@@ -1505,37 +1557,13 @@ def _roi_evidence_from_run(
     policy_gate: WorkflowRunPolicyGate,
     checkpoint_count: int,
 ) -> WorkflowRoiEvidence:
-    billable_work_units = max(1, policy_gate.billable_work_units)
-    review_time_saved_minutes = billable_work_units * 6 + (15 if policy_gate.approval_required else 5)
-    audit_time_saved_minutes = billable_work_units * 3 + min(20, max(0, checkpoint_count) * 2) + 10
-
-    blocked_risk_count = sum(1 for risk in summary.risks if "blocked risk" in risk.lower())
-    if policy_gate.decision == "block":
-        blocked_risk_count = max(blocked_risk_count, 1)
-    if blocked_risk_count == 0 and policy_gate.approval_required and policy_gate.risk_level in {"high", "critical"}:
-        blocked_risk_count = 1
-
-    blocked_risk_value = blocked_risk_count * BLOCKED_RISK_VALUE_BY_LEVEL[policy_gate.risk_level]
-    time_value = int(
-        ((review_time_saved_minutes + audit_time_saved_minutes) / 60)
-        * ENGINEERING_REVIEW_RATE_USD_PER_HOUR
-        + 0.5
-    )
-    estimated_customer_value = blocked_risk_value + time_value
-
-    return WorkflowRoiEvidence(
-        review_time_saved_minutes=review_time_saved_minutes,
-        audit_time_saved_minutes=audit_time_saved_minutes,
-        blocked_risk_count=blocked_risk_count,
-        blocked_risk_value_usd=blocked_risk_value,
-        estimated_customer_value_usd=estimated_customer_value,
-        billable_work_units=billable_work_units,
-        assumptions=[
-            "Engineering review time is estimated at 6 minutes per billable work unit plus approval overhead.",
-            "Audit time is estimated from work units and checkpoint-ready evidence.",
-            "Blocked risk value uses low=$250, medium=$1000, high=$5000, critical=$15000 per blocked risk.",
-            "ROI evidence is directional for buyer demos and pilot review, not billing data.",
-        ],
+    return compute_workflow_roi_evidence(
+        risks=summary.risks,
+        decision=policy_gate.decision,
+        risk_level=policy_gate.risk_level,
+        approval_required=policy_gate.approval_required,
+        billable_work_units=policy_gate.billable_work_units,
+        checkpoint_count=checkpoint_count,
     )
 
 
@@ -1677,6 +1705,98 @@ def _safe_json_dict(value: str) -> dict[str, object]:
     except Exception:  # noqa: BLE001
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def _redact_export_value(value: object) -> object:
+    if isinstance(value, dict):
+        redacted: dict[str, object] = {}
+        for key, item in value.items():
+            text_key = str(key)
+            if any(marker in text_key.lower().replace("-", "_") for marker in SENSITIVE_EXPORT_KEYWORDS):
+                redacted[text_key] = "<redacted>"
+            else:
+                redacted[text_key] = _redact_export_value(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_export_value(item) for item in value]
+    if isinstance(value, str):
+        return sanitize_for_log(value, max_chars=5000)
+    return value
+
+
+def _build_evidence_markdown(detail: WorkflowOrchestrationRead, evidence_data: dict[str, object]) -> str:
+    policy = detail.policy_gate
+    roi = detail.roi_evidence
+    ledger = evidence_data.get("ledger_integrity")
+    ledger_status = "unavailable"
+    if isinstance(ledger, dict):
+        ledger_status = f"{ledger.get('integrity_status', 'unknown')} · {ledger.get('event_count', 0)} event(s)"
+    release_gate_input = evidence_data.get("release_gate_input")
+    adapter = release_gate_input if isinstance(release_gate_input, dict) else {}
+    lines = [
+        f"# Orchestration Evidence Export #{detail.id}",
+        "",
+        "## Run",
+        f"- Status: {detail.status}",
+        f"- Tier: {detail.subscription_tier}",
+        f"- Team: {detail.team_subject or 'unassigned'}",
+        f"- Requested by: {detail.requested_by or 'unknown'}",
+        f"- Approved by: {detail.approval_actor or 'pending'}",
+        f"- Ledger: {ledger_status}",
+        f"- Checkpoints: {detail.checkpoint_count}",
+        "",
+        "## PR / CI Context",
+        f"- PR URL: {adapter.get('pr_url', 'manual evidence packet')}",
+        f"- Target environment: {adapter.get('target_environment', 'not specified')}",
+        f"- PR diff summary: {adapter.get('pr_diff_summary', 'not supplied')}",
+        f"- CI log summary: {adapter.get('ci_log_summary', 'not supplied')}",
+        f"- Change risk: {adapter.get('change_risk', 'not supplied')}",
+        "",
+        "## Policy Gate",
+    ]
+    if policy:
+        lines.extend(
+            [
+                f"- Template: {policy.template_name or 'Custom workflow'}",
+                f"- Required tier: {policy.required_tier}",
+                f"- Risk level: {policy.risk_level}",
+                f"- Decision: {policy.decision}",
+                f"- Approval required: {policy.approval_required}",
+                f"- Approval confirmed: {policy.approval_confirmed}",
+                f"- Allowed tool scopes: {', '.join(policy.allowed_tool_scopes) or 'none'}",
+            ]
+        )
+    else:
+        lines.append("- No policy gate recorded.")
+    lines.extend(["", "## ROI Evidence"])
+    if roi:
+        lines.extend(
+            [
+                f"- Estimated customer value: ${roi.estimated_customer_value_usd}",
+                f"- Review time saved: {roi.review_time_saved_minutes} minutes",
+                f"- Audit time saved: {roi.audit_time_saved_minutes} minutes",
+                f"- Blocked risk count: {roi.blocked_risk_count}",
+                f"- Blocked risk value: ${roi.blocked_risk_value_usd}",
+                f"- Billable work units: {roi.billable_work_units}",
+            ]
+        )
+        lines.extend(f"- Assumption: {assumption}" for assumption in roi.assumptions)
+    else:
+        lines.append("- ROI evidence unavailable.")
+    lines.extend(["", "## Step Replay"])
+    for step in detail.steps:
+        lines.extend(
+            [
+                f"### {step.step_name} ({step.agent_type}) - {step.status}",
+                f"- Conclusion: {step.audit.conclusion}",
+                f"- Evidence: {step.audit.evidence}",
+                f"- Risk: {step.audit.risk}",
+                f"- Next action: {step.audit.next_action}",
+            ]
+        )
+        if step.fallback_action:
+            lines.append(f"- Fallback: {step.fallback_action}")
+    return "\n".join(lines).strip() + "\n"
 
 
 def _p95(values: list[int]) -> int:

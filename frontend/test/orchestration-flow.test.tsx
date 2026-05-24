@@ -691,6 +691,19 @@ describe("orchestration workflow", () => {
           { status: 200 }
         );
       }
+      if (url.endsWith("/orchestrations/909/evidence")) {
+        return new Response(
+          JSON.stringify({
+            orchestration_id: 909,
+            generated_at: "2026-05-21T00:00:02Z",
+            format: "markdown",
+            markdown:
+              "# Orchestration Evidence Export #909\n\n## PR / CI Context\n- PR URL: https://github.com/example/platform/pull/1842\n\n## ROI Evidence\n- Estimated customer value: $5283\n",
+            data: {},
+          }),
+          { status: 200 }
+        );
+      }
       return new Response(JSON.stringify({ items: [] }), { status: 200 });
     });
 
@@ -731,6 +744,11 @@ describe("orchestration workflow", () => {
     expect(screen.getByText("orchestration.accepted")).toBeInTheDocument();
     expect(screen.getByText(/hash abc/i)).toBeInTheDocument();
     expect(screen.getByText("Plan The Day · success")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Export Evidence" }));
+    await waitFor(() => {
+      expect(screen.getByText("Evidence Export")).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Orchestration Evidence Export #909/)).toBeInTheDocument();
   });
 
   test("renders orchestration history with filters", async () => {

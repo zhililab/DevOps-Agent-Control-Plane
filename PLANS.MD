@@ -200,6 +200,20 @@ The first version can use transparent estimates and operator-provided assumption
 - added ROI Evidence V1 for release-gate runs:
   - orchestration read/history responses include transparent estimates for review time saved, audit time saved, blocked risk value, billable work units, assumptions, and estimated customer value
   - `/orchestrations` displays ROI Evidence inside the buyer-readable audit report
+- added ROI Aggregation V2 for Commercial Signal:
+  - `/api/monetization/commercial-metrics` aggregates run-level ROI evidence into estimated customer value, review/audit time saved, blocked risk value, ROI-backed runs, and template-level value
+  - `/monetization` shows `Value Generated`, blocked risk value, and value by template
+  - `/dashboard` surfaces Estimated Value, Review Time Saved, and Blocked Risk Value as buyer-readable KPIs
+- added Real PR/CI Adapter V1:
+  - `/orchestrate` captures PR URL, PR diff summary, CI log summary, target environment, and change risk as a controlled release-gate evidence packet
+  - release-gate execution uses adapter context while keeping manual daily/technical inputs as fallback
+  - adapter text is sanitized before request snapshots and evidence export
+- added Evidence Export V1:
+  - `GET /api/orchestrations/{id}/evidence` returns redacted Markdown plus structured JSON for run, policy, PR/CI context, ledger, checkpoint, step replay, and ROI evidence
+  - `/orchestrations` can load and display the Markdown evidence bundle per run
+- added Pilot Package V1:
+  - `docs/pilot-package-v1.md` defines pilot goal, required inputs, demo dataset, success metrics, pricing assumptions, and proof script
+  - `/tutorial` now presents the pilot path as Import PR context -> Run Gate -> Verify Evidence -> See ROI -> Compare Plan
 - tightened `/orchestrations` MVP closeout UI:
   - clearer run headers, fixed ledger status strip, queue job metadata grouping, and timeline replay status treatment
   - mobile layout guardrails for ledger/run/queue status rows
@@ -219,9 +233,9 @@ The first version can use transparent estimates and operator-provided assumption
 ## Still Pending / Next Tasks
 
 ### Commercial Proof Required
-- aggregate ROI Evidence V1 into Commercial Signal once run-level value proof is validated in demos
-- implement Real PR/CI Adapter V1 so the release gate can ingest real GitHub/GitLab PR diff summaries and CI logs behind the existing template, while keeping manual input as a fallback
-- package Pilot Package V1 with demo dataset, buyer runbook, pricing assumptions, success metrics, and a repeatable proof script for enterprise trials
+- validate ROI Aggregation V2, Real PR/CI Adapter V1, Evidence Export V1, and Pilot Package V1 with live buyer-style demos
+- add Commercial Metrics V3 only after pilot feedback clarifies which value estimates buyers trust most
+- evaluate a real GitHub/GitLab adapter after the controlled PR/CI evidence packet proves useful; V1 intentionally avoids OAuth/private repo access
 - keep all new work tied to the commercial proof loop; do not add broad assistant modules unless they strengthen release control, incident control, audit evidence, or ROI reporting
 
 ### Launch Required
@@ -992,8 +1006,8 @@ The current DevOps orchestration MVP is deployable when all of the following are
 
 ## Recommended Next Step
 Build the commercial proof loop in priority order:
-1. implement ROI Evidence V1 for the AI-generated PR Release Gate
-2. add Real PR/CI Adapter V1 behind the existing release-gate template, keeping manual evidence input as fallback
-3. package Pilot Package V1 with buyer runbook, demo dataset, pricing assumptions, success metrics, and trial acceptance checklist
+1. run live pilot-style demos against ROI Aggregation V2, Real PR/CI Adapter V1, and Evidence Export V1
+2. use pilot feedback to tune ROI assumptions and value wording before adding a real billing provider
+3. evaluate a real GitHub/GitLab adapter only after the controlled PR/CI evidence packet is accepted
 4. keep `/orchestrate -> /orchestrations`, ledger/checkpoint verification, signed entitlement gates, and server smoke checks green before every release
 5. defer Communication Assistant, Weekly Review, and broad integrations until the release-gate ROI story is strong enough to sell

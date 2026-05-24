@@ -15,6 +15,7 @@ This document records the current product target and the minimum functionality t
 
 - Run a sync orchestration from `/orchestrate` with a signed entitlement token.
 - Run `AI-generated PR Release Gate` with PR diff summary, CI logs, change risk, deployment environment, Power entitlement, and explicit human approval.
+- Capture Real PR/CI Adapter V1 context: PR URL, diff summary, CI log summary, target environment, and change risk.
 - Confirm the release gate returns `approve`, `block`, or `needs human review` with evidence, risk, and next action.
 - Confirm the release gate response includes run-level ROI evidence: review time saved, audit time saved, blocked risk count/value, billable work units, assumptions, and estimated customer value.
 - Capture lightweight team/requester/approver metadata on the run without requiring a login system.
@@ -28,6 +29,8 @@ This document records the current product target and the minimum functionality t
 - Activate or change a manual subscription on `/monetization`, then confirm usage counters and subject-scoped audit events update.
 - Load the same billing subject on `/orchestrate`; an active Pro/Power subscription should issue a signed entitlement token for compatible workflow runs.
 - Review Commercial Signal on `/monetization`: billing-period Plan Usage, billable work units, 7D/30D activity, policy blocks, top value templates, and anomaly hints should load independently from subscription/profile refreshes.
+- Confirm Commercial Signal shows ROI summary: estimated customer value, review/audit time saved, blocked risk value, ROI-backed runs, and value by template.
+- Export redacted evidence from `/orchestrations` and confirm the Markdown bundle includes PR/CI context, policy gate, step replay, ledger/checkpoint status, and ROI evidence.
 - Confirm `/dashboard` shows Commercial Work Units and Commercial Policy Blocks from the canonical commercial metrics API.
 - Confirm `/monetization` keeps the active subscription visible if usage or audit-feed refreshes are slow or partially unavailable.
 - Use `/tutorial` to explain the commercial path from workflow run to replay evidence to plan upgrade.
@@ -53,6 +56,7 @@ This document records the current product target and the minimum functionality t
 - `GET /api/orchestrations/{id}`
 - `GET /api/orchestrations/{id}/history-events`
 - `GET /api/orchestrations/{id}/checkpoints`
+- `GET /api/orchestrations/{id}/evidence`
 - `GET /api/orchestrations/metrics?days=...`
 - `POST /api/orchestrations/queue/run`
 - `GET /api/orchestrations/queue/history`
@@ -97,10 +101,10 @@ This document records the current product target and the minimum functionality t
 - Orchestration metrics should use database aggregate queries instead of Python-side full-window scans.
 - Orchestration metrics must include billable work units, successful audited workflows, approval blocks, and template policy upgrade blocks.
 - Orchestration metrics must include Team Trust KPIs: approved runs, checkpointed runs, and failed jobs needing owner.
-- Release-gate ROI evidence should be visible on each orchestration read/history response and in `/orchestrations`; Commercial Signal aggregation remains the later reporting layer.
+- Release-gate ROI evidence should be visible on each orchestration read/history response and in `/orchestrations`; Commercial Signal also aggregates ROI into buyer-facing estimated value, review time saved, blocked risk value, and value by template.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 - Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.
-- Commercial Signal reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view. Billing-period Plan Usage comes from `usage_counters`; 7D/30D activity comes from usage audit logs.
+- Commercial Signal reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view. Billing-period Plan Usage comes from `usage_counters`; 7D/30D activity comes from usage audit logs; ROI summary comes from run-level release-gate evidence.
 - `/orchestrate` should warn before submit when the current signed entitlement tier is lower than the selected template policy tier, and should offer a compatible template path for Pro users.
 - Global route transition and header preview animations should avoid continuous idle work and respect `prefers-reduced-motion`.
 

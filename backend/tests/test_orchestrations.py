@@ -281,6 +281,13 @@ def test_ai_generated_pr_release_gate_returns_policy_decision_and_roi_evidence(c
                     "code_snippets": ["git diff --stat origin/main...HEAD"],
                     "issue_description": "AI-generated PR changes production deployment behavior.",
                 },
+                "release_gate_input": {
+                    "pr_url": "https://github.com/example/platform/pull/1842",
+                    "pr_diff_summary": "Generated PR changes CI/CD release workflow. token=should-not-leak",
+                    "ci_log_summary": "tests passed; k8s dry-run passed; authorization: Bearer abc123",
+                    "target_environment": "staging -> production",
+                    "change_risk": "high risk generated deployment path change",
+                },
                 "reflection_input": {
                     "completed": ["PR diff summarized", "CI logs attached"],
                     "unfinished": ["Release manager approval"],
@@ -313,6 +320,7 @@ def test_ai_generated_pr_release_gate_returns_policy_decision_and_roi_evidence(c
     assert "Decision: needs human review" in record["summary"]["conclusion"]
     assert any("Blocked risk" in risk for risk in record["summary"]["risks"])
     assert all(step["audit"]["evidence"] for step in record["steps"])
+    assert "should-not-leak" not in record["steps"][0]["audit"]["evidence"]
     assert record["roi_evidence"] == {
         "review_time_saved_minutes": 63,
         "audit_time_saved_minutes": 50,
@@ -327,6 +335,19 @@ def test_ai_generated_pr_release_gate_returns_policy_decision_and_roi_evidence(c
             "ROI evidence is directional for buyer demos and pilot review, not billing data.",
         ],
     }
+
+    evidence_response = client.get(f"/api/orchestrations/{record['id']}/evidence")
+    assert evidence_response.status_code == 200
+    evidence = evidence_response.json()
+    assert evidence["orchestration_id"] == record["id"]
+    assert evidence["format"] == "markdown"
+    assert "Orchestration Evidence Export" in evidence["markdown"]
+    assert "PR / CI Context" in evidence["markdown"]
+    assert "ROI Evidence" in evidence["markdown"]
+    serialized = str(evidence)
+    assert "should-not-leak" not in serialized
+    assert "Bearer abc123" not in serialized
+    assert "<redacted>" in serialized
 
 
 def test_template_policy_required_tier_blocks_lower_tier(client) -> None:
