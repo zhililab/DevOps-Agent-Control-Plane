@@ -32,6 +32,7 @@ from app.schemas import (
     CommercialMetricsTrendPoint,
     CommercialMetricsUsageSummary,
     MonetizationEventRead,
+    PilotReadinessReportResponse,
     MonetizationTier,
     SubscriptionLifecycleResponse,
     SubscriptionProfileRead,
@@ -39,6 +40,7 @@ from app.schemas import (
     WorkflowTemplatePolicy,
 )
 from app.services.entitlement_service import subject_id_for_entitlement_user
+from app.services.history_ledger import summarize_orchestration_histories
 from app.services.roi_service import compute_workflow_roi_evidence, decision_from_summary_text
 from app.services.workflow_checkpoints import summarize_checkpoint_counts
 from app.time_utils import business_date_from_utc, utcnow_naive
@@ -382,6 +384,133 @@ def get_commercial_metrics(
     )
 
 
+def get_pilot_readiness_report(
+    db: Session,
+    *,
+    days: int = 7,
+    subject: str | None = None,
+    team_subject: str | None = None,
+) -> PilotReadinessReportResponse:
+    period_days = 30 if int(days) == 30 else 7
+    generated_at = utcnow_naive()
+    window_start = generated_at - timedelta(days=period_days)
+    normalized_subject = subject.strip() if subject and subject.strip() else None
+    normalized_team = team_subject.strip() if team_subject and team_subject.strip() else None
+
+    usage_logs = _list_monetization_logs(
+        db,
+        window_start=window_start,
+        subject=normalized_subject,
+        task_types={"monetization.usage_recorded"},
+    )
+    subject_orchestration_ids = {
+        orchestration_id
+        for orchestration_id in (_log_payload(log).get("orchestration_id") for log in usage_logs)
+        if isinstance(orchestration_id, int)
+    }
+
+    query = db.query(WorkflowOrchestration).filter(WorkflowOrchestration.created_at >= window_start)
+    if normalized_subject:
+        if not subject_orchestration_ids:
+            records: list[WorkflowOrchestration] = []
+        else:
+            query = query.filter(WorkflowOrchestration.id.in_(subject_orchestration_ids))
+            if normalized_team:
+                query = query.filter(WorkflowOrchestration.team_subject == normalized_team)
+            records = query.order_by(WorkflowOrchestration.created_at.desc(), WorkflowOrchestration.id.desc()).all()
+    else:
+        if normalized_team:
+            query = query.filter(WorkflowOrchestration.team_subject == normalized_team)
+        records = query.order_by(WorkflowOrchestration.created_at.desc(), WorkflowOrchestration.id.desc()).all()
+
+    completed_records = [record for record in records if record.status in {"success", "partial_success"}]
+    orchestration_ids = [record.id for record in completed_records]
+    templates_by_id = _templates_by_id_for_orchestrations(db, completed_records)
+    checkpoint_counts = summarize_checkpoint_counts(db, orchestration_ids)
+    ledger_summaries = summarize_orchestration_histories(db, orchestration_ids)
+    roi_summary = _build_roi_summary(completed_records, templates_by_id, checkpoint_counts)
+
+    evidence_exportable_runs = len(
+        [
+            record
+            for record in completed_records
+            if _safe_json_dict(record.result_json).get("conclusion") or checkpoint_counts.get(record.id, 0) > 0
+        ]
+    )
+    ledger_valid_runs = len(
+        [
+            record
+            for record in completed_records
+            if ledger_summaries.get(record.id, {}).get("integrity_status") == "valid"
+            and int(ledger_summaries.get(record.id, {}).get("event_count", 0) or 0) > 0
+        ]
+    )
+    checkpointed_runs = len([record for record in completed_records if checkpoint_counts.get(record.id, 0) > 0])
+
+    approval_required_runs = 0
+    blocked_or_needs_review_runs = 0
+    missing_metadata_runs = 0
+    metadata_fields_present = 0
+    metadata_fields_total = len(completed_records) * 4
+    for record in completed_records:
+        policy = _policy_for_record(record, templates_by_id)
+        if policy.approval_required:
+            approval_required_runs += 1
+        decision = decision_from_summary_text(str(_summary_from_result_json(record.result_json)["conclusion"]))
+        if decision in {"block", "needs human review"}:
+            blocked_or_needs_review_runs += 1
+
+        fields = [record.team_subject, record.requested_by, record.approval_actor, record.approval_note]
+        present_count = len([value for value in fields if isinstance(value, str) and value.strip()])
+        metadata_fields_present += present_count
+        if present_count < len(fields):
+            missing_metadata_runs += 1
+
+    metadata_completeness = (
+        round(metadata_fields_present / metadata_fields_total, 2) if metadata_fields_total > 0 else 0.0
+    )
+    status = _pilot_readiness_status(
+        runs_completed=len(completed_records),
+        evidence_exportable_runs=evidence_exportable_runs,
+        ledger_valid_runs=ledger_valid_runs,
+        checkpointed_runs=checkpointed_runs,
+        metadata_completeness=metadata_completeness,
+    )
+
+    return PilotReadinessReportResponse(
+        window_days=period_days,
+        generated_at=generated_at,
+        subject=normalized_subject,
+        team_subject=normalized_team,
+        status=status,
+        runs_completed=len(completed_records),
+        evidence_exportable_runs=evidence_exportable_runs,
+        ledger_valid_runs=ledger_valid_runs,
+        checkpointed_runs=checkpointed_runs,
+        approval_required_runs=approval_required_runs,
+        blocked_or_needs_review_runs=blocked_or_needs_review_runs,
+        estimated_value_usd=roi_summary.estimated_customer_value_usd,
+        review_time_saved_minutes=roi_summary.review_time_saved_minutes,
+        audit_time_saved_minutes=roi_summary.audit_time_saved_minutes,
+        metadata_completeness=metadata_completeness,
+        missing_metadata_runs=missing_metadata_runs,
+        success_criteria=[
+            "5+ completed release-gate runs",
+            "5+ evidence-exportable runs",
+            "Ledger valid on completed runs",
+            "Checkpoint snapshots present",
+            "80%+ team/requester/approver metadata completeness",
+        ],
+        recommendations=_pilot_readiness_recommendations(
+            runs_completed=len(completed_records),
+            evidence_exportable_runs=evidence_exportable_runs,
+            ledger_valid_runs=ledger_valid_runs,
+            checkpointed_runs=checkpointed_runs,
+            metadata_completeness=metadata_completeness,
+        ),
+    )
+
+
 def start_manual_checkout(
     db: Session,
     *,
@@ -542,6 +671,51 @@ def reactivate_subscription(db: Session, *, subject: str) -> SubscriptionLifecyc
         counters=[UsageCounterRead.model_validate(counter) for counter in counters],
         event=_to_monetization_event_read(event),
     )
+
+
+def _pilot_readiness_status(
+    *,
+    runs_completed: int,
+    evidence_exportable_runs: int,
+    ledger_valid_runs: int,
+    checkpointed_runs: int,
+    metadata_completeness: float,
+) -> str:
+    if metadata_completeness < 0.8 and runs_completed > 0:
+        return "needs approval metadata"
+    if (
+        runs_completed >= 5
+        and evidence_exportable_runs >= 5
+        and ledger_valid_runs >= 5
+        and checkpointed_runs >= 5
+        and metadata_completeness >= 0.8
+    ):
+        return "ready"
+    return "needs evidence"
+
+
+def _pilot_readiness_recommendations(
+    *,
+    runs_completed: int,
+    evidence_exportable_runs: int,
+    ledger_valid_runs: int,
+    checkpointed_runs: int,
+    metadata_completeness: float,
+) -> list[str]:
+    recommendations: list[str] = []
+    if runs_completed < 5:
+        recommendations.append("Run the five scenario pack gates before buyer review.")
+    if evidence_exportable_runs < runs_completed or evidence_exportable_runs < 5:
+        recommendations.append("Export evidence for completed scenario runs.")
+    if ledger_valid_runs < runs_completed or ledger_valid_runs < 5:
+        recommendations.append("Verify ledger integrity for completed runs.")
+    if checkpointed_runs < runs_completed or checkpointed_runs < 5:
+        recommendations.append("Confirm checkpoint snapshots are present on each run.")
+    if metadata_completeness < 0.8:
+        recommendations.append("Fill team, requester, approver, and approval note metadata.")
+    if not recommendations:
+        recommendations.append("Pilot package is ready for buyer replay.")
+    return recommendations
 
 
 def _latest_profiles(db: Session, *, subject: str | None = None) -> list[SubscriptionProfile]:

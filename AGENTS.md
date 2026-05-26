@@ -1,8 +1,9 @@
 # AGENTS.md
 
 ## Project Purpose
-Build a personal AI agent assistant focused on execution, reflection, and reusable workflows.
-Current stage extends this into a deterministic multi-agent orchestration product for DevOps personal workflows.
+Build a DevOps Agent Control Plane that lets small teams run AI/coding agents against CI/CD and incident workflows with deterministic execution, approval gates, replayable evidence, and measurable ROI.
+
+The broader personal assistant vision remains, but the current commercial stage prioritizes one saleable pilot loop: select a PR/CI scenario, run a release gate, export evidence, review ROI, and decide whether the buyer should upgrade to Power.
 
 ## Working Style
 - Plan before coding for non-trivial tasks
@@ -42,6 +43,13 @@ Current stage extends this into a deterministic multi-agent orchestration produc
 - For orchestration/audit payloads, preserve explainability (`conclusion/evidence/risk/next_action`) while sanitizing sensitive strings.
 - Prefer signed entitlement (`X-Entitlement`) over plain tier headers for subscription-bound orchestration actions.
 
+## Commercial Pilot Rules
+- Keep `/dashboard`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` aligned as one buyer journey.
+- Any orchestration commercial change must verify pilot scenario loading, ROI aggregation, evidence export, and tier/approval boundaries together.
+- Pilot scenario data is static and auditable in V1; do not add OAuth, private repo pulls, Stripe, login, or RBAC unless explicitly requested.
+- Manual Billing V1 remains the commercial adapter until the pilot package proves buyer value.
+- Evidence bundles and pilot reports must stay redaction-safe and must not include raw entitlement tokens, passwords, secrets, or private credentials.
+
 ## Task Expectations
 When given a task:
 1. understand the goal
@@ -56,6 +64,9 @@ When given a task:
    - partial-success behavior
    - tier boundary behavior (`free` vs `pro/power`)
    - queue lifecycle behavior (`queued/running/succeeded/failed/canceled`) and retry/cancel idempotency
+   - pilot scenario behavior (`GET /api/orchestrations/pilot-scenarios`, `/orchestrate?scenario=...`)
+   - pilot readiness reporting (`GET /api/monetization/pilot-report`)
+   - ROI and evidence export behavior (`GET /api/orchestrations/{id}/evidence`)
 
 ## Do Not
 - do not introduce unrelated refactors

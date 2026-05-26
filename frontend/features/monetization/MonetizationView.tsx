@@ -9,6 +9,7 @@ import { formatBusinessTimestamp } from "@/lib/time";
 import type {
   CommercialMetricsResponse,
   MonetizationEvent,
+  PilotReadinessReport,
   SubscriptionProfile,
   SubscriptionTier,
   UsageCounter,
@@ -102,6 +103,33 @@ const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
   anomaly_hints: [],
 };
 
+const DEFAULT_PILOT_REPORT: PilotReadinessReport = {
+  window_days: 7,
+  generated_at: "",
+  subject: null,
+  team_subject: null,
+  status: "needs evidence",
+  runs_completed: 0,
+  evidence_exportable_runs: 0,
+  ledger_valid_runs: 0,
+  checkpointed_runs: 0,
+  approval_required_runs: 0,
+  blocked_or_needs_review_runs: 0,
+  estimated_value_usd: 0,
+  review_time_saved_minutes: 0,
+  audit_time_saved_minutes: 0,
+  metadata_completeness: 0,
+  missing_metadata_runs: 0,
+  success_criteria: [
+    "5+ completed release-gate runs",
+    "5+ evidence-exportable runs",
+    "Ledger valid on completed runs",
+    "Checkpoint snapshots present",
+    "80%+ team/requester/approver metadata completeness",
+  ],
+  recommendations: ["Run the five scenario pack gates before buyer review."],
+};
+
 function metricLabel(metric: string): string {
   return metric === "queued_runs" ? "Queued Runs" : "Workflow Runs";
 }
@@ -138,6 +166,20 @@ function formatUsd(value: number): string {
   return USD_FORMATTER.format(value);
 }
 
+function hasPilotReadinessPayload(value: unknown): value is PilotReadinessReport {
+  if (!value || typeof value !== "object") return false;
+  const report = value as Partial<PilotReadinessReport>;
+  return (
+    typeof report.window_days === "number" &&
+    typeof report.status === "string" &&
+    typeof report.runs_completed === "number" &&
+    typeof report.evidence_exportable_runs === "number" &&
+    typeof report.ledger_valid_runs === "number" &&
+    typeof report.checkpointed_runs === "number" &&
+    Array.isArray(report.recommendations)
+  );
+}
+
 export function MonetizationView() {
   const [subject, setSubject] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_SUBJECT;
@@ -147,6 +189,7 @@ export function MonetizationView() {
   const [counters, setCounters] = useState<UsageCounter[]>([]);
   const [events, setEvents] = useState<MonetizationEvent[]>([]);
   const [commercialMetrics, setCommercialMetrics] = useState<CommercialMetricsResponse>(DEFAULT_COMMERCIAL_METRICS);
+  const [pilotReport, setPilotReport] = useState<PilotReadinessReport>(DEFAULT_PILOT_REPORT);
   const [metricsWindowDays, setMetricsWindowDays] = useState<7 | 30>(7);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -184,6 +227,7 @@ export function MonetizationView() {
       fallbackCounters?: UsageCounter[];
       fallbackEvent?: MonetizationEvent;
       fallbackMetrics?: CommercialMetricsResponse;
+      fallbackPilotReport?: PilotReadinessReport;
     } = {}
   ) {
     const normalizedSubject = currentSubject.trim() || DEFAULT_SUBJECT;
@@ -191,11 +235,12 @@ export function MonetizationView() {
     setError(null);
     setLoadNotice(null);
     try {
-      const [profileResult, usageResult, eventsResult, metricsResult] = await Promise.allSettled([
+      const [profileResult, usageResult, eventsResult, metricsResult, pilotReportResult] = await Promise.allSettled([
         apiClient.getSubscriptionProfile(normalizedSubject),
         apiClient.listUsageCounters(normalizedSubject),
         apiClient.listMonetizationEvents(25, normalizedSubject),
         apiClient.getCommercialMetrics(metricsWindowDays, normalizedSubject),
+        apiClient.getPilotReadinessReport(metricsWindowDays, normalizedSubject),
       ]);
 
       const failures: string[] = [];
@@ -231,6 +276,13 @@ export function MonetizationView() {
       } else {
         setCommercialMetrics(options.fallbackMetrics ?? commercialMetrics);
         failures.push("commercial metrics");
+      }
+
+      if (pilotReportResult.status === "fulfilled" && hasPilotReadinessPayload(pilotReportResult.value)) {
+        setPilotReport(pilotReportResult.value);
+      } else {
+        setPilotReport(options.fallbackPilotReport ?? pilotReport);
+        failures.push("pilot readiness");
       }
 
       if (failures.length > 0) {
@@ -287,6 +339,7 @@ export function MonetizationView() {
         fallbackCounters: response.counters,
         fallbackEvent: response.event,
         fallbackMetrics: commercialMetrics,
+        fallbackPilotReport: pilotReport,
       });
       setStatus(successMessage);
     } catch (actionError) {
@@ -569,6 +622,77 @@ export function MonetizationView() {
             ) : (
               <p className="muted">No commercial lifecycle events in this window.</p>
             )}
+          </article>
+        </div>
+      </section>
+
+      <section className="commercial-metrics-panel" aria-label="pilot-readiness">
+        <div className="section-heading-row">
+          <div>
+            <p className="eyebrow">Pilot Readiness</p>
+            <h3>
+              {pilotReport.status === "ready"
+                ? "Ready for buyer replay"
+                : pilotReport.status === "needs approval metadata"
+                  ? "Needs approval metadata"
+                  : "Needs evidence"}
+            </h3>
+            <p className="muted">
+              Current {pilotReport.window_days}D pilot evidence for {(pilotReport.subject ?? subject.trim()) || DEFAULT_SUBJECT}.
+            </p>
+          </div>
+          <p className={`status ${pilotReport.status === "ready" ? "status-success" : "status-default"}`}>
+            {pilotReport.status}
+          </p>
+        </div>
+        <div className="commercial-metric-grid">
+          <article className="result-block">
+            <p className="eyebrow">Runs Completed</p>
+            <h3>{pilotReport.runs_completed}</h3>
+            <p className="muted">{pilotReport.evidence_exportable_runs} evidence-exportable</p>
+          </article>
+          <article className="result-block">
+            <p className="eyebrow">Ledger Valid</p>
+            <h3>{pilotReport.ledger_valid_runs}</h3>
+            <p className="muted">{pilotReport.checkpointed_runs} checkpointed run(s)</p>
+          </article>
+          <article className="result-block">
+            <p className="eyebrow">Approval Coverage</p>
+            <h3>{pilotReport.approval_required_runs}</h3>
+            <p className="muted">{pilotReport.blocked_or_needs_review_runs} blocked/needs-review</p>
+          </article>
+          <article className="result-block">
+            <p className="eyebrow">Metadata Completeness</p>
+            <h3>{Math.round(pilotReport.metadata_completeness * 100)}%</h3>
+            <p className="muted">{pilotReport.missing_metadata_runs} run(s) missing buyer metadata</p>
+          </article>
+          <article className="result-block">
+            <p className="eyebrow">Estimated Pilot Value</p>
+            <h3>{formatUsd(pilotReport.estimated_value_usd)}</h3>
+            <p className="muted">
+              {pilotReport.review_time_saved_minutes + pilotReport.audit_time_saved_minutes}m review/audit saved
+            </p>
+          </article>
+        </div>
+        <div className="commercial-summary">
+          <article className="result-block">
+            <h3>Success Criteria</h3>
+            <ul>
+              {(pilotReport.success_criteria.length > 0
+                ? pilotReport.success_criteria
+                : DEFAULT_PILOT_REPORT.success_criteria
+              ).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </article>
+          <article className="result-block">
+            <h3>Next Pilot Action</h3>
+            <ul>
+              {pilotReport.recommendations.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
           </article>
         </div>
       </section>

@@ -11,6 +11,10 @@ describe("tutorial flow", () => {
     expect(screen.getByText(/Let enterprises connect agents to CI\/CD/i)).toBeInTheDocument();
     expect(screen.getAllByText("Pilot Dataset").length).toBeGreaterThan(0);
     expect(screen.getByText("High-risk generated PR")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /High-risk generated PR/i })).toHaveAttribute(
+      "href",
+      "/orchestrate?scenario=high-risk-generated-pr"
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /Verify evidence/ }));
 

@@ -114,6 +114,33 @@ const commercialMetrics = {
   anomaly_hints: [],
 };
 
+const pilotReport = {
+  window_days: 7,
+  generated_at: "2026-05-22T00:00:00Z",
+  subject: "demo-user",
+  team_subject: "platform-team",
+  status: "needs evidence",
+  runs_completed: 4,
+  evidence_exportable_runs: 4,
+  ledger_valid_runs: 4,
+  checkpointed_runs: 4,
+  approval_required_runs: 3,
+  blocked_or_needs_review_runs: 3,
+  estimated_value_usd: 12600,
+  review_time_saved_minutes: 120,
+  audit_time_saved_minutes: 80,
+  metadata_completeness: 0.75,
+  missing_metadata_runs: 1,
+  success_criteria: [
+    "5+ completed release-gate runs",
+    "5+ evidence-exportable runs",
+    "Ledger valid on completed runs",
+    "Checkpoint snapshots present",
+    "80%+ team/requester/approver metadata completeness",
+  ],
+  recommendations: ["Run the five scenario pack gates before buyer review."],
+};
+
 function event(action: string, tier = "pro") {
   return {
     id: action === "cancel_requested" ? 22 : 21,
@@ -152,6 +179,9 @@ describe("monetization flow", () => {
       if (url.includes("/monetization/commercial-metrics")) {
         return new Response(JSON.stringify(commercialMetrics), { status: 200 });
       }
+      if (url.includes("/monetization/pilot-report")) {
+        return new Response(JSON.stringify(pilotReport), { status: 200 });
+      }
       if (url.endsWith("/monetization/checkout/manual")) {
         return new Response(JSON.stringify({ profile, counters, event: event("tier_changed", "power") }), {
           status: 200,
@@ -178,10 +208,14 @@ describe("monetization flow", () => {
     expect(screen.getByText("Commercial Signal")).toBeInTheDocument();
     expect(screen.getByText("7D activity & ROI")).toBeInTheDocument();
     expect(screen.getByText("Value Generated")).toBeInTheDocument();
-    expect(screen.getByText("$12,600")).toBeInTheDocument();
+    expect(screen.getAllByText("$12,600").length).toBeGreaterThan(0);
     expect(screen.getByText("Value By Template")).toBeInTheDocument();
     expect(screen.getAllByText("Release Gate And Remote Deploy").length).toBeGreaterThan(0);
     expect(screen.getAllByText("21").length).toBeGreaterThan(0);
+    expect(screen.getByText("Pilot Readiness")).toBeInTheDocument();
+    expect(screen.getByText("Needs evidence")).toBeInTheDocument();
+    expect(screen.getByText("4 evidence-exportable")).toBeInTheDocument();
+    expect(screen.getByText("75%")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Activate Power" }));
 
@@ -207,6 +241,9 @@ describe("monetization flow", () => {
       }
       if (url.includes("/monetization/commercial-metrics")) {
         return new Response(JSON.stringify(commercialMetrics), { status: 200 });
+      }
+      if (url.includes("/monetization/pilot-report")) {
+        return new Response(JSON.stringify(pilotReport), { status: 200 });
       }
       return new Response(JSON.stringify({}), { status: 200 });
     });
@@ -246,6 +283,9 @@ describe("monetization flow", () => {
       if (url.includes("/monetization/commercial-metrics")) {
         return new Response(JSON.stringify(commercialMetrics), { status: 200 });
       }
+      if (url.includes("/monetization/pilot-report")) {
+        return new Response(JSON.stringify(pilotReport), { status: 200 });
+      }
       return new Response(JSON.stringify({}), { status: 200 });
     });
 
@@ -284,6 +324,9 @@ describe("monetization flow", () => {
       }
       if (url.includes("/monetization/commercial-metrics")) {
         return new Response(JSON.stringify(commercialMetrics), { status: 200 });
+      }
+      if (url.includes("/monetization/pilot-report")) {
+        return new Response(JSON.stringify(pilotReport), { status: 200 });
       }
       if (url.endsWith("/monetization/cancel")) {
         cancelPending = true;

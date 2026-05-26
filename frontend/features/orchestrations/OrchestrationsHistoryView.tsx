@@ -64,6 +64,7 @@ export function OrchestrationsHistoryView() {
   const [activeCheckpointRunId, setActiveCheckpointRunId] = useState<number | null>(null);
   const [evidenceExportByRunId, setEvidenceExportByRunId] = useState<Record<number, WorkflowEvidenceExport>>({});
   const [activeEvidenceExportRunId, setActiveEvidenceExportRunId] = useState<number | null>(null);
+  const [evidenceActionMessage, setEvidenceActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -246,6 +247,7 @@ export function OrchestrationsHistoryView() {
 
   async function onExportEvidence(runId: number) {
     setError(null);
+    setEvidenceActionMessage(null);
     setActiveEvidenceExportRunId(runId);
     try {
       const response = await apiClient.getWorkflowEvidenceExport(runId);
@@ -257,6 +259,39 @@ export function OrchestrationsHistoryView() {
       setError(exportError instanceof Error ? exportError.message : "Failed to export evidence bundle.");
     } finally {
       setActiveEvidenceExportRunId(null);
+    }
+  }
+
+  async function onCopyEvidence(runId: number, markdown: string) {
+    setError(null);
+    setEvidenceActionMessage(null);
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard copy is unavailable in this browser.");
+      }
+      await navigator.clipboard.writeText(markdown);
+      setEvidenceActionMessage(`Evidence markdown for run #${runId} copied.`);
+    } catch (copyError) {
+      setError(copyError instanceof Error ? copyError.message : "Failed to copy evidence markdown.");
+    }
+  }
+
+  function onDownloadEvidence(runId: number, markdown: string) {
+    setError(null);
+    setEvidenceActionMessage(null);
+    try {
+      const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `orchestration-${runId}-evidence.md`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setEvidenceActionMessage(`Evidence markdown for run #${runId} downloaded.`);
+    } catch (downloadError) {
+      setError(downloadError instanceof Error ? downloadError.message : "Failed to download evidence markdown.");
     }
   }
 
@@ -298,6 +333,7 @@ export function OrchestrationsHistoryView() {
       </section>
 
       {error ? <p className="status status-error">{error}</p> : null}
+      {evidenceActionMessage ? <p className="status status-success">{evidenceActionMessage}</p> : null}
       {isLoading ? <p className="muted">Loading orchestration history...</p> : null}
       {!isLoading && items.length === 0 ? <p className="muted">No orchestration runs found.</p> : null}
 
@@ -460,6 +496,20 @@ export function OrchestrationsHistoryView() {
                     <p className="muted">
                       Markdown evidence bundle generated at {formatTimestamp(evidenceExport.generated_at)}.
                     </p>
+                    <div className="button-row">
+                      <button
+                        type="button"
+                        onClick={() => void onCopyEvidence(item.id, evidenceExport.markdown)}
+                      >
+                        Copy Markdown
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDownloadEvidence(item.id, evidenceExport.markdown)}
+                      >
+                        Download Markdown
+                      </button>
+                    </div>
                     <pre>{evidenceExport.markdown}</pre>
                   </article>
                 ) : null}

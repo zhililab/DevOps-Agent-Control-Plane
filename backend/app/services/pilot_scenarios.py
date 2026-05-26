@@ -1,0 +1,196 @@
+from __future__ import annotations
+
+from app.schemas import (
+    DailyContextInput,
+    DailyReflectionInput,
+    PilotScenarioListResponse,
+    PilotScenarioRead,
+    ReleaseGatePrCiInput,
+    TechnicalAnalysisInput,
+)
+
+
+def list_pilot_scenarios() -> PilotScenarioListResponse:
+    return PilotScenarioListResponse(items=_PILOT_SCENARIOS)
+
+
+_PILOT_SCENARIOS: list[PilotScenarioRead] = [
+    PilotScenarioRead(
+        id="high-risk-generated-pr",
+        name="High-risk generated PR",
+        description="Coding agent changes release workflow and needs a human-approved production gate.",
+        expected_gate_behavior="needs human review",
+        required_tier="power",
+        approval_required=True,
+        approval_confirmed=True,
+        release_gate_input=ReleaseGatePrCiInput(
+            pr_url="https://github.com/example/platform/pull/1842",
+            pr_diff_summary="Coding agent changed CI/CD release workflow, deploy ownership, and rollback checklist.",
+            ci_log_summary="unit tests passed; integration smoke passed; release dry-run waits for release-manager approval",
+            target_environment="staging to production",
+            change_risk="High-risk generated deployment path change touches production release ownership.",
+        ),
+        daily_context=DailyContextInput(
+            tasks=[
+                "Review generated PR release workflow change",
+                "Confirm deployment owner before production rollout",
+            ],
+            meetings=["15:00 release manager review"],
+            blockers=["Human approval required before production rollout"],
+            priorities=["production release gate"],
+        ),
+        technical_input=TechnicalAnalysisInput(
+            issue_description="AI-generated PR changes CI/CD release behavior and needs controlled gate review.",
+            errors=["CI warning: production release requires explicit approval"],
+            logs="tests passed\nrelease dry-run waiting for approval\nrollback checklist changed",
+            code_snippets=["git diff --stat origin/main...HEAD"],
+        ),
+        reflection_input=DailyReflectionInput(
+            completed=["PR diff summarized", "CI evidence attached", "Deployment risk identified"],
+            unfinished=["Release manager final decision"],
+            blockers=["Production execution blocked without approval"],
+            mood_or_notes="Buyer should see gate decision, approval metadata, evidence export, and ROI.",
+        ),
+        success_signal="Run completes as a Power-gated evidence packet with human approval and ROI.",
+    ),
+    PilotScenarioRead(
+        id="low-risk-docs-pr",
+        name="Low-risk docs PR",
+        description="Documentation-only PR demonstrates an approved low-risk release path.",
+        expected_gate_behavior="approve",
+        required_tier="power",
+        approval_required=True,
+        approval_confirmed=True,
+        release_gate_input=ReleaseGatePrCiInput(
+            pr_url="https://github.com/example/platform/pull/1843",
+            pr_diff_summary="Documentation updates release checklist wording and tutorial screenshots only.",
+            ci_log_summary="docs lint passed; no runtime tests required; no deployment manifest changed",
+            target_environment="documentation site",
+            change_risk="Low-risk documentation update with no runtime path impact.",
+        ),
+        daily_context=DailyContextInput(
+            tasks=["Validate docs-only PR", "Confirm no runtime files changed"],
+            meetings=["Docs owner async review"],
+            blockers=[],
+            priorities=["fast low-risk approval"],
+        ),
+        technical_input=TechnicalAnalysisInput(
+            issue_description="Docs-only PR should be approved after confirming no runtime or deploy files changed.",
+            errors=[],
+            logs="docs lint passed\nruntime impact none\nrelease checklist wording updated",
+            code_snippets=["git diff --name-only origin/main...HEAD"],
+        ),
+        reflection_input=DailyReflectionInput(
+            completed=["Docs-only scope verified", "CI evidence captured"],
+            unfinished=[],
+            blockers=[],
+            mood_or_notes="Use this as the buyer-friendly approved path.",
+        ),
+        success_signal="Gate decision approves low-risk change while still exporting evidence.",
+    ),
+    PilotScenarioRead(
+        id="ci-flaky-release",
+        name="CI flaky release",
+        description="Intermittent CI failures require replay evidence and retry owner assignment.",
+        expected_gate_behavior="needs human review",
+        required_tier="power",
+        approval_required=True,
+        approval_confirmed=True,
+        release_gate_input=ReleaseGatePrCiInput(
+            pr_url="https://github.com/example/platform/pull/1844",
+            pr_diff_summary="Generated PR updates artifact publishing and deployment checklist ordering.",
+            ci_log_summary="artifact upload timeout on first run; retry passed; flaky registry response observed",
+            target_environment="staging",
+            change_risk="Medium-high risk because flaky CI can mask artifact integrity issues.",
+        ),
+        daily_context=DailyContextInput(
+            tasks=["Triage flaky CI release gate", "Assign registry retry owner"],
+            meetings=["Platform CI triage"],
+            blockers=["Intermittent registry response needs owner"],
+            priorities=["stabilize release evidence"],
+        ),
+        technical_input=TechnicalAnalysisInput(
+            issue_description="Artifact upload intermittently times out after generated PR changes release order.",
+            errors=["TimeoutError: registry upload did not respond"],
+            logs="stage: artifact upload\nattempt 1 timeout\nattempt 2 passed\nregistry latency high",
+            code_snippets=["curl --max-time 30 https://registry.example/upload"],
+        ),
+        reflection_input=DailyReflectionInput(
+            completed=["CI timeline captured", "Retry evidence attached"],
+            unfinished=["Registry owner validation"],
+            blockers=["Missing owner for flaky dependency"],
+            mood_or_notes="Buyer should see recoverability and checkpoint evidence.",
+        ),
+        success_signal="Run highlights needs-review decision with checkpointed retry evidence.",
+    ),
+    PilotScenarioRead(
+        id="missing-approval",
+        name="Missing approval",
+        description="Power gate blocks a risky release until approval metadata is confirmed.",
+        expected_gate_behavior="block",
+        required_tier="power",
+        approval_required=True,
+        approval_confirmed=False,
+        release_gate_input=ReleaseGatePrCiInput(
+            pr_url="https://github.com/example/platform/pull/1845",
+            pr_diff_summary="Generated PR changes production deployment workflow and escalation owner.",
+            ci_log_summary="tests passed; production dry-run skipped until release manager approval",
+            target_environment="production",
+            change_risk="High-risk production change lacks approval confirmation.",
+        ),
+        daily_context=DailyContextInput(
+            tasks=["Attempt approval-gated release", "Capture block reason"],
+            meetings=["Release manager unavailable"],
+            blockers=["Approval not confirmed"],
+            priorities=["prove policy block"],
+        ),
+        technical_input=TechnicalAnalysisInput(
+            issue_description="High-risk release must be blocked because approval is not confirmed.",
+            errors=["Policy gate: approval not confirmed"],
+            logs="tests passed\nproduction dry-run skipped\napproval pending",
+            code_snippets=["make release-deploy"],
+        ),
+        reflection_input=DailyReflectionInput(
+            completed=["Release packet prepared"],
+            unfinished=["Release manager approval"],
+            blockers=["Approval confirmation missing"],
+            mood_or_notes="Use this to show the buyer that policy gates prevent unsafe execution.",
+        ),
+        success_signal="Initial run returns 409 until approval is explicitly confirmed.",
+    ),
+    PilotScenarioRead(
+        id="rollback-sensitive-release",
+        name="Rollback-sensitive release",
+        description="Database or stateful rollout requires explicit blocked-risk evidence before release.",
+        expected_gate_behavior="block",
+        required_tier="power",
+        approval_required=True,
+        approval_confirmed=True,
+        release_gate_input=ReleaseGatePrCiInput(
+            pr_url="https://github.com/example/platform/pull/1846",
+            pr_diff_summary="Generated PR updates stateful migration order and deployment rollback notes.",
+            ci_log_summary="tests passed; rollback rehearsal failed on seeded staging data",
+            target_environment="production database",
+            change_risk="Critical rollback-sensitive release can cause data loss if executed without rollback fix.",
+        ),
+        daily_context=DailyContextInput(
+            tasks=["Review rollback-sensitive release", "Block until rollback rehearsal passes"],
+            meetings=["Database owner review"],
+            blockers=["Rollback rehearsal failed"],
+            priorities=["protect production data"],
+        ),
+        technical_input=TechnicalAnalysisInput(
+            issue_description="Rollback rehearsal failed for a stateful generated release change.",
+            errors=["RollbackError: staged data restore mismatch"],
+            logs="migration dry-run passed\nrollback rehearsal failed\nstate restore mismatch",
+            code_snippets=["make rollback-dry-run"],
+        ),
+        reflection_input=DailyReflectionInput(
+            completed=["Rollback evidence captured", "Database owner flagged"],
+            unfinished=["Fix rollback path before deploy"],
+            blockers=["Rollback rehearsal must pass"],
+            mood_or_notes="Buyer should see blocked risk value and evidence export.",
+        ),
+        success_signal="Gate blocks release and records blocked-risk ROI evidence.",
+    ),
+]

@@ -15,6 +15,7 @@ import type {
   MonetizationHealthStatus,
   MonetizationObservability,
   MonetizationObservabilityTrendPoint,
+  PilotReadinessReport,
   TechnicalAnalysisRecord,
   WorkflowOrchestrationRecord,
   WorkflowOrchestrationMetrics,
@@ -28,6 +29,7 @@ type DashboardState = {
   orchestrationMetrics: WorkflowOrchestrationMetrics;
   monetizationObservability: MonetizationObservability;
   commercialMetrics: CommercialMetricsResponse;
+  pilotReadiness: PilotReadinessReport;
 };
 
 const DEFAULT_ORCHESTRATION_METRICS: WorkflowOrchestrationMetrics = {
@@ -111,6 +113,27 @@ const DEFAULT_COMMERCIAL_METRICS: CommercialMetricsResponse = {
   top_templates: [],
   trend: [],
   anomaly_hints: [],
+};
+
+const DEFAULT_PILOT_READINESS: PilotReadinessReport = {
+  window_days: 7,
+  generated_at: "",
+  subject: null,
+  team_subject: null,
+  status: "needs evidence",
+  runs_completed: 0,
+  evidence_exportable_runs: 0,
+  ledger_valid_runs: 0,
+  checkpointed_runs: 0,
+  approval_required_runs: 0,
+  blocked_or_needs_review_runs: 0,
+  estimated_value_usd: 0,
+  review_time_saved_minutes: 0,
+  audit_time_saved_minutes: 0,
+  metadata_completeness: 0,
+  missing_metadata_runs: 0,
+  success_criteria: [],
+  recommendations: [],
 };
 
 const DASHBOARD_WINDOW_OPTIONS = [7, 30] as const;
@@ -282,6 +305,19 @@ function hasCommercialMetricsPayload(value: unknown): value is CommercialMetrics
   );
 }
 
+function hasPilotReadinessPayload(value: unknown): value is PilotReadinessReport {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.window_days === "number" &&
+    typeof value.status === "string" &&
+    typeof value.runs_completed === "number" &&
+    typeof value.evidence_exportable_runs === "number" &&
+    typeof value.ledger_valid_runs === "number" &&
+    typeof value.checkpointed_runs === "number" &&
+    typeof value.metadata_completeness === "number"
+  );
+}
+
 type OrchestrationWindowStats = {
   runs: number;
   partialSuccessCount: number;
@@ -396,6 +432,7 @@ export function DashboardView() {
     orchestrationMetrics: DEFAULT_ORCHESTRATION_METRICS,
     monetizationObservability: DEFAULT_MONETIZATION_OBSERVABILITY,
     commercialMetrics: DEFAULT_COMMERCIAL_METRICS,
+    pilotReadiness: DEFAULT_PILOT_READINESS,
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -430,6 +467,7 @@ export function DashboardView() {
         orchestrationMetrics: { ...DEFAULT_ORCHESTRATION_METRICS },
         monetizationObservability: { ...DEFAULT_MONETIZATION_OBSERVABILITY },
         commercialMetrics: { ...DEFAULT_COMMERCIAL_METRICS },
+        pilotReadiness: { ...DEFAULT_PILOT_READINESS },
       };
       setState(nextState);
 
@@ -464,11 +502,12 @@ export function DashboardView() {
     async function loadOrchestrationWindow() {
       setOrchestrationLoading(true);
 
-      const [metricsResult, historyResult, monetizationResult, commercialMetricsResult] = await Promise.allSettled([
+      const [metricsResult, historyResult, monetizationResult, commercialMetricsResult, pilotReadinessResult] = await Promise.allSettled([
         apiClient.getWorkflowOrchestrationMetrics(orchestrationWindowDays),
         apiClient.listWorkflowOrchestrations({ limit: 200, include_steps: false, include_integrity: false }),
         apiClient.getMonetizationObservability(orchestrationWindowDays),
         apiClient.getCommercialMetrics(orchestrationWindowDays),
+        apiClient.getPilotReadinessReport(orchestrationWindowDays),
       ]);
 
       const metrics =
@@ -487,6 +526,10 @@ export function DashboardView() {
         commercialMetricsResult.status === "fulfilled" && hasCommercialMetricsPayload(commercialMetricsResult.value)
           ? commercialMetricsResult.value
           : { ...DEFAULT_COMMERCIAL_METRICS, window_days: orchestrationWindowDays };
+      const pilotReadiness =
+        pilotReadinessResult.status === "fulfilled" && hasPilotReadinessPayload(pilotReadinessResult.value)
+          ? pilotReadinessResult.value
+          : { ...DEFAULT_PILOT_READINESS, window_days: orchestrationWindowDays };
 
       setState((prev) => ({
         ...prev,
@@ -494,6 +537,7 @@ export function DashboardView() {
         orchestrations,
         monetizationObservability: monetization.data,
         commercialMetrics,
+        pilotReadiness,
       }));
 
       const failedEndpoints: string[] = [];
@@ -508,6 +552,12 @@ export function DashboardView() {
         (commercialMetricsResult.status === "fulfilled" && !hasCommercialMetricsPayload(commercialMetricsResult.value))
       ) {
         failedEndpoints.push("commercial metrics");
+      }
+      if (
+        pilotReadinessResult.status === "rejected" ||
+        (pilotReadinessResult.status === "fulfilled" && !hasPilotReadinessPayload(pilotReadinessResult.value))
+      ) {
+        failedEndpoints.push("pilot readiness");
       }
       if (failedEndpoints.length > 0) {
         setOrchestrationError(`Some dashboard data is unavailable: ${failedEndpoints.join(", ")}.`);
@@ -762,6 +812,14 @@ export function DashboardView() {
           <p className="kpi-label">Blocked Risk Value</p>
           <p className="muted">{state.commercialMetrics.roi_summary.blocked_risk_count} blocked signal(s)</p>
           <p className="kpi-value">{formatUsd(state.commercialMetrics.roi_summary.blocked_risk_value_usd)}</p>
+        </article>
+        <article className="kpi-card animate-enter">
+          <p className="kpi-label">Pilot Ready</p>
+          <p className="muted">
+            {state.pilotReadiness.runs_completed} runs · {Math.round(state.pilotReadiness.metadata_completeness * 100)}%
+            metadata
+          </p>
+          <p className="kpi-value">{state.pilotReadiness.status.toUpperCase()}</p>
         </article>
       </section>
 

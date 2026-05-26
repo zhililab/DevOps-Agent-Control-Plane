@@ -117,6 +117,32 @@ describe("dashboard monetization kpi", () => {
         );
       }
 
+      if (url.includes("/monetization/pilot-report")) {
+        return new Response(
+          JSON.stringify({
+            window_days: 7,
+            generated_at: "2026-05-22T00:00:00Z",
+            subject: null,
+            team_subject: null,
+            status: "ready",
+            runs_completed: 5,
+            evidence_exportable_runs: 5,
+            ledger_valid_runs: 5,
+            checkpointed_runs: 5,
+            approval_required_runs: 4,
+            blocked_or_needs_review_runs: 3,
+            estimated_value_usd: 18400,
+            review_time_saved_minutes: 220,
+            audit_time_saved_minutes: 140,
+            metadata_completeness: 0.9,
+            missing_metadata_runs: 0,
+            success_criteria: [],
+            recommendations: [],
+          }),
+          { status: 200 }
+        );
+      }
+
       return new Response(JSON.stringify({ detail: `Unhandled mock url: ${url}` }), { status: 500 });
     });
 
@@ -163,11 +189,14 @@ describe("dashboard monetization kpi", () => {
     const estimatedValueCard = screen.getByText("Estimated Value").closest("article");
     const reviewTimeSavedCard = screen.getByText("Review Time Saved").closest("article");
     const blockedRiskValueCard = screen.getByText("Blocked Risk Value").closest("article");
+    const pilotReadyCard = screen.getByText("Pilot Ready").closest("article");
     expect(within(commercialWorkUnitsCard!).getByText("31")).toBeInTheDocument();
     expect(within(commercialPolicyBlocksCard!).getByText("3")).toBeInTheDocument();
     expect(within(estimatedValueCard!).getByText("$18,400.00")).toBeInTheDocument();
     expect(within(reviewTimeSavedCard!).getByText("360m")).toBeInTheDocument();
     expect(within(blockedRiskValueCard!).getByText("$15,000.00")).toBeInTheDocument();
+    expect(within(pilotReadyCard!).getByText("READY")).toBeInTheDocument();
+    expect(within(pilotReadyCard!).getByText("5 runs · 90% metadata")).toBeInTheDocument();
     expect(screen.getByText(/3 policy block\(s\) appeared/)).toBeInTheDocument();
   });
 

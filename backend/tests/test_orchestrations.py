@@ -350,6 +350,125 @@ def test_ai_generated_pr_release_gate_returns_policy_decision_and_roi_evidence(c
     assert "<redacted>" in serialized
 
 
+def test_pilot_scenarios_are_stable_redacted_and_runnable(client) -> None:
+    scenarios_response = client.get("/api/orchestrations/pilot-scenarios")
+    assert scenarios_response.status_code == 200
+    scenarios = scenarios_response.json()["items"]
+    assert [item["id"] for item in scenarios] == [
+        "high-risk-generated-pr",
+        "low-risk-docs-pr",
+        "ci-flaky-release",
+        "missing-approval",
+        "rollback-sensitive-release",
+    ]
+    assert all(item["release_gate_input"] for item in scenarios)
+    serialized = str(scenarios).lower()
+    for forbidden in ("token", "password", "secret", "raw entitlement"):
+        assert forbidden not in serialized
+
+    import_response = client.post("/api/orchestrations/templates/import/builtin")
+    assert import_response.status_code == 200
+    templates_response = client.get("/api/orchestrations/templates")
+    ai_pr_template = next(
+        item for item in templates_response.json() if item["name"] == "AI-generated PR Release Gate"
+    )
+    scenario = next(item for item in scenarios if item["id"] == "high-risk-generated-pr")
+
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "pilot-scenario-secret"
+        settings.entitlement_required = True
+        power_token = sign_entitlement_token(secret="pilot-scenario-secret", tier="power", ttl_seconds=600)
+
+        response = client.post(
+            "/api/orchestrations/run",
+            json={
+                "entry_source": "pilot_scenario",
+                "template_id": ai_pr_template["id"],
+                "steps": None,
+                "team_subject": "platform-team",
+                "requested_by": "sre-lead",
+                "approval_actor": "release-manager",
+                "approval_note": "Pilot scenario approval confirmed.",
+                "approval_confirmed": scenario["approval_confirmed"],
+                "release_gate_input": scenario["release_gate_input"],
+                "daily_context": scenario["daily_context"],
+                "technical_input": scenario["technical_input"],
+                "reflection_input": scenario["reflection_input"],
+                "persist_knowledge": False,
+                "persist_template": False,
+            },
+            headers={"X-Entitlement": power_token},
+        )
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
+
+    assert response.status_code == 200
+    record = response.json()
+    assert record["status"] == "success"
+    assert record["policy_gate"]["template_name"] == "AI-generated PR Release Gate"
+    assert record["policy_gate"]["decision"] == "needs human review"
+    assert record["roi_evidence"]["estimated_customer_value_usd"] > 0
+    assert record["checkpoint_count"] > 0
+
+
+def test_missing_approval_pilot_scenario_blocks_until_confirmed(client) -> None:
+    client.post("/api/orchestrations/templates/import/builtin")
+    ai_pr_template = next(
+        item for item in client.get("/api/orchestrations/templates").json()
+        if item["name"] == "AI-generated PR Release Gate"
+    )
+    scenario = next(
+        item for item in client.get("/api/orchestrations/pilot-scenarios").json()["items"]
+        if item["id"] == "missing-approval"
+    )
+
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "missing-approval-secret"
+        settings.entitlement_required = True
+        power_token = sign_entitlement_token(secret="missing-approval-secret", tier="power", ttl_seconds=600)
+        payload = {
+            "entry_source": "pilot_scenario",
+            "template_id": ai_pr_template["id"],
+            "steps": None,
+            "team_subject": "platform-team",
+            "requested_by": "sre-lead",
+            "approval_actor": "release-manager",
+            "approval_note": "Approval not confirmed for this scenario.",
+            "approval_confirmed": False,
+            "release_gate_input": scenario["release_gate_input"],
+            "daily_context": scenario["daily_context"],
+            "technical_input": scenario["technical_input"],
+            "reflection_input": scenario["reflection_input"],
+            "persist_knowledge": False,
+            "persist_template": False,
+        }
+        blocked = client.post(
+            "/api/orchestrations/run",
+            json=payload,
+            headers={"X-Entitlement": power_token},
+        )
+        approved = client.post(
+            "/api/orchestrations/run",
+            json={**payload, "approval_confirmed": True, "approval_note": "Release manager approved the pilot run."},
+            headers={"X-Entitlement": power_token},
+        )
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
+
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "approval_required"
+    assert approved.status_code == 200
+    assert approved.json()["policy_gate"]["approval_confirmed"] is True
+
+
 def test_template_policy_required_tier_blocks_lower_tier(client) -> None:
     create_template = client.post(
         "/api/orchestrations/templates",

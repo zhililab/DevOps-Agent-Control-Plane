@@ -118,6 +118,36 @@ globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
     );
   }
 
+  if (url.endsWith("/orchestrations/pilot-scenarios")) {
+    return new Response(JSON.stringify({ items: [] }), { status: 200 });
+  }
+
+  if (url.includes("/monetization/pilot-report")) {
+    return new Response(
+      JSON.stringify({
+        window_days: 7,
+        generated_at: "2026-05-22T00:00:00Z",
+        subject: null,
+        team_subject: null,
+        status: "needs evidence",
+        runs_completed: 0,
+        evidence_exportable_runs: 0,
+        ledger_valid_runs: 0,
+        checkpointed_runs: 0,
+        approval_required_runs: 0,
+        blocked_or_needs_review_runs: 0,
+        estimated_value_usd: 0,
+        review_time_saved_minutes: 0,
+        audit_time_saved_minutes: 0,
+        metadata_completeness: 0,
+        missing_metadata_runs: 0,
+        success_criteria: [],
+        recommendations: [],
+      }),
+      { status: 200 }
+    );
+  }
+
   if (url.endsWith("/tasks") || url.endsWith("/reflections")) {
     return new Response(JSON.stringify([]), { status: 200 });
   }

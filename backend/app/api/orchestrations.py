@@ -10,6 +10,7 @@ from app.database import get_db
 from app.schemas import (
     EntitlementBootstrapResponse,
     HistoryIntegrityResponse,
+    PilotScenarioListResponse,
     WorkflowCheckpointHistoryResponse,
     WorkflowEvidenceExportResponse,
     WorkflowOrchestrationHistoryResponse,
@@ -55,6 +56,7 @@ from app.services.orchestration_service import (
     run_orchestration,
     update_workflow_template,
 )
+from app.services.pilot_scenarios import list_pilot_scenarios
 
 router = APIRouter(prefix="/orchestrations", tags=["orchestrations"])
 
@@ -153,6 +155,11 @@ def get_entitlement_bootstrap_token() -> EntitlementBootstrapResponse:
         tier=tier,
         expires_at=expires_at,
     )
+
+
+@router.get("/pilot-scenarios", response_model=PilotScenarioListResponse)
+def list_pilot_scenarios_endpoint() -> PilotScenarioListResponse:
+    return list_pilot_scenarios()
 
 
 @router.post("/queue/run", response_model=WorkflowQueueRunResponse)

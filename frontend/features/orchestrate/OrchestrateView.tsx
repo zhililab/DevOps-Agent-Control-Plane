@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
 import type {
+  PilotScenario,
   SubscriptionTier,
   WorkflowOrchestrationRecord,
   WorkflowQueueJob,
@@ -19,6 +20,10 @@ function splitLines(value: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function joinLines(values: string[]): string {
+  return values.join("\n");
 }
 
 const DEFAULT_STEPS: WorkflowStepDefinition[] = [
@@ -210,13 +215,27 @@ export function OrchestrateView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [pilotScenarios, setPilotScenarios] = useState<PilotScenario[]>([]);
+  const [selectedPilotScenarioId, setSelectedPilotScenarioId] = useState("");
+  const [isLoadingPilotScenarios, setIsLoadingPilotScenarios] = useState(true);
+  const [appliedUrlScenarioId, setAppliedUrlScenarioId] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
   useEffect(() => {
     void loadTemplates();
+    void loadPilotScenarios();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || pilotScenarios.length === 0 || isLoadingTemplates) return;
+    const scenarioId = new URLSearchParams(window.location.search).get("scenario")?.trim() ?? "";
+    if (!scenarioId || scenarioId === appliedUrlScenarioId) return;
+    applyPilotScenario(scenarioId, { fromUrl: true });
+    setAppliedUrlScenarioId(scenarioId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pilotScenarios, isLoadingTemplates, appliedUrlScenarioId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -453,6 +472,90 @@ export function OrchestrateView() {
     }
   }
 
+  async function loadPilotScenarios() {
+    try {
+      const response = await apiClient.listPilotScenarios();
+      setPilotScenarios(Array.isArray(response.items) ? response.items : []);
+    } catch (loadError) {
+      setPilotScenarios([]);
+      setError(loadError instanceof Error ? loadError.message : "Failed to load pilot scenarios.");
+    } finally {
+      setIsLoadingPilotScenarios(false);
+    }
+  }
+
+  function applyWorkflowTemplate(template: WorkflowTemplate, options: { resetApproval?: boolean } = {}) {
+    const resetApproval = options.resetApproval ?? true;
+    setSelectedTemplateId(String(template.id));
+    if (resetApproval) {
+      setApprovalConfirmed(false);
+    }
+    setSteps(template.steps);
+    setTemplateName(template.name);
+    setTemplateDescription(template.description);
+    setTemplateTags(formatWorkflowTemplateTags(template));
+    const policy = template.policy ?? DEFAULT_TEMPLATE_POLICY;
+    setTemplateRequiredTier(policy.required_tier);
+    setTemplateRiskLevel(policy.risk_level);
+    setTemplateApprovalRequired(policy.approval_required);
+    setTemplateToolScopes(policy.allowed_tool_scopes.join(","));
+    setTemplateBillableWorkUnits(String(policy.billable_work_units));
+    setTemplateEnabled(template.enabled);
+  }
+
+  function applyPilotScenario(scenarioId: string, options: { fromUrl?: boolean } = {}) {
+    const scenario = pilotScenarios.find((item) => item.id === scenarioId);
+    if (!scenario) {
+      if (!options.fromUrl) {
+        setError("Pilot scenario was not found.");
+      }
+      return;
+    }
+    const matchedTemplate = templates.find((template) => template.name === scenario.recommended_template_name);
+    if (matchedTemplate) {
+      applyWorkflowTemplate(matchedTemplate, { resetApproval: false });
+    } else {
+      setSelectedTemplateId("");
+      setTemplateName(scenario.recommended_template_name);
+      setTemplateDescription("Gate a pilot PR or CI evidence packet with policy, replay, and ROI evidence.");
+      setTemplateTags("pr,ci-cd,release-gate,audit,pilot");
+      setTemplateRequiredTier(scenario.required_tier);
+      setTemplateRiskLevel(scenario.expected_gate_behavior === "block" ? "critical" : "high");
+      setTemplateApprovalRequired(scenario.approval_required);
+      setTemplateToolScopes("ci-cd-release-gate");
+      setTemplateBillableWorkUnits("8");
+      setTemplateEnabled(true);
+      setSteps(DEFAULT_STEPS);
+    }
+
+    setSelectedPilotScenarioId(scenario.id);
+    setEntrySource("pilot_scenario");
+    setTeamSubject("platform-team");
+    setRequestedBy("sre-lead");
+    setApprovalActor(scenario.approval_required ? "release-manager" : "");
+    setApprovalNote(`Pilot scenario: ${scenario.name}. ${scenario.success_signal}`);
+    setApprovalConfirmed(scenario.approval_confirmed);
+    setPrUrl(scenario.release_gate_input.pr_url);
+    setPrDiffSummary(scenario.release_gate_input.pr_diff_summary);
+    setCiLogSummary(scenario.release_gate_input.ci_log_summary);
+    setTargetEnvironment(scenario.release_gate_input.target_environment);
+    setChangeRisk(scenario.release_gate_input.change_risk);
+    setTasksText(joinLines(scenario.daily_context.tasks));
+    setMeetingsText(joinLines(scenario.daily_context.meetings));
+    setBlockersText(joinLines(scenario.daily_context.blockers));
+    setPrioritiesText(joinLines(scenario.daily_context.priorities));
+    setIssueDescription(scenario.technical_input.issue_description);
+    setErrorsText(joinLines(scenario.technical_input.errors));
+    setLogsText(scenario.technical_input.logs);
+    setCodeSnippetsText(joinLines(scenario.technical_input.code_snippets));
+    setCompletedText(joinLines(scenario.reflection_input.completed));
+    setUnfinishedText(joinLines(scenario.reflection_input.unfinished));
+    setReflectionBlockersText(joinLines(scenario.reflection_input.blockers));
+    setMoodNotes(scenario.reflection_input.mood_or_notes);
+    setStatus(`Loaded pilot scenario: ${scenario.name}.`);
+    setError(null);
+  }
+
   async function onRun(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus(null);
@@ -629,17 +732,7 @@ export function OrchestrateView() {
     const id = Number(templateId);
     const matched = templates.find((template) => template.id === id);
     if (!matched) return;
-    setSteps(matched.steps);
-    setTemplateName(matched.name);
-    setTemplateDescription(matched.description);
-    setTemplateTags(formatWorkflowTemplateTags(matched));
-    const policy = matched.policy ?? DEFAULT_TEMPLATE_POLICY;
-    setTemplateRequiredTier(policy.required_tier);
-    setTemplateRiskLevel(policy.risk_level);
-    setTemplateApprovalRequired(policy.approval_required);
-    setTemplateToolScopes(policy.allowed_tool_scopes.join(","));
-    setTemplateBillableWorkUnits(String(policy.billable_work_units));
-    setTemplateEnabled(matched.enabled);
+    applyWorkflowTemplate(matched);
   }
 
   return (
@@ -707,6 +800,60 @@ export function OrchestrateView() {
           />
         </label>
         <p className="muted">Active steps: {activeStepCount}. Free tier allows a single active step.</p>
+      </section>
+
+      <section className="result-block" aria-label="pilot-scenario-loader">
+        <div className="section-heading-row">
+          <div>
+            <p className="eyebrow">Pilot Scenario Pack V2</p>
+            <h3>Load a buyer-ready release gate scenario</h3>
+            <p className="muted">
+              Import static PR/CI evidence, planner context, analyzer signals, reflection notes, approval state, and
+              the recommended release-gate template.
+            </p>
+          </div>
+          {isLoadingPilotScenarios ? <p className="muted">Loading scenarios...</p> : null}
+        </div>
+        <div className="inline-form-row">
+          <label>
+            Load Pilot Scenario
+            <select
+              value={selectedPilotScenarioId}
+              onChange={(event) => setSelectedPilotScenarioId(event.target.value)}
+            >
+              <option value="">Manual input</option>
+              {pilotScenarios.map((scenario) => (
+                <option key={scenario.id} value={scenario.id}>
+                  {scenario.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => applyPilotScenario(selectedPilotScenarioId)}
+            disabled={!selectedPilotScenarioId}
+          >
+            Apply Scenario
+          </button>
+        </div>
+        {selectedPilotScenarioId ? (
+          <div className="result-grid">
+            {pilotScenarios
+              .filter((scenario) => scenario.id === selectedPilotScenarioId)
+              .map((scenario) => (
+                <article className="result-block" key={scenario.id}>
+                  <p className="eyebrow">{scenario.required_tier.toUpperCase()} gate</p>
+                  <h4>{scenario.expected_gate_behavior}</h4>
+                  <p>{scenario.success_signal}</p>
+                  <p className="muted">
+                    Approval required={String(scenario.approval_required)} · confirmed=
+                    {String(scenario.approval_confirmed)}
+                  </p>
+                </article>
+              ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="result-grid">

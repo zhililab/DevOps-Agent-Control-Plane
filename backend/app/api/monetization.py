@@ -10,6 +10,7 @@ from app.schemas import (
     EntitlementBootstrapResponse,
     ManualCheckoutRequest,
     MonetizationEventRead,
+    PilotReadinessReportResponse,
     SubscriptionCancelRequest,
     SubscriptionLifecycleResponse,
     SubscriptionProfileRead,
@@ -18,6 +19,7 @@ from app.schemas import (
 from app.services.monetization_service import (
     cancel_subscription,
     get_commercial_metrics,
+    get_pilot_readiness_report,
     get_subscription_profile,
     list_monetization_events,
     list_usage_counters,
@@ -94,6 +96,21 @@ def get_commercial_metrics_endpoint(
     db: Session = Depends(get_db),
 ) -> CommercialMetricsResponse:
     return get_commercial_metrics(db, days=days, subject=subject)
+
+
+@router.get("/pilot-report", response_model=PilotReadinessReportResponse)
+def get_pilot_readiness_report_endpoint(
+    days: int = Query(default=7, ge=1, le=30),
+    subject: str | None = Query(default=None, min_length=1, max_length=120),
+    team_subject: str | None = Query(default=None, min_length=1, max_length=120),
+    db: Session = Depends(get_db),
+) -> PilotReadinessReportResponse:
+    return get_pilot_readiness_report(
+        db,
+        days=days,
+        subject=subject,
+        team_subject=team_subject,
+    )
 
 
 @router.post("/checkout/manual", response_model=SubscriptionLifecycleResponse)

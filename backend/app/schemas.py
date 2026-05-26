@@ -551,6 +551,26 @@ class WorkflowOrchestrationRunRequest(BaseModel):
         raise ValueError("Provide template_id or at least one enabled step.")
 
 
+class PilotScenarioRead(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    expected_gate_behavior: Literal["approve", "block", "needs human review"]
+    required_tier: SubscriptionTier
+    approval_required: bool
+    approval_confirmed: bool = False
+    recommended_template_name: str = "AI-generated PR Release Gate"
+    release_gate_input: ReleaseGatePrCiInput
+    daily_context: DailyContextInput
+    technical_input: TechnicalAnalysisInput
+    reflection_input: DailyReflectionInput
+    success_signal: str
+
+
+class PilotScenarioListResponse(BaseModel):
+    items: list[PilotScenarioRead]
+
+
 class WorkflowOrchestrationRead(BaseModel):
     id: int
     status: OrchestrationStatus
@@ -840,6 +860,27 @@ class CommercialMetricsResponse(BaseModel):
     top_templates: list[CommercialMetricsTopTemplate] = Field(default_factory=list)
     trend: list[CommercialMetricsTrendPoint] = Field(default_factory=list)
     anomaly_hints: list[CommercialMetricsAnomalyHint] = Field(default_factory=list)
+
+
+class PilotReadinessReportResponse(BaseModel):
+    window_days: int
+    generated_at: datetime
+    subject: str | None = None
+    team_subject: str | None = None
+    status: Literal["ready", "needs evidence", "needs approval metadata"]
+    runs_completed: int
+    evidence_exportable_runs: int
+    ledger_valid_runs: int
+    checkpointed_runs: int
+    approval_required_runs: int
+    blocked_or_needs_review_runs: int
+    estimated_value_usd: int
+    review_time_saved_minutes: int
+    audit_time_saved_minutes: int
+    metadata_completeness: float
+    missing_metadata_runs: int
+    success_criteria: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
 
 
 class WorkflowEvidenceExportResponse(BaseModel):

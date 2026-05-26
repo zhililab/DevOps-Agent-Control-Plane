@@ -541,3 +541,44 @@ export type WorkflowTemplateImportResponse = {
   skipped: number;
   total: number;
 };
+
+export type PilotScenario = {
+  id: string;
+  name: string;
+  description: string;
+  expected_gate_behavior: "approve" | "block" | "needs human review";
+  required_tier: SubscriptionTier;
+  approval_required: boolean;
+  approval_confirmed: boolean;
+  recommended_template_name: string;
+  release_gate_input: ReleaseGatePrCiInput;
+  daily_context: DailyContextInput;
+  technical_input: TechnicalAnalysisInput;
+  reflection_input: DailyReflectionInput;
+  success_signal: string;
+};
+
+export type PilotScenarioListResponse = {
+  items: PilotScenario[];
+};
+
+export type PilotReadinessReport = {
+  window_days: number;
+  generated_at: string;
+  subject: string | null;
+  team_subject: string | null;
+  status: "ready" | "needs evidence" | "needs approval metadata";
+  runs_completed: number;
+  evidence_exportable_runs: number;
+  ledger_valid_runs: number;
+  checkpointed_runs: number;
+  approval_required_runs: number;
+  blocked_or_needs_review_runs: number;
+  estimated_value_usd: number;
+  review_time_saved_minutes: number;
+  audit_time_saved_minutes: number;
+  metadata_completeness: number;
+  missing_metadata_runs: number;
+  success_criteria: string[];
+  recommendations: string[];
+};

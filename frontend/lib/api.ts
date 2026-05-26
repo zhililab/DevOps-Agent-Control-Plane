@@ -8,6 +8,8 @@ import type {
   EntitlementBootstrap,
   HistoryIntegrityResponse,
   CommercialMetricsResponse,
+  PilotReadinessReport,
+  PilotScenarioListResponse,
   ReleaseGatePrCiInput,
   MonetizationObservability,
   MonetizationEvent,
@@ -429,6 +431,12 @@ export const apiClient = {
     return request<WorkflowOrchestrationMetrics>(`/orchestrations/metrics?days=${days}`);
   },
 
+  listPilotScenarios() {
+    return request<PilotScenarioListResponse>("/orchestrations/pilot-scenarios", {
+      retries: 2,
+    });
+  },
+
   getEntitlementBootstrapToken() {
     return request<EntitlementBootstrap>("/orchestrations/entitlement/bootstrap", { retries: 1 });
   },
@@ -466,6 +474,19 @@ export const apiClient = {
       search.set("subject", subject.trim());
     }
     return request<CommercialMetricsResponse>(`/monetization/commercial-metrics?${search.toString()}`, {
+      retries: 2,
+    });
+  },
+
+  getPilotReadinessReport(days = 7, subject?: string, teamSubject?: string) {
+    const search = new URLSearchParams({ days: String(days) });
+    if (subject?.trim()) {
+      search.set("subject", subject.trim());
+    }
+    if (teamSubject?.trim()) {
+      search.set("team_subject", teamSubject.trim());
+    }
+    return request<PilotReadinessReport>(`/monetization/pilot-report?${search.toString()}`, {
       retries: 2,
     });
   },

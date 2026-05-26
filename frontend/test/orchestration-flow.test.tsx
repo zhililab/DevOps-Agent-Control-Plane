@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 import OrchestratePage from "@/app/orchestrate/page";
 import OrchestrationsPage from "@/app/orchestrations/page";
@@ -8,6 +8,10 @@ describe("orchestration workflow", () => {
   beforeEach(() => {
     vi.mocked(globalThis.fetch).mockReset();
     window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.history.pushState({}, "", "/");
   });
 
   function transientAbortError(): Error {
@@ -490,6 +494,105 @@ describe("orchestration workflow", () => {
     });
   });
 
+  test("loads a pilot scenario from the URL into release gate inputs", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    window.history.pushState({}, "", "/orchestrate?scenario=ci-flaky-release");
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("/orchestrations/entitlement/bootstrap")) {
+        return new Response(JSON.stringify({ detail: "Not found." }), { status: 404 });
+      }
+      if (url.endsWith("/orchestrations/pilot-scenarios")) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: "ci-flaky-release",
+                name: "CI flaky release",
+                description: "Intermittent CI failures require replay evidence.",
+                expected_gate_behavior: "needs human review",
+                required_tier: "power",
+                approval_required: true,
+                approval_confirmed: true,
+                recommended_template_name: "AI-generated PR Release Gate",
+                release_gate_input: {
+                  pr_url: "https://github.com/example/platform/pull/1844",
+                  pr_diff_summary: "Generated PR updates artifact publishing.",
+                  ci_log_summary: "artifact upload timeout on first run; retry passed",
+                  target_environment: "staging",
+                  change_risk: "Medium-high risk because flaky CI can mask artifact integrity issues.",
+                },
+                daily_context: {
+                  tasks: ["Triage flaky CI release gate", "Assign registry retry owner"],
+                  meetings: ["Platform CI triage"],
+                  blockers: ["Intermittent registry response needs owner"],
+                  priorities: ["stabilize release evidence"],
+                },
+                technical_input: {
+                  issue_description: "Artifact upload intermittently times out.",
+                  errors: ["TimeoutError: registry upload did not respond"],
+                  logs: "attempt 1 timeout\nattempt 2 passed",
+                  code_snippets: ["curl --max-time 30 https://registry.example/upload"],
+                },
+                reflection_input: {
+                  completed: ["CI timeline captured"],
+                  unfinished: ["Registry owner validation"],
+                  blockers: ["Missing owner for flaky dependency"],
+                  mood_or_notes: "Buyer should see recoverability and checkpoint evidence.",
+                },
+                success_signal: "Run highlights needs-review decision with checkpointed retry evidence.",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/templates")) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 501,
+              name: "AI-generated PR Release Gate",
+              description: "Gate an AI-authored pull request before CI/CD execution.",
+              steps: [
+                { step_name: "Normalize PR Change Request", agent_type: "planner", enabled: true },
+                { step_name: "Evaluate CI And Deployment Risk", agent_type: "analyzer", enabled: true },
+                { step_name: "Decide PR Release Gate", agent_type: "reviewer", enabled: true },
+              ],
+              tags: ["pattern:maker-checker", "tier:power", "risk:high", "approval:required", "tool:ci-cd-release-gate", "work-units:8"],
+              policy: {
+                required_tier: "power",
+                risk_level: "high",
+                approval_required: true,
+                allowed_tool_scopes: ["ci-cd-release-gate"],
+                billable_work_units: 8,
+              },
+              enabled: true,
+              created_at: "2026-05-22T00:00:00Z",
+              updated_at: "2026-05-22T00:00:00Z",
+            },
+          ]),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestratePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Loaded pilot scenario: CI flaky release.")).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText("Load Pilot Scenario")).toHaveValue("ci-flaky-release");
+    expect(screen.getByLabelText("Apply Existing Template")).toHaveValue("501");
+    expect(screen.getByDisplayValue("https://github.com/example/platform/pull/1844")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Artifact upload intermittently times out.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Human Approval Confirmed")).toBeChecked();
+
+    window.history.pushState({}, "", "/");
+  });
+
   test("recovers workflow template loading after a transient browser timeout", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     let templateCalls = 0;
@@ -744,11 +847,21 @@ describe("orchestration workflow", () => {
     expect(screen.getByText("orchestration.accepted")).toBeInTheDocument();
     expect(screen.getByText(/hash abc/i)).toBeInTheDocument();
     expect(screen.getByText("Plan The Day · success")).toBeInTheDocument();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Export Evidence" }));
     await waitFor(() => {
       expect(screen.getByText("Evidence Export")).toBeInTheDocument();
     });
     expect(screen.getByText(/Orchestration Evidence Export #909/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Copy Markdown" }));
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Orchestration Evidence Export #909"));
+    });
+    expect(screen.getByRole("button", { name: "Download Markdown" })).toBeInTheDocument();
   });
 
   test("renders orchestration history with filters", async () => {

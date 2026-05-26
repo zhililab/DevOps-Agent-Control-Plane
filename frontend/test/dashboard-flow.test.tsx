@@ -435,7 +435,9 @@ describe("dashboard flow", () => {
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Some dashboard data is unavailable: orchestration metrics\./)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Some dashboard data is unavailable: orchestration metrics, pilot readiness\./)
+      ).toBeInTheDocument();
     });
 
     const waoCard = screen.getByText("Weekly Active Orchestrations").closest("article");

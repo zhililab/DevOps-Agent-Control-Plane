@@ -3,6 +3,14 @@
 This package turns the DevOps Agent Control Plane into a repeatable enterprise trial around one buyer workflow:
 AI-generated PR -> release gate -> human approval -> execute/block -> ledger/checkpoint/evidence export -> ROI signal.
 
+## Pilot Conversion V2 Additions
+
+- Static scenario API: `GET /api/orchestrations/pilot-scenarios`.
+- Pilot readiness API: `GET /api/monetization/pilot-report?days=7|30&subject=...&team_subject=...`.
+- Scenario-driven UI: `/tutorial` links to `/orchestrate?scenario=<id>`, and `/orchestrate` can load the scenario into PR/CI adapter, planner, analyzer, reviewer, approval, and template fields.
+- Evidence closeout: `/orchestrations` supports `Copy Markdown` and `Download Markdown` for each exported bundle.
+- Buyer KPI closeout: `/monetization` shows `Pilot Readiness`; `/dashboard` shows `Pilot Ready`.
+
 ## Pilot Goal
 
 - Validate that governed agent execution can reduce release-review time without removing human ownership.
@@ -23,19 +31,21 @@ Do not paste raw credentials, tokens, secrets, passwords, or private customer da
 
 ## Demo Dataset
 
-| Scenario | Expected Gate Behavior | Success Signal |
-| --- | --- | --- |
-| High-risk generated PR | Needs human review or block | ROI evidence shows blocked risk value. |
-| Low-risk docs PR | Approve | Evidence export shows low-risk context and fast review path. |
-| CI flaky release | Needs human review | Analyzer cites CI instability and next validation action. |
-| Missing approval | Block before execution | Policy gate rejects unapproved high-risk run. |
-| Rollback-sensitive rollout | Needs human review or block | Evidence export includes rollback-sensitive risk. |
+| Scenario ID | Scenario | Expected Gate Behavior | Success Signal |
+| --- | --- | --- | --- |
+| `high-risk-generated-pr` | High-risk generated PR | Needs human review | Power-gated release evidence with human approval and ROI. |
+| `low-risk-docs-pr` | Low-risk docs PR | Approve | Evidence export shows low-risk context and fast review path. |
+| `ci-flaky-release` | CI flaky release | Needs human review | Checkpointed retry evidence supports owner assignment. |
+| `missing-approval` | Missing approval | Block before execution | Policy gate returns `409` until approval is confirmed. |
+| `rollback-sensitive-release` | Rollback-sensitive release | Block | Evidence export records rollback-sensitive blocked risk value. |
 
 ## Trial Success Metrics
 
 - At least 5 release-gate runs completed with evidence export.
-- At least 1 risky PR blocked or escalated before execution.
-- At least 80% of runs include requester, approver, policy gate, ledger, checkpoint, and ROI evidence.
+- At least 5 runs have valid ledger events.
+- At least 5 runs have checkpoint snapshots.
+- At least 1 risky PR is blocked or escalated before execution.
+- At least 80% of runs include team, requester, approver, approval note, policy gate, ledger, checkpoint, and ROI evidence.
 - Buyer can explain estimated value from Commercial Signal without reading raw agent output.
 - No evidence export includes raw entitlement, token, password, secret, or API key text.
 
@@ -49,10 +59,19 @@ Manual Billing V1 remains the trial billing model. Stripe or another payment pro
 
 ## Proof Script
 
-1. Open `/tutorial` and introduce the pilot path.
-2. Open `/orchestrate`, load a Power entitlement, and select `AI-generated PR Release Gate`.
-3. Fill the Real PR/CI Adapter V1 packet or use the built-in demo defaults.
-4. Confirm human approval and run the gate.
-5. Open `/orchestrations`, verify ledger/checkpoints, and export evidence.
-6. Open `/monetization`, show Plan Usage and Commercial Signal value.
-7. Open `/dashboard`, show Estimated Value, Review Time Saved, and Blocked Risk Value.
+1. Open `/monetization`, activate or refresh Power for `demo-user`.
+2. Open `/tutorial`, choose a Pilot Dataset card.
+3. Confirm `/orchestrate?scenario=<id>` loaded the PR/CI adapter packet, team metadata, approval state, and recommended template.
+4. Run the gate with signed Power entitlement. For `missing-approval`, first show the `409` block, then confirm approval and rerun.
+5. Open `/orchestrations`, verify ledger/checkpoints, export evidence, then copy or download Markdown.
+6. Open `/monetization`, show Plan Usage, Commercial Signal value, and Pilot Readiness.
+7. Open `/dashboard`, show Pilot Ready, Estimated Value, Review Time Saved, and Blocked Risk Value.
+
+## Buyer Retro Template
+
+- Which scenario best matched your real release-risk problem?
+- Did the evidence bundle contain enough context for release review or incident audit?
+- Which policy boundary mattered most: tier, approval, tool scope, or blocked risk?
+- Which ROI estimate was credible enough to keep: review time saved, audit time saved, or blocked risk value?
+- What extra field is needed before a paid pilot: owner, service, environment, compliance tag, or rollback evidence?
+- Should the next pilot step be more scenarios, a real PR/CI adapter, or a payment-provider integration?

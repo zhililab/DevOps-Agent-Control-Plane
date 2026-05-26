@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
+import { apiClient } from "@/lib/api";
+import type { PilotScenario } from "@/lib/types";
 
 const workflowSteps = [
   {
@@ -62,12 +64,42 @@ const workflowSteps = [
   },
 ];
 
-const pilotDatasets = [
-  { name: "High-risk generated PR", signal: "deployment workflow changed; production ownership required" },
-  { name: "Low-risk docs PR", signal: "non-runtime change, no CI regression signal" },
-  { name: "CI flaky release", signal: "timeout after artifact upload, retry evidence needed" },
-  { name: "Missing approval", signal: "Power gate blocks until release manager approves" },
-  { name: "Rollback-sensitive rollout", signal: "migration path requires explicit blocked-risk evidence" },
+const fallbackPilotDatasets: Array<Pick<PilotScenario, "id" | "name" | "success_signal" | "required_tier" | "expected_gate_behavior">> = [
+  {
+    id: "high-risk-generated-pr",
+    name: "High-risk generated PR",
+    success_signal: "Power-gated release evidence with human approval and ROI.",
+    required_tier: "power",
+    expected_gate_behavior: "needs human review",
+  },
+  {
+    id: "low-risk-docs-pr",
+    name: "Low-risk docs PR",
+    success_signal: "Approved low-risk path with exportable evidence.",
+    required_tier: "power",
+    expected_gate_behavior: "approve",
+  },
+  {
+    id: "ci-flaky-release",
+    name: "CI flaky release",
+    success_signal: "Needs-review path with checkpointed retry evidence.",
+    required_tier: "power",
+    expected_gate_behavior: "needs human review",
+  },
+  {
+    id: "missing-approval",
+    name: "Missing approval",
+    success_signal: "Initial run returns 409 until approval is confirmed.",
+    required_tier: "power",
+    expected_gate_behavior: "block",
+  },
+  {
+    id: "rollback-sensitive-release",
+    name: "Rollback-sensitive release",
+    success_signal: "Blocked risk value captured before release.",
+    required_tier: "power",
+    expected_gate_behavior: "block",
+  },
 ];
 
 const commercialLadders = [
@@ -78,10 +110,31 @@ const commercialLadders = [
 
 export function TutorialView() {
   const [activeStepId, setActiveStepId] = useState(workflowSteps[0].id);
+  const [pilotDatasets, setPilotDatasets] = useState(fallbackPilotDatasets);
   const activeStep = useMemo(
     () => workflowSteps.find((step) => step.id === activeStepId) ?? workflowSteps[0],
     [activeStepId]
   );
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadScenarios() {
+      try {
+        const response = await apiClient.listPilotScenarios();
+        if (mounted && Array.isArray(response.items) && response.items.length > 0) {
+          setPilotDatasets(response.items);
+        }
+      } catch {
+        if (mounted) {
+          setPilotDatasets(fallbackPilotDatasets);
+        }
+      }
+    }
+    void loadScenarios();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <PageCard
@@ -141,11 +194,14 @@ export function TutorialView() {
 
       <section className="tutorial-grid tutorial-grid-three" aria-label="pilot-demo-datasets">
         {pilotDatasets.map((item) => (
-          <article className="tutorial-card" key={item.name}>
+          <Link className="tutorial-card" href={`/orchestrate?scenario=${item.id}`} key={item.id}>
             <p className="eyebrow">Pilot Dataset</p>
             <h3>{item.name}</h3>
-            <p>{item.signal}</p>
-          </article>
+            <p>{item.success_signal}</p>
+            <p className="muted">
+              {item.required_tier.toUpperCase()} · {item.expected_gate_behavior}
+            </p>
+          </Link>
         ))}
       </section>
 

@@ -12,14 +12,14 @@ The long-term vision remains a reusable personal operating system for execution,
 
 ---
 
-# 0. Current Iteration Snapshot (2026-05-24)
+# 0. Current Iteration Snapshot (2026-05-27)
 
 ## Iteration Theme
-- current iteration target: convert the deployed DevOps orchestration MVP into a commercial proof loop centered on AI-generated PR release control
+- current iteration target: convert the deployed DevOps orchestration MVP into a scenario-driven Pilot Conversion V2 loop centered on AI-generated PR release control
 - product direction: enterprise agent execution trust control layer for CI/CD and incident response, with inspectable replay, queue lifecycle visibility, signed entitlement-aware gates, checkpoint snapshots, and team-ready audit metadata
 - commercial direction: sell governed agent execution that reduces release risk, shortens human review cycles, preserves compliance evidence, and turns blocked risk into ROI proof
-- UI direction: buyer-readable control plane where `/dashboard`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` tell one story: Coding Agent PR -> Release Gate -> human approval -> execute/block -> ledger/checkpoint/ROI evidence
-- status: the AI-generated PR Release Gate demo path is implemented and deployed; the next work must deepen value proof and real PR/CI ingestion instead of adding broad assistant features
+- UI direction: buyer-readable control plane where `/tutorial`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/dashboard` tell one story: choose pilot scenario -> run release gate -> export evidence -> inspect ROI -> decide Power upgrade
+- status: Pilot ROI loop is online; current work packages it into a stable enterprise pilot with fixed scenarios, readiness reporting, and evidence-export closeout
 
 ## Commercial Core
 The product should be judged by whether it helps an enterprise make or save money:
@@ -214,6 +214,20 @@ The first version can use transparent estimates and operator-provided assumption
 - added Pilot Package V1:
   - `docs/pilot-package-v1.md` defines pilot goal, required inputs, demo dataset, success metrics, pricing assumptions, and proof script
   - `/tutorial` now presents the pilot path as Import PR context -> Run Gate -> Verify Evidence -> See ROI -> Compare Plan
+- added Pilot Scenario Pack V2:
+  - `GET /api/orchestrations/pilot-scenarios` returns five fixed buyer-demo scenarios: high-risk generated PR, low-risk docs PR, CI flaky release, missing approval, and rollback-sensitive release
+  - `/tutorial` Pilot Dataset cards link directly to `/orchestrate?scenario=<id>`
+  - `/orchestrate` can load scenario data into PR/CI adapter context, daily context, technical input, reflection input, approval state, and the recommended release-gate template
+  - missing-approval scenario preserves the commercial block path by returning `409` until explicit approval is confirmed
+- added Pilot Readiness Report V1:
+  - `GET /api/monetization/pilot-report?days=7|30&subject=...&team_subject=...` aggregates completed runs, evidence-exportable runs, ledger-valid runs, checkpointed runs, approval-required runs, blocked/needs-review runs, metadata completeness, and estimated pilot value
+  - `/monetization` shows a buyer-readable `Pilot Readiness` panel beside Plan Usage and Commercial Signal
+  - `/dashboard` shows `Pilot Ready` as a commercial KPI
+- closed Evidence Export UX:
+  - `/orchestrations` evidence export panel now supports `Copy Markdown` and `Download Markdown`
+  - downloaded evidence file name is `orchestration-<id>-evidence.md`
+- upgraded scenario-driven E2E:
+  - Playwright flow now activates Power, opens `/tutorial`, loads a high-risk PR scenario, runs the release gate, verifies history, exports evidence, checks Pilot Readiness, and confirms dashboard ROI
 - tightened `/orchestrations` MVP closeout UI:
   - clearer run headers, fixed ledger status strip, queue job metadata grouping, and timeline replay status treatment
   - mobile layout guardrails for ledger/run/queue status rows
@@ -233,7 +247,8 @@ The first version can use transparent estimates and operator-provided assumption
 ## Still Pending / Next Tasks
 
 ### Commercial Proof Required
-- validate ROI Aggregation V2, Real PR/CI Adapter V1, Evidence Export V1, and Pilot Package V1 with live buyer-style demos
+- validate Pilot Conversion V2 with live buyer-style demos across all five scenarios
+- use Pilot Readiness as the commercial acceptance score before expanding to payment-provider or real Git provider work
 - add Commercial Metrics V3 only after pilot feedback clarifies which value estimates buyers trust most
 - evaluate a real GitHub/GitLab adapter after the controlled PR/CI evidence packet proves useful; V1 intentionally avoids OAuth/private repo access
 - keep all new work tied to the commercial proof loop; do not add broad assistant modules unless they strengthen release control, incident control, audit evidence, or ROI reporting

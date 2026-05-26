@@ -34,6 +34,11 @@ This document records the current product target and the minimum functionality t
 - Confirm `/dashboard` shows Commercial Work Units and Commercial Policy Blocks from the canonical commercial metrics API.
 - Confirm `/monetization` keeps the active subscription visible if usage or audit-feed refreshes are slow or partially unavailable.
 - Use `/tutorial` to explain the commercial path from workflow run to replay evidence to plan upgrade.
+- Use `/tutorial` Pilot Dataset cards to load one of five fixed buyer scenarios into `/orchestrate?scenario=<id>`.
+- Confirm `/orchestrate` can load a pilot scenario and populate PR/CI adapter context, daily context, technical input, reflection input, approval state, and recommended template.
+- Confirm the missing-approval scenario returns `409` until approval is explicitly confirmed.
+- Confirm `/monetization` shows `Pilot Readiness`: completed runs, evidence-exportable runs, ledger-valid runs, checkpointed runs, approval-required runs, blocked/needs-review runs, metadata completeness, and estimated pilot value.
+- Confirm `/dashboard` shows `Pilot Ready` as a buyer-facing KPI.
 - Generate and persist daily plans, daily reflections, and technical analysis records.
 - Review daily history with accurate `Asia/Shanghai` business dates while preserving UTC audit timestamps.
 - Browse reusable knowledge entries, prompt templates, and workflow templates.
@@ -57,6 +62,7 @@ This document records the current product target and the minimum functionality t
 - `GET /api/orchestrations/{id}/history-events`
 - `GET /api/orchestrations/{id}/checkpoints`
 - `GET /api/orchestrations/{id}/evidence`
+- `GET /api/orchestrations/pilot-scenarios`
 - `GET /api/orchestrations/metrics?days=...`
 - `POST /api/orchestrations/queue/run`
 - `GET /api/orchestrations/queue/history`
@@ -69,6 +75,7 @@ This document records the current product target and the minimum functionality t
 - `GET /api/monetization/profile|usage|events`
 - `GET /api/monetization/entitlement?subject=...`
 - `GET /api/monetization/commercial-metrics?days=7|30&subject=...`
+- `GET /api/monetization/pilot-report?days=7|30&subject=...&team_subject=...`
 - `POST /api/monetization/checkout/manual`
 - `POST /api/monetization/cancel`
 - `POST /api/monetization/reactivate`
@@ -89,6 +96,7 @@ This document records the current product target and the minimum functionality t
 - Orchestration ledger payload hashes must verify against canonical JSON snapshots.
 - Workflow checkpoint payload hashes must verify against canonical JSON snapshots.
 - Orchestration and queue audit payloads must redact tokens, passwords, secrets, and raw entitlement strings.
+- Pilot scenarios and pilot readiness payloads must not include raw entitlement tokens, passwords, secrets, or private credentials.
 - Backfill of historical orchestration records must be idempotent.
 - Daily plan/reflection/analysis history must hide `record_source=smoke_check|system` by default and expose it only through `include_system=true`.
 - Read-only history endpoints must not create new agent run log records.
@@ -102,6 +110,7 @@ This document records the current product target and the minimum functionality t
 - Orchestration metrics must include billable work units, successful audited workflows, approval blocks, and template policy upgrade blocks.
 - Orchestration metrics must include Team Trust KPIs: approved runs, checkpointed runs, and failed jobs needing owner.
 - Release-gate ROI evidence should be visible on each orchestration read/history response and in `/orchestrations`; Commercial Signal also aggregates ROI into buyer-facing estimated value, review time saved, blocked risk value, and value by template.
+- Pilot Readiness should reuse bounded 7D/30D windows and existing orchestration, ledger, checkpoint, and ROI data; it must not introduce full-table scans or new billing tables.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 - Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.
 - Commercial Signal reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view. Billing-period Plan Usage comes from `usage_counters`; 7D/30D activity comes from usage audit logs; ROI summary comes from run-level release-gate evidence.

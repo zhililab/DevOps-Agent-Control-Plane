@@ -57,6 +57,8 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - Commercial page resilience for partial API timeouts: subscription profile, usage counters, audit feed, and Commercial Signal refresh independently so a slow feed does not hide an active plan.
 - ROI Aggregation V2 rolls run-level release-gate value into Commercial Signal and dashboard KPIs.
 - Evidence Export V1 exposes redacted Markdown/JSON evidence bundles for buyer pilots.
+- Pilot Scenario Pack V2 provides five fixed buyer-demo release scenarios that can be loaded from `/tutorial` or `/orchestrate?scenario=...`.
+- Pilot Readiness Report V1 aggregates completed runs, evidence exportability, ledger/checkpoint coverage, approval metadata completeness, and estimated pilot value.
 - Knowledge and prompt-template utilities that support reuse around orchestration workflows.
 - Existing daily plan, reflection, technical analysis, task, and profile routes remain available for compatibility and personal workflow support.
 
@@ -111,6 +113,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `GET /api/orchestrations/{id}/checkpoints`: inspect checkpoint snapshots and payload hash status for a run
 - `GET /api/orchestrations/{id}/evidence`: export a redacted Markdown/JSON evidence bundle for a run
 - `GET /api/orchestrations/metrics`: orchestration KPI metrics (`days=7|30|...`)
+- `GET /api/orchestrations/pilot-scenarios`: list the five fixed Pilot Scenario Pack V2 scenarios
 - `POST /api/orchestrations/queue/run`: enqueue orchestration run (async)
 - `GET /api/orchestrations/queue/history`: list queue jobs (status/team/attempts snapshot)
 - `GET /api/orchestrations/queue/{job_id}`: get queue job status with real queue events and checkpoint timeline payload
@@ -129,6 +132,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `GET /api/monetization/events`: read newest-first monetization event audit feed, optionally scoped by `subject`
 - `GET /api/monetization/entitlement`: issue a signed orchestration entitlement from an active Manual Billing subject
 - `GET /api/monetization/commercial-metrics`: read Commercial Signal (`days=7|30`, optional `subject`) with billing-period plan usage, window activity, policy blocks, billable work units, ROI summary, top templates, and anomaly hints
+- `GET /api/monetization/pilot-report`: read Pilot Readiness (`days=7|30`, optional `subject` and `team_subject`) for buyer trial acceptance
 - `POST /api/monetization/checkout/manual`: activate or change a manual billing subscription
 - `POST /api/monetization/cancel`: schedule subscription cancellation at period end
 - `POST /api/monetization/reactivate`: clear a pending manual cancellation
@@ -154,6 +158,18 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `/history`
 
 ## Local Startup
+
+## Pilot Conversion Demo
+
+The current commercial demo is scenario-driven:
+
+1. Open `/monetization`, activate or refresh a Power plan for `demo-user`.
+2. Open `/tutorial`, choose a Pilot Dataset card such as `High-risk generated PR`.
+3. `/orchestrate?scenario=<id>` loads PR/CI adapter context, planner/analyzer/reviewer inputs, approval metadata, and the recommended release-gate template.
+4. Run the gate with signed Power entitlement and explicit approval.
+5. Open `/orchestrations`, verify ledger/checkpoints, then use `Export Evidence`, `Copy Markdown`, or `Download Markdown`.
+6. Open `/monetization` to review `Commercial Signal` and `Pilot Readiness`.
+7. Open `/dashboard` to confirm buyer KPIs: Estimated Value, Review Time Saved, Blocked Risk Value, and Pilot Ready.
 
 ## 1) Backend
 

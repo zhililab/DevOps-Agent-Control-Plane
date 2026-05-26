@@ -17,7 +17,7 @@ from app.models import (
     WorkflowOrchestration,
     WorkflowTemplate,
 )
-from app.services.entitlement_service import resolve_entitlement_context
+from app.services.entitlement_service import resolve_entitlement_context, sign_entitlement_token
 from app.services.monetization_service import backfill_current_period_usage_counters
 
 
@@ -773,6 +773,85 @@ def test_commercial_metrics_aggregates_subject_scoped_usage_policy_blocks_and_te
         assert "should-not-leak" not in serialized
     finally:
         db_generator.close()
+
+
+def test_pilot_readiness_report_aggregates_subject_team_roi_and_integrity(client) -> None:
+    checkout = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "pilot-buyer", "target_tier": "power"},
+    )
+    assert checkout.status_code == 200
+    client.post("/api/orchestrations/templates/import/builtin")
+    ai_pr_template = next(
+        item for item in client.get("/api/orchestrations/templates").json()
+        if item["name"] == "AI-generated PR Release Gate"
+    )
+    scenario = next(
+        item for item in client.get("/api/orchestrations/pilot-scenarios").json()["items"]
+        if item["id"] == "high-risk-generated-pr"
+    )
+
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "pilot-report-secret"
+        settings.entitlement_required = True
+        power_token = sign_entitlement_token(
+            secret="pilot-report-secret",
+            tier="power",
+            user_id="pilot-buyer",
+            ttl_seconds=600,
+        )
+        run = client.post(
+            "/api/orchestrations/run",
+            json={
+                "entry_source": "pilot_scenario",
+                "template_id": ai_pr_template["id"],
+                "steps": None,
+                "team_subject": "platform-team",
+                "requested_by": "sre-lead",
+                "approval_actor": "release-manager",
+                "approval_note": "Pilot buyer approved the release gate.",
+                "approval_confirmed": True,
+                "release_gate_input": scenario["release_gate_input"],
+                "daily_context": scenario["daily_context"],
+                "technical_input": scenario["technical_input"],
+                "reflection_input": scenario["reflection_input"],
+                "persist_knowledge": False,
+                "persist_template": False,
+            },
+            headers={"X-Entitlement": power_token},
+        )
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
+
+    assert run.status_code == 200
+
+    response = client.get("/api/monetization/pilot-report?days=7&subject=pilot-buyer&team_subject=platform-team")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["subject"] == "pilot-buyer"
+    assert payload["team_subject"] == "platform-team"
+    assert payload["status"] == "needs evidence"
+    assert payload["runs_completed"] == 1
+    assert payload["evidence_exportable_runs"] == 1
+    assert payload["ledger_valid_runs"] == 1
+    assert payload["checkpointed_runs"] == 1
+    assert payload["approval_required_runs"] == 1
+    assert payload["blocked_or_needs_review_runs"] == 1
+    assert payload["estimated_value_usd"] > 0
+    assert payload["review_time_saved_minutes"] > 0
+    assert payload["audit_time_saved_minutes"] > 0
+    assert payload["metadata_completeness"] == 1.0
+    serialized = json.dumps(payload).lower()
+    for forbidden in ("password", "secret", "raw entitlement"):
+        assert forbidden not in serialized
+
+    team_miss = client.get("/api/monetization/pilot-report?days=7&subject=pilot-buyer&team_subject=other-team")
+    assert team_miss.status_code == 200
+    assert team_miss.json()["runs_completed"] == 0
 
 
 def test_usage_counter_backfill_is_idempotent_for_current_billing_period(client) -> None:
