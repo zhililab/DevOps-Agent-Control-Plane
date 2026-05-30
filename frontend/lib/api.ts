@@ -8,6 +8,7 @@ import type {
   EntitlementBootstrap,
   HistoryIntegrityResponse,
   CommercialMetricsResponse,
+  PilotCloseoutReport,
   PilotReadinessReport,
   PilotScenarioListResponse,
   ReleaseGatePrCiInput,
@@ -289,6 +290,7 @@ export const apiClient = {
   runWorkflowOrchestration(
     payload: {
       entry_source: string;
+      pilot_scenario_id?: string;
       team_subject?: string;
       requested_by?: string;
       approval_actor?: string;
@@ -319,6 +321,7 @@ export const apiClient = {
   enqueueWorkflowOrchestration(
     payload: {
       entry_source: string;
+      pilot_scenario_id?: string;
       team_subject?: string;
       requested_by?: string;
       approval_actor?: string;
@@ -487,6 +490,19 @@ export const apiClient = {
       search.set("team_subject", teamSubject.trim());
     }
     return request<PilotReadinessReport>(`/monetization/pilot-report?${search.toString()}`, {
+      retries: 2,
+    });
+  },
+
+  getPilotCloseoutReport(days = 7, subject?: string, teamSubject?: string) {
+    const search = new URLSearchParams({ days: String(days) });
+    if (subject?.trim()) {
+      search.set("subject", subject.trim());
+    }
+    if (teamSubject?.trim()) {
+      search.set("team_subject", teamSubject.trim());
+    }
+    return request<PilotCloseoutReport>(`/monetization/pilot-closeout?${search.toString()}`, {
       retries: 2,
     });
   },

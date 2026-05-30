@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
@@ -111,7 +111,7 @@ def test_orchestration_history_can_skip_steps_for_lightweight_dashboard_queries(
 def test_orchestration_metrics_uses_database_aggregate_result() -> None:
     db, _engine = _make_session()
     try:
-        now = datetime(2026, 5, 22, 0, 0, 0)
+        now = datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
         _seed_orchestration(db, created_at=now, status="success", duration_ms=100)
         _seed_orchestration(db, created_at=now - timedelta(minutes=1), status="partial_success", duration_ms=200)
         _seed_orchestration(db, created_at=now - timedelta(minutes=2), status="failed", duration_ms=300)

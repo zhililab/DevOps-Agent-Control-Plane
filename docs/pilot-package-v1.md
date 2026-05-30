@@ -7,9 +7,10 @@ AI-generated PR -> release gate -> human approval -> execute/block -> ledger/che
 
 - Static scenario API: `GET /api/orchestrations/pilot-scenarios`.
 - Pilot readiness API: `GET /api/monetization/pilot-report?days=7|30&subject=...&team_subject=...`.
+- Pilot closeout API: `GET /api/monetization/pilot-closeout?days=7|30&subject=...&team_subject=...`.
 - Scenario-driven UI: `/tutorial` links to `/orchestrate?scenario=<id>`, and `/orchestrate` can load the scenario into PR/CI adapter, planner, analyzer, reviewer, approval, and template fields.
 - Evidence closeout: `/orchestrations` supports `Copy Markdown` and `Download Markdown` for each exported bundle.
-- Buyer KPI closeout: `/monetization` shows `Pilot Readiness`; `/dashboard` shows `Pilot Ready`.
+- Buyer KPI closeout: `/monetization` shows `Pilot Readiness`, scenario completion, `Why Power`, and `Pilot Closeout`; `/dashboard` shows `Pilot Ready`.
 
 ## Pilot Goal
 
@@ -42,6 +43,7 @@ Do not paste raw credentials, tokens, secrets, passwords, or private customer da
 ## Trial Success Metrics
 
 - At least 5 release-gate runs completed with evidence export.
+- All 5 fixed scenarios are marked completed, or missing scenarios are explicitly listed in the closeout report.
 - At least 5 runs have valid ledger events.
 - At least 5 runs have checkpoint snapshots.
 - At least 1 risky PR is blocked or escalated before execution.
@@ -64,13 +66,15 @@ Manual Billing V1 remains the trial billing model. Stripe or another payment pro
 3. Confirm `/orchestrate?scenario=<id>` loaded the PR/CI adapter packet, team metadata, approval state, and recommended template.
 4. Run the gate with signed Power entitlement. For `missing-approval`, first show the `409` block, then confirm approval and rerun.
 5. Open `/orchestrations`, verify ledger/checkpoints, export evidence, then copy or download Markdown.
-6. Open `/monetization`, show Plan Usage, Commercial Signal value, and Pilot Readiness.
-7. Open `/dashboard`, show Pilot Ready, Estimated Value, Review Time Saved, and Blocked Risk Value.
+6. Open `/monetization`, show Plan Usage, Commercial Signal value, Pilot Readiness, scenario completion, and Why Power.
+7. Copy or download the Pilot Closeout Markdown report for buyer review.
+8. Open `/dashboard`, show Pilot Ready, Estimated Value, Review Time Saved, and Blocked Risk Value.
 
 ## Buyer Retro Template
 
 - Which scenario best matched your real release-risk problem?
 - Did the evidence bundle contain enough context for release review or incident audit?
+- Did the closeout report clearly explain what is complete, what evidence is missing, and why Power is or is not justified?
 - Which policy boundary mattered most: tier, approval, tool scope, or blocked risk?
 - Which ROI estimate was credible enough to keep: review time saved, audit time saved, or blocked risk value?
 - What extra field is needed before a paid pilot: owner, service, environment, compliance tag, or rollback evidence?

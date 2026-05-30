@@ -132,6 +132,17 @@ const DEFAULT_PILOT_READINESS: PilotReadinessReport = {
   audit_time_saved_minutes: 0,
   metadata_completeness: 0,
   missing_metadata_runs: 0,
+  scenario_statuses: [],
+  power_upgrade_evidence: {
+    power_required_runs: 0,
+    approval_required_runs: 0,
+    blocked_or_needs_review_runs: 0,
+    evidence_exportable_runs: 0,
+    ledger_valid_runs: 0,
+    estimated_value_usd: 0,
+    review_audit_time_saved_minutes: 0,
+    recommendation: "Run the five pilot scenarios before buyer closeout.",
+  },
   success_criteria: [],
   recommendations: [],
 };

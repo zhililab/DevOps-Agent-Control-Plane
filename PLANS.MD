@@ -12,14 +12,14 @@ The long-term vision remains a reusable personal operating system for execution,
 
 ---
 
-# 0. Current Iteration Snapshot (2026-05-27)
+# 0. Current Iteration Snapshot (2026-05-30)
 
 ## Iteration Theme
-- current iteration target: convert the deployed DevOps orchestration MVP into a scenario-driven Pilot Conversion V2 loop centered on AI-generated PR release control
+- current iteration target: convert the deployed DevOps orchestration MVP into a buyer-closeout Pilot Conversion loop centered on AI-generated PR release control
 - product direction: enterprise agent execution trust control layer for CI/CD and incident response, with inspectable replay, queue lifecycle visibility, signed entitlement-aware gates, checkpoint snapshots, and team-ready audit metadata
 - commercial direction: sell governed agent execution that reduces release risk, shortens human review cycles, preserves compliance evidence, and turns blocked risk into ROI proof
 - UI direction: buyer-readable control plane where `/tutorial`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/dashboard` tell one story: choose pilot scenario -> run release gate -> export evidence -> inspect ROI -> decide Power upgrade
-- status: Pilot ROI loop is online; current work packages it into a stable enterprise pilot with fixed scenarios, readiness reporting, and evidence-export closeout
+- status: Pilot ROI loop is online; current work adds scenario completion tracking, buyer-facing closeout reporting, and Power upgrade evidence so a trial can end with a clear commercial next action
 
 ## Commercial Core
 The product should be judged by whether it helps an enterprise make or save money:
@@ -223,6 +223,11 @@ The first version can use transparent estimates and operator-provided assumption
   - `GET /api/monetization/pilot-report?days=7|30&subject=...&team_subject=...` aggregates completed runs, evidence-exportable runs, ledger-valid runs, checkpointed runs, approval-required runs, blocked/needs-review runs, metadata completeness, and estimated pilot value
   - `/monetization` shows a buyer-readable `Pilot Readiness` panel beside Plan Usage and Commercial Signal
   - `/dashboard` shows `Pilot Ready` as a commercial KPI
+- added Pilot Closeout Report V1:
+  - `pilot_scenario_id` can be stored on orchestration run requests and shown on run reads/evidence bundles
+  - `GET /api/monetization/pilot-closeout?days=7|30&subject=...&team_subject=...` returns a redaction-safe Markdown buyer report based on existing readiness, ROI, ledger, checkpoint, and scenario data
+  - `/monetization` shows scenario completion status for all five pilot scenarios, a `Why Power` upgrade evidence block, and copy/download actions for the closeout report
+  - repeated pilot report/closeout calls remain read-only and do not mutate billing-period usage counters
 - closed Evidence Export UX:
   - `/orchestrations` evidence export panel now supports `Copy Markdown` and `Download Markdown`
   - downloaded evidence file name is `orchestration-<id>-evidence.md`
@@ -247,8 +252,9 @@ The first version can use transparent estimates and operator-provided assumption
 ## Still Pending / Next Tasks
 
 ### Commercial Proof Required
-- validate Pilot Conversion V2 with live buyer-style demos across all five scenarios
-- use Pilot Readiness as the commercial acceptance score before expanding to payment-provider or real Git provider work
+- validate Pilot Closeout with live buyer-style demos across all five scenarios
+- use Pilot Readiness plus Pilot Closeout as the commercial acceptance score before expanding to payment-provider or real Git provider work
+- collect buyer feedback on the `Why Power` evidence: Power-only gates used, risk decisions, audit packets, and estimated value
 - add Commercial Metrics V3 only after pilot feedback clarifies which value estimates buyers trust most
 - evaluate a real GitHub/GitLab adapter after the controlled PR/CI evidence packet proves useful; V1 intentionally avoids OAuth/private repo access
 - keep all new work tied to the commercial proof loop; do not add broad assistant modules unless they strengthen release control, incident control, audit evidence, or ROI reporting

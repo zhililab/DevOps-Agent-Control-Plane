@@ -141,8 +141,34 @@ globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
         audit_time_saved_minutes: 0,
         metadata_completeness: 0,
         missing_metadata_runs: 0,
+        scenario_statuses: [],
+        power_upgrade_evidence: {
+          power_required_runs: 0,
+          approval_required_runs: 0,
+          blocked_or_needs_review_runs: 0,
+          evidence_exportable_runs: 0,
+          ledger_valid_runs: 0,
+          estimated_value_usd: 0,
+          review_audit_time_saved_minutes: 0,
+          recommendation: "Run the Power-gated scenario pack to produce upgrade evidence.",
+        },
         success_criteria: [],
         recommendations: [],
+      }),
+      { status: 200 }
+    );
+  }
+
+  if (url.includes("/monetization/pilot-closeout")) {
+    return new Response(
+      JSON.stringify({
+        window_days: 7,
+        generated_at: "2026-05-22T00:00:00Z",
+        subject: null,
+        team_subject: null,
+        status: "needs evidence",
+        markdown: "# Pilot Closeout Report\n\nRun the five scenario pack gates before buyer review.\n",
+        data: {},
       }),
       { status: 200 }
     );

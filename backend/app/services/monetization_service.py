@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from calendar import monthrange
 from datetime import datetime, time, timedelta
+from typing import Literal
 
 from sqlalchemy.orm import Session
 
@@ -32,7 +33,10 @@ from app.schemas import (
     CommercialMetricsTrendPoint,
     CommercialMetricsUsageSummary,
     MonetizationEventRead,
+    PilotCloseoutReportResponse,
+    PilotPowerUpgradeEvidence,
     PilotReadinessReportResponse,
+    PilotScenarioCompletionRead,
     MonetizationTier,
     SubscriptionLifecycleResponse,
     SubscriptionProfileRead,
@@ -41,6 +45,7 @@ from app.schemas import (
 )
 from app.services.entitlement_service import subject_id_for_entitlement_user
 from app.services.history_ledger import summarize_orchestration_histories
+from app.services.pilot_scenarios import list_pilot_scenarios
 from app.services.roi_service import compute_workflow_roi_evidence, decision_from_summary_text
 from app.services.workflow_checkpoints import summarize_checkpoint_counts
 from app.time_utils import business_date_from_utc, utcnow_naive
@@ -397,38 +402,23 @@ def get_pilot_readiness_report(
     normalized_subject = subject.strip() if subject and subject.strip() else None
     normalized_team = team_subject.strip() if team_subject and team_subject.strip() else None
 
-    usage_logs = _list_monetization_logs(
+    records = _list_pilot_report_records(
         db,
         window_start=window_start,
         subject=normalized_subject,
-        task_types={"monetization.usage_recorded"},
+        team_subject=normalized_team,
     )
-    subject_orchestration_ids = {
-        orchestration_id
-        for orchestration_id in (_log_payload(log).get("orchestration_id") for log in usage_logs)
-        if isinstance(orchestration_id, int)
-    }
-
-    query = db.query(WorkflowOrchestration).filter(WorkflowOrchestration.created_at >= window_start)
-    if normalized_subject:
-        if not subject_orchestration_ids:
-            records: list[WorkflowOrchestration] = []
-        else:
-            query = query.filter(WorkflowOrchestration.id.in_(subject_orchestration_ids))
-            if normalized_team:
-                query = query.filter(WorkflowOrchestration.team_subject == normalized_team)
-            records = query.order_by(WorkflowOrchestration.created_at.desc(), WorkflowOrchestration.id.desc()).all()
-    else:
-        if normalized_team:
-            query = query.filter(WorkflowOrchestration.team_subject == normalized_team)
-        records = query.order_by(WorkflowOrchestration.created_at.desc(), WorkflowOrchestration.id.desc()).all()
-
     completed_records = [record for record in records if record.status in {"success", "partial_success"}]
     orchestration_ids = [record.id for record in completed_records]
     templates_by_id = _templates_by_id_for_orchestrations(db, completed_records)
     checkpoint_counts = summarize_checkpoint_counts(db, orchestration_ids)
     ledger_summaries = summarize_orchestration_histories(db, orchestration_ids)
     roi_summary = _build_roi_summary(completed_records, templates_by_id, checkpoint_counts)
+    scenario_statuses = _build_pilot_scenario_statuses(
+        completed_records,
+        checkpoint_counts=checkpoint_counts,
+        ledger_summaries=ledger_summaries,
+    )
 
     evidence_exportable_runs = len(
         [
@@ -469,12 +459,22 @@ def get_pilot_readiness_report(
     metadata_completeness = (
         round(metadata_fields_present / metadata_fields_total, 2) if metadata_fields_total > 0 else 0.0
     )
+    completed_scenarios = len([item for item in scenario_statuses if item.status == "completed"])
     status = _pilot_readiness_status(
         runs_completed=len(completed_records),
+        completed_scenarios=completed_scenarios,
         evidence_exportable_runs=evidence_exportable_runs,
         ledger_valid_runs=ledger_valid_runs,
         checkpointed_runs=checkpointed_runs,
         metadata_completeness=metadata_completeness,
+    )
+    power_upgrade_evidence = _build_power_upgrade_evidence(
+        approval_required_runs=approval_required_runs,
+        blocked_or_needs_review_runs=blocked_or_needs_review_runs,
+        evidence_exportable_runs=evidence_exportable_runs,
+        ledger_valid_runs=ledger_valid_runs,
+        roi_summary=roi_summary,
+        scenario_statuses=scenario_statuses,
     )
 
     return PilotReadinessReportResponse(
@@ -494,20 +494,43 @@ def get_pilot_readiness_report(
         audit_time_saved_minutes=roi_summary.audit_time_saved_minutes,
         metadata_completeness=metadata_completeness,
         missing_metadata_runs=missing_metadata_runs,
+        scenario_statuses=scenario_statuses,
+        power_upgrade_evidence=power_upgrade_evidence,
         success_criteria=[
-            "5+ completed release-gate runs",
-            "5+ evidence-exportable runs",
+            "5/5 pilot scenarios completed",
+            "5+ evidence-exportable release-gate runs",
             "Ledger valid on completed runs",
             "Checkpoint snapshots present",
             "80%+ team/requester/approver metadata completeness",
         ],
         recommendations=_pilot_readiness_recommendations(
             runs_completed=len(completed_records),
+            completed_scenarios=completed_scenarios,
             evidence_exportable_runs=evidence_exportable_runs,
             ledger_valid_runs=ledger_valid_runs,
             checkpointed_runs=checkpointed_runs,
             metadata_completeness=metadata_completeness,
         ),
+    )
+
+
+def get_pilot_closeout_report(
+    db: Session,
+    *,
+    days: int = 7,
+    subject: str | None = None,
+    team_subject: str | None = None,
+) -> PilotCloseoutReportResponse:
+    report = get_pilot_readiness_report(db, days=days, subject=subject, team_subject=team_subject)
+    markdown = _build_pilot_closeout_markdown(report)
+    return PilotCloseoutReportResponse(
+        window_days=report.window_days,
+        generated_at=utcnow_naive(),
+        subject=report.subject,
+        team_subject=report.team_subject,
+        status=report.status,
+        markdown=markdown,
+        data=report.model_dump(mode="json"),
     )
 
 
@@ -676,6 +699,7 @@ def reactivate_subscription(db: Session, *, subject: str) -> SubscriptionLifecyc
 def _pilot_readiness_status(
     *,
     runs_completed: int,
+    completed_scenarios: int,
     evidence_exportable_runs: int,
     ledger_valid_runs: int,
     checkpointed_runs: int,
@@ -684,7 +708,8 @@ def _pilot_readiness_status(
     if metadata_completeness < 0.8 and runs_completed > 0:
         return "needs approval metadata"
     if (
-        runs_completed >= 5
+        completed_scenarios >= 5
+        and runs_completed >= 5
         and evidence_exportable_runs >= 5
         and ledger_valid_runs >= 5
         and checkpointed_runs >= 5
@@ -697,12 +722,15 @@ def _pilot_readiness_status(
 def _pilot_readiness_recommendations(
     *,
     runs_completed: int,
+    completed_scenarios: int,
     evidence_exportable_runs: int,
     ledger_valid_runs: int,
     checkpointed_runs: int,
     metadata_completeness: float,
 ) -> list[str]:
     recommendations: list[str] = []
+    if completed_scenarios < 5:
+        recommendations.append(f"Complete the full five-scenario pilot pack ({completed_scenarios}/5 completed).")
     if runs_completed < 5:
         recommendations.append("Run the five scenario pack gates before buyer review.")
     if evidence_exportable_runs < runs_completed or evidence_exportable_runs < 5:
@@ -716,6 +744,184 @@ def _pilot_readiness_recommendations(
     if not recommendations:
         recommendations.append("Pilot package is ready for buyer replay.")
     return recommendations
+
+
+def _list_pilot_report_records(
+    db: Session,
+    *,
+    window_start: datetime,
+    subject: str | None,
+    team_subject: str | None,
+) -> list[WorkflowOrchestration]:
+    usage_logs = _list_monetization_logs(
+        db,
+        window_start=window_start,
+        subject=subject,
+        task_types={"monetization.usage_recorded"},
+    )
+    subject_orchestration_ids = {
+        orchestration_id
+        for orchestration_id in (_log_payload(log).get("orchestration_id") for log in usage_logs)
+        if isinstance(orchestration_id, int)
+    }
+
+    query = db.query(WorkflowOrchestration).filter(WorkflowOrchestration.created_at >= window_start)
+    if subject:
+        if not subject_orchestration_ids:
+            return []
+        query = query.filter(WorkflowOrchestration.id.in_(subject_orchestration_ids))
+    if team_subject:
+        query = query.filter(WorkflowOrchestration.team_subject == team_subject)
+    return query.order_by(WorkflowOrchestration.created_at.desc(), WorkflowOrchestration.id.desc()).all()
+
+
+def _build_pilot_scenario_statuses(
+    records: list[WorkflowOrchestration],
+    *,
+    checkpoint_counts: dict[int, int],
+    ledger_summaries: dict[int, dict[str, object]],
+) -> list[PilotScenarioCompletionRead]:
+    scenarios = list_pilot_scenarios().items
+    records_by_scenario: dict[str, list[WorkflowOrchestration]] = {scenario.id: [] for scenario in scenarios}
+    for record in records:
+        scenario_id = _pilot_scenario_id_from_request_json(record.request_json)
+        if scenario_id in records_by_scenario:
+            records_by_scenario[scenario_id].append(record)
+
+    statuses: list[PilotScenarioCompletionRead] = []
+    for scenario in scenarios:
+        scenario_records = records_by_scenario.get(scenario.id, [])
+        evidence_exportable = len(
+            [
+                record
+                for record in scenario_records
+                if _safe_json_dict(record.result_json).get("conclusion") or checkpoint_counts.get(record.id, 0) > 0
+            ]
+        )
+        ledger_valid = len(
+            [
+                record
+                for record in scenario_records
+                if ledger_summaries.get(record.id, {}).get("integrity_status") == "valid"
+                and int(ledger_summaries.get(record.id, {}).get("event_count", 0) or 0) > 0
+            ]
+        )
+        checkpointed = len([record for record in scenario_records if checkpoint_counts.get(record.id, 0) > 0])
+        metadata_complete = any(_run_has_buyer_metadata(record) for record in scenario_records)
+        status: Literal["missing", "needs evidence", "completed"] = "missing"
+        if scenario_records:
+            status = "completed" if evidence_exportable and ledger_valid and checkpointed and metadata_complete else "needs evidence"
+        latest_id = scenario_records[0].id if scenario_records else None
+        statuses.append(
+            PilotScenarioCompletionRead(
+                id=scenario.id,
+                name=scenario.name,
+                status=status,
+                expected_gate_behavior=scenario.expected_gate_behavior,
+                required_tier=scenario.required_tier,
+                completed_runs=len(scenario_records),
+                evidence_exportable_runs=evidence_exportable,
+                ledger_valid_runs=ledger_valid,
+                checkpointed_runs=checkpointed,
+                approval_metadata_complete=metadata_complete,
+                latest_orchestration_id=latest_id,
+            )
+        )
+    return statuses
+
+
+def _build_power_upgrade_evidence(
+    *,
+    approval_required_runs: int,
+    blocked_or_needs_review_runs: int,
+    evidence_exportable_runs: int,
+    ledger_valid_runs: int,
+    roi_summary: CommercialMetricsRoiSummary,
+    scenario_statuses: list[PilotScenarioCompletionRead],
+) -> PilotPowerUpgradeEvidence:
+    power_required_runs = len([item for item in scenario_statuses if item.required_tier == "power" and item.completed_runs > 0])
+    review_audit_minutes = roi_summary.review_time_saved_minutes + roi_summary.audit_time_saved_minutes
+    if power_required_runs or approval_required_runs or blocked_or_needs_review_runs:
+        recommendation = (
+            "Power is the recommended pilot plan because the scenario pack uses approval gates, "
+            "ledger-backed evidence, and blocked-risk reporting."
+        )
+    else:
+        recommendation = "Run the Power-gated scenario pack to produce upgrade evidence."
+    return PilotPowerUpgradeEvidence(
+        power_required_runs=power_required_runs,
+        approval_required_runs=approval_required_runs,
+        blocked_or_needs_review_runs=blocked_or_needs_review_runs,
+        evidence_exportable_runs=evidence_exportable_runs,
+        ledger_valid_runs=ledger_valid_runs,
+        estimated_value_usd=roi_summary.estimated_customer_value_usd,
+        review_audit_time_saved_minutes=review_audit_minutes,
+        recommendation=recommendation,
+    )
+
+
+def _run_has_buyer_metadata(record: WorkflowOrchestration) -> bool:
+    return all(
+        isinstance(value, str) and value.strip()
+        for value in [record.team_subject, record.requested_by, record.approval_actor, record.approval_note]
+    )
+
+
+def _pilot_scenario_id_from_request_json(value: str) -> str | None:
+    payload = _safe_json_dict(value)
+    scenario_id = payload.get("pilot_scenario_id")
+    if isinstance(scenario_id, str) and scenario_id.strip():
+        return scenario_id.strip()[:80]
+    return None
+
+
+def _build_pilot_closeout_markdown(report: PilotReadinessReportResponse) -> str:
+    power = report.power_upgrade_evidence
+    completed = len([item for item in report.scenario_statuses if item.status == "completed"])
+    lines = [
+        "# Pilot Closeout Report",
+        "",
+        "## Pilot Status",
+        f"- Status: {report.status}",
+        f"- Window: {report.window_days}D",
+        f"- Subject: {report.subject or 'global'}",
+        f"- Team: {report.team_subject or 'all teams'}",
+        f"- Completed scenarios: {completed}/5",
+        f"- Runs completed: {report.runs_completed}",
+        f"- Evidence-exportable runs: {report.evidence_exportable_runs}",
+        f"- Ledger-valid runs: {report.ledger_valid_runs}",
+        f"- Checkpointed runs: {report.checkpointed_runs}",
+        "",
+        "## Value Generated",
+        f"- Estimated value: ${report.estimated_value_usd}",
+        f"- Review time saved: {report.review_time_saved_minutes} minutes",
+        f"- Audit time saved: {report.audit_time_saved_minutes} minutes",
+        f"- Blocked / needs-review runs: {report.blocked_or_needs_review_runs}",
+        "",
+        "## Scenario Completion",
+    ]
+    for scenario in report.scenario_statuses:
+        lines.append(
+            f"- {scenario.name}: {scenario.status} "
+            f"(runs={scenario.completed_runs}, evidence={scenario.evidence_exportable_runs}, "
+            f"ledger={scenario.ledger_valid_runs}, checkpoints={scenario.checkpointed_runs})"
+        )
+    lines.extend(
+        [
+            "",
+            "## Why Power",
+            f"- Power-required scenario runs: {power.power_required_runs}",
+            f"- Approval-required runs: {power.approval_required_runs}",
+            f"- Evidence-exportable runs: {power.evidence_exportable_runs}",
+            f"- Ledger-valid runs: {power.ledger_valid_runs}",
+            f"- Review + audit time saved: {power.review_audit_time_saved_minutes} minutes",
+            f"- Recommendation: {power.recommendation}",
+            "",
+            "## Next Buyer Action",
+        ]
+    )
+    lines.extend(f"- {item}" for item in report.recommendations)
+    return "\n".join(lines).strip() + "\n"
 
 
 def _latest_profiles(db: Session, *, subject: str | None = None) -> list[SubscriptionProfile]:

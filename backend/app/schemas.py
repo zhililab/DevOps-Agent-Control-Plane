@@ -525,6 +525,7 @@ class HistoryIntegritySummary(BaseModel):
 
 class WorkflowOrchestrationRunRequest(BaseModel):
     entry_source: str = "manual"
+    pilot_scenario_id: str | None = Field(default=None, max_length=80)
     team_subject: str = Field(default="demo-team", max_length=120)
     requested_by: str = Field(default="sre-lead", max_length=120)
     approval_actor: str = Field(default="release-manager", max_length=120)
@@ -576,6 +577,7 @@ class WorkflowOrchestrationRead(BaseModel):
     status: OrchestrationStatus
     duration_ms: int
     entry_source: str
+    pilot_scenario_id: str | None = None
     subscription_tier: SubscriptionTier
     team_subject: str = ""
     requested_by: str = ""
@@ -823,6 +825,31 @@ class CommercialMetricsRoiSummary(BaseModel):
     work_units_by_template: list[CommercialMetricsRoiTemplateBreakdown] = Field(default_factory=list)
 
 
+class PilotScenarioCompletionRead(BaseModel):
+    id: str
+    name: str
+    status: Literal["missing", "needs evidence", "completed"]
+    expected_gate_behavior: Literal["approve", "block", "needs human review"]
+    required_tier: SubscriptionTier
+    completed_runs: int = 0
+    evidence_exportable_runs: int = 0
+    ledger_valid_runs: int = 0
+    checkpointed_runs: int = 0
+    approval_metadata_complete: bool = False
+    latest_orchestration_id: int | None = None
+
+
+class PilotPowerUpgradeEvidence(BaseModel):
+    power_required_runs: int = 0
+    approval_required_runs: int = 0
+    blocked_or_needs_review_runs: int = 0
+    evidence_exportable_runs: int = 0
+    ledger_valid_runs: int = 0
+    estimated_value_usd: int = 0
+    review_audit_time_saved_minutes: int = 0
+    recommendation: str
+
+
 class CommercialMetricsTopTemplate(BaseModel):
     template_id: int | None = None
     template_name: str
@@ -879,6 +906,8 @@ class PilotReadinessReportResponse(BaseModel):
     audit_time_saved_minutes: int
     metadata_completeness: float
     missing_metadata_runs: int
+    scenario_statuses: list[PilotScenarioCompletionRead] = Field(default_factory=list)
+    power_upgrade_evidence: PilotPowerUpgradeEvidence
     success_criteria: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
 
@@ -887,6 +916,16 @@ class WorkflowEvidenceExportResponse(BaseModel):
     orchestration_id: int
     generated_at: datetime
     format: Literal["markdown"] = "markdown"
+    markdown: str
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class PilotCloseoutReportResponse(BaseModel):
+    window_days: int
+    generated_at: datetime
+    subject: str | None = None
+    team_subject: str | None = None
+    status: Literal["ready", "needs evidence", "needs approval metadata"]
     markdown: str
     data: dict[str, Any] = Field(default_factory=dict)
 

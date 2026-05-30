@@ -57,6 +57,9 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Show the `Commercial MVP` cockpit: plan state, `Plan Usage`, and `Commercial Audit Feed`.
    - Show `Commercial Signal`: Value Generated, review time saved, blocked risk value, billable work units, 7D/30D activity, policy blocks, top value templates, lifecycle events, and the window switch.
    - Show `Pilot Readiness`: completed runs, evidence-exportable runs, ledger-valid runs, checkpointed runs, metadata completeness, estimated pilot value, and recommended next action.
+   - Show `Scenario Completion`: each of the five pilot scenarios should be `completed`, `needs evidence`, or `missing`.
+   - Show `Why Power`: Power-only gates used, risky decisions, audit packets ready, and estimated value should come from real run/ROI/evidence data.
+   - Use `Copy Report` or `Download Markdown` from `Pilot Closeout` to produce the buyer-facing trial report.
    - Activate or refresh a Pro/Power plan for a demo account and confirm the audit feed is scoped to that account.
    - Explain that Manual Billing V1 is the current demoable commercial loop before real payment-provider integration.
 
@@ -76,6 +79,8 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/api/monetization/commercial-metrics?days=7` includes ROI summary with estimated customer value, review/audit time saved, blocked risk value, and work units by template.
 - `/api/orchestrations/pilot-scenarios` returns five static scenario records with release-gate, daily, technical, reflection, expected behavior, tier, approval, and success-signal fields.
 - `/api/monetization/pilot-report?days=7&subject=demo-user` returns Pilot Readiness with evidence/ledger/checkpoint/ROI counts and no sensitive strings.
+- `/api/monetization/pilot-report?days=7&subject=demo-user` returns scenario completion status and Power upgrade evidence.
+- `/api/monetization/pilot-closeout?days=7&subject=demo-user` returns redaction-safe Markdown with pilot status, scenario completion, missing evidence, value generated, Why Power, and next buyer action.
 - `/api/orchestrations/{id}/evidence` returns a redacted Markdown evidence export for a run.
 - `/api/monetization/entitlement?subject=demo-user` issues a signed token for an active Manual Billing subscription.
 - `/orchestrations` does not show `History Ledger: not checked` for runs that already have ledger events.

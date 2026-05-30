@@ -386,6 +386,7 @@ def test_pilot_scenarios_are_stable_redacted_and_runnable(client) -> None:
             "/api/orchestrations/run",
             json={
                 "entry_source": "pilot_scenario",
+                "pilot_scenario_id": scenario["id"],
                 "template_id": ai_pr_template["id"],
                 "steps": None,
                 "team_subject": "platform-team",
@@ -409,6 +410,7 @@ def test_pilot_scenarios_are_stable_redacted_and_runnable(client) -> None:
     assert response.status_code == 200
     record = response.json()
     assert record["status"] == "success"
+    assert record["pilot_scenario_id"] == "high-risk-generated-pr"
     assert record["policy_gate"]["template_name"] == "AI-generated PR Release Gate"
     assert record["policy_gate"]["decision"] == "needs human review"
     assert record["roi_evidence"]["estimated_customer_value_usd"] > 0
@@ -435,6 +437,7 @@ def test_missing_approval_pilot_scenario_blocks_until_confirmed(client) -> None:
         power_token = sign_entitlement_token(secret="missing-approval-secret", tier="power", ttl_seconds=600)
         payload = {
             "entry_source": "pilot_scenario",
+            "pilot_scenario_id": scenario["id"],
             "template_id": ai_pr_template["id"],
             "steps": None,
             "team_subject": "platform-team",

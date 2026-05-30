@@ -292,6 +292,7 @@ export function OrchestrateView() {
   function buildPayload() {
     const payload: {
       entry_source: string;
+      pilot_scenario_id?: string;
       team_subject: string;
       requested_by: string;
       approval_actor: string;
@@ -364,6 +365,9 @@ export function OrchestrateView() {
     };
     if (selectedTemplateId) {
       payload.template_id = Number(selectedTemplateId);
+    }
+    if (selectedPilotScenarioId) {
+      payload.pilot_scenario_id = selectedPilotScenarioId;
     }
     return payload;
   }

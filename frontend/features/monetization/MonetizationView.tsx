@@ -9,6 +9,7 @@ import { formatBusinessTimestamp } from "@/lib/time";
 import type {
   CommercialMetricsResponse,
   MonetizationEvent,
+  PilotCloseoutReport,
   PilotReadinessReport,
   SubscriptionProfile,
   SubscriptionTier,
@@ -120,6 +121,17 @@ const DEFAULT_PILOT_REPORT: PilotReadinessReport = {
   audit_time_saved_minutes: 0,
   metadata_completeness: 0,
   missing_metadata_runs: 0,
+  scenario_statuses: [],
+  power_upgrade_evidence: {
+    power_required_runs: 0,
+    approval_required_runs: 0,
+    blocked_or_needs_review_runs: 0,
+    evidence_exportable_runs: 0,
+    ledger_valid_runs: 0,
+    estimated_value_usd: 0,
+    review_audit_time_saved_minutes: 0,
+    recommendation: "Run the Power-gated scenario pack to produce upgrade evidence.",
+  },
   success_criteria: [
     "5+ completed release-gate runs",
     "5+ evidence-exportable runs",
@@ -128,6 +140,16 @@ const DEFAULT_PILOT_REPORT: PilotReadinessReport = {
     "80%+ team/requester/approver metadata completeness",
   ],
   recommendations: ["Run the five scenario pack gates before buyer review."],
+};
+
+const DEFAULT_PILOT_CLOSEOUT: PilotCloseoutReport = {
+  window_days: 7,
+  generated_at: "",
+  subject: null,
+  team_subject: null,
+  status: "needs evidence",
+  markdown: "# Pilot Closeout Report\n\nRun the five scenario pack gates before buyer review.\n",
+  data: {},
 };
 
 function metricLabel(metric: string): string {
@@ -180,6 +202,24 @@ function hasPilotReadinessPayload(value: unknown): value is PilotReadinessReport
   );
 }
 
+function hasPilotCloseoutPayload(value: unknown): value is PilotCloseoutReport {
+  if (!value || typeof value !== "object") return false;
+  const report = value as Partial<PilotCloseoutReport>;
+  return typeof report.window_days === "number" && typeof report.status === "string" && typeof report.markdown === "string";
+}
+
+function downloadTextFile(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function MonetizationView() {
   const [subject, setSubject] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_SUBJECT;
@@ -190,6 +230,7 @@ export function MonetizationView() {
   const [events, setEvents] = useState<MonetizationEvent[]>([]);
   const [commercialMetrics, setCommercialMetrics] = useState<CommercialMetricsResponse>(DEFAULT_COMMERCIAL_METRICS);
   const [pilotReport, setPilotReport] = useState<PilotReadinessReport>(DEFAULT_PILOT_REPORT);
+  const [pilotCloseout, setPilotCloseout] = useState<PilotCloseoutReport>(DEFAULT_PILOT_CLOSEOUT);
   const [metricsWindowDays, setMetricsWindowDays] = useState<7 | 30>(7);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -228,6 +269,7 @@ export function MonetizationView() {
       fallbackEvent?: MonetizationEvent;
       fallbackMetrics?: CommercialMetricsResponse;
       fallbackPilotReport?: PilotReadinessReport;
+      fallbackPilotCloseout?: PilotCloseoutReport;
     } = {}
   ) {
     const normalizedSubject = currentSubject.trim() || DEFAULT_SUBJECT;
@@ -235,12 +277,13 @@ export function MonetizationView() {
     setError(null);
     setLoadNotice(null);
     try {
-      const [profileResult, usageResult, eventsResult, metricsResult, pilotReportResult] = await Promise.allSettled([
+      const [profileResult, usageResult, eventsResult, metricsResult, pilotReportResult, pilotCloseoutResult] = await Promise.allSettled([
         apiClient.getSubscriptionProfile(normalizedSubject),
         apiClient.listUsageCounters(normalizedSubject),
         apiClient.listMonetizationEvents(25, normalizedSubject),
         apiClient.getCommercialMetrics(metricsWindowDays, normalizedSubject),
         apiClient.getPilotReadinessReport(metricsWindowDays, normalizedSubject),
+        apiClient.getPilotCloseoutReport(metricsWindowDays, normalizedSubject),
       ]);
 
       const failures: string[] = [];
@@ -283,6 +326,13 @@ export function MonetizationView() {
       } else {
         setPilotReport(options.fallbackPilotReport ?? pilotReport);
         failures.push("pilot readiness");
+      }
+
+      if (pilotCloseoutResult.status === "fulfilled" && hasPilotCloseoutPayload(pilotCloseoutResult.value)) {
+        setPilotCloseout(pilotCloseoutResult.value);
+      } else {
+        setPilotCloseout(options.fallbackPilotCloseout ?? pilotCloseout);
+        failures.push("pilot closeout");
       }
 
       if (failures.length > 0) {
@@ -340,6 +390,7 @@ export function MonetizationView() {
         fallbackEvent: response.event,
         fallbackMetrics: commercialMetrics,
         fallbackPilotReport: pilotReport,
+        fallbackPilotCloseout: pilotCloseout,
       });
       setStatus(successMessage);
     } catch (actionError) {
@@ -374,6 +425,21 @@ export function MonetizationView() {
       () => apiClient.reactivateSubscription(normalizedSubject),
       "Subscription reactivated."
     );
+  }
+
+  async function copyPilotCloseout() {
+    try {
+      await navigator.clipboard.writeText(pilotCloseout.markdown);
+      setStatus("Pilot closeout report copied.");
+    } catch (copyError) {
+      setError(copyError instanceof Error ? copyError.message : "Could not copy pilot closeout report.");
+    }
+  }
+
+  function downloadPilotCloseout() {
+    const normalizedSubject = subject.trim() || DEFAULT_SUBJECT;
+    downloadTextFile(`pilot-closeout-${normalizedSubject}-${pilotCloseout.window_days}d.md`, pilotCloseout.markdown);
+    setStatus("Pilot closeout report downloaded.");
   }
 
   return (
@@ -695,6 +761,70 @@ export function MonetizationView() {
             </ul>
           </article>
         </div>
+        <div className="commercial-summary">
+          <article className="result-block">
+            <h3>Scenario Completion</h3>
+            {pilotReport.scenario_statuses.length > 0 ? (
+              <div className="event-feed">
+                {pilotReport.scenario_statuses.map((scenario) => (
+                  <article className="event-row" key={scenario.id}>
+                    <div>
+                      <strong>{scenario.name}</strong>
+                      <p className="muted">
+                        {scenario.required_tier.toUpperCase()} · {scenario.expected_gate_behavior} ·{" "}
+                        {scenario.completed_runs} run(s)
+                      </p>
+                    </div>
+                    <span>{scenario.status}</span>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">No pilot scenario completion evidence yet.</p>
+            )}
+          </article>
+          <article className="result-block">
+            <h3>Why Power</h3>
+            <p>{pilotReport.power_upgrade_evidence.recommendation}</p>
+            <div className="usage-counter-grid">
+              <div className="usage-counter">
+                <strong>Power Gates Used</strong>
+                <span>{pilotReport.power_upgrade_evidence.power_required_runs}</span>
+              </div>
+              <div className="usage-counter">
+                <strong>Risk Decisions</strong>
+                <span>{pilotReport.power_upgrade_evidence.blocked_or_needs_review_runs}</span>
+              </div>
+              <div className="usage-counter">
+                <strong>Audit Packets</strong>
+                <span>{pilotReport.power_upgrade_evidence.evidence_exportable_runs}</span>
+              </div>
+              <div className="usage-counter">
+                <strong>Value Signal</strong>
+                <span>{formatUsd(pilotReport.power_upgrade_evidence.estimated_value_usd)}</span>
+              </div>
+            </div>
+          </article>
+        </div>
+        <article className="result-block">
+          <div className="section-heading-row">
+            <div>
+              <h3>Pilot Closeout</h3>
+              <p className="muted">
+                Buyer-ready markdown summary of pilot status, scenario gaps, ROI, and Power upgrade evidence.
+              </p>
+            </div>
+            <div className="inline-form-row compact-controls">
+              <button type="button" onClick={copyPilotCloseout}>
+                Copy Report
+              </button>
+              <button type="button" onClick={downloadPilotCloseout}>
+                Download Markdown
+              </button>
+            </div>
+          </div>
+          <pre>{pilotCloseout.markdown}</pre>
+        </article>
       </section>
 
       <section className="pricing-grid" aria-label="pricing-plans">

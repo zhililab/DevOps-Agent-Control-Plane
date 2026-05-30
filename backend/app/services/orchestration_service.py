@@ -1151,6 +1151,14 @@ def _template_id_from_request_json(value: str) -> int | None:
     return None
 
 
+def _pilot_scenario_id_from_request_json(value: str) -> str | None:
+    payload = _safe_json_dict(value)
+    scenario_id = payload.get("pilot_scenario_id")
+    if isinstance(scenario_id, str) and scenario_id.strip():
+        return scenario_id.strip()[:80]
+    return None
+
+
 def _billable_work_units_from_request_json(value: str, templates_by_id: dict[int, WorkflowTemplate]) -> int:
     payload = _safe_json_dict(value)
     template_id = payload.get("template_id")
@@ -1486,6 +1494,7 @@ def _to_orchestration_read(
         status=record.status,  # type: ignore[arg-type]
         duration_ms=record.duration_ms,
         entry_source=record.entry_source,
+        pilot_scenario_id=_pilot_scenario_id_from_request_json(record.request_json),
         subscription_tier=normalize_tier(record.subscription_tier),
         team_subject=record.team_subject,
         requested_by=record.requested_by,
@@ -1739,6 +1748,7 @@ def _build_evidence_markdown(detail: WorkflowOrchestrationRead, evidence_data: d
         "## Run",
         f"- Status: {detail.status}",
         f"- Tier: {detail.subscription_tier}",
+        f"- Pilot scenario: {detail.pilot_scenario_id or 'ad hoc'}",
         f"- Team: {detail.team_subject or 'unassigned'}",
         f"- Requested by: {detail.requested_by or 'unknown'}",
         f"- Approved by: {detail.approval_actor or 'pending'}",

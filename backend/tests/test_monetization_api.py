@@ -25,6 +25,18 @@ def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _usage_counter_snapshot(payload: dict) -> dict[str, tuple[int, int, str, str]]:
+    return {
+        item["metric"]: (
+            item["used"],
+            item["limit"],
+            item["period_start"],
+            item["period_end"],
+        )
+        for item in payload["counters"]
+    }
+
+
 def test_monetization_profile_returns_null_when_missing(client) -> None:
     response = client.get("/api/monetization/profile?subject=missing-subject")
 
@@ -807,6 +819,7 @@ def test_pilot_readiness_report_aggregates_subject_team_roi_and_integrity(client
             "/api/orchestrations/run",
             json={
                 "entry_source": "pilot_scenario",
+                "pilot_scenario_id": scenario["id"],
                 "template_id": ai_pr_template["id"],
                 "steps": None,
                 "team_subject": "platform-team",
@@ -845,9 +858,31 @@ def test_pilot_readiness_report_aggregates_subject_team_roi_and_integrity(client
     assert payload["review_time_saved_minutes"] > 0
     assert payload["audit_time_saved_minutes"] > 0
     assert payload["metadata_completeness"] == 1.0
+    high_risk_status = next(item for item in payload["scenario_statuses"] if item["id"] == "high-risk-generated-pr")
+    assert high_risk_status["status"] == "completed"
+    assert high_risk_status["latest_orchestration_id"] == run.json()["id"]
+    assert payload["power_upgrade_evidence"]["power_required_runs"] == 1
+    assert payload["power_upgrade_evidence"]["estimated_value_usd"] == payload["estimated_value_usd"]
     serialized = json.dumps(payload).lower()
     for forbidden in ("password", "secret", "raw entitlement"):
         assert forbidden not in serialized
+
+    closeout = client.get("/api/monetization/pilot-closeout?days=7&subject=pilot-buyer&team_subject=platform-team")
+    assert closeout.status_code == 200
+    closeout_payload = closeout.json()
+    assert closeout_payload["status"] == payload["status"]
+    assert "Pilot Closeout Report" in closeout_payload["markdown"]
+    assert "High-risk generated PR: completed" in closeout_payload["markdown"]
+    assert "Why Power" in closeout_payload["markdown"]
+    closeout_serialized = json.dumps(closeout_payload).lower()
+    for forbidden in ("password", "secret", "raw entitlement"):
+        assert forbidden not in closeout_serialized
+
+    usage_before = _usage_counter_snapshot(client.get("/api/monetization/usage?subject=pilot-buyer").json())
+    repeated = client.get("/api/monetization/pilot-closeout?days=7&subject=pilot-buyer&team_subject=platform-team")
+    assert repeated.status_code == 200
+    usage_after = _usage_counter_snapshot(client.get("/api/monetization/usage?subject=pilot-buyer").json())
+    assert usage_after == usage_before
 
     team_miss = client.get("/api/monetization/pilot-report?days=7&subject=pilot-buyer&team_subject=other-team")
     assert team_miss.status_code == 200

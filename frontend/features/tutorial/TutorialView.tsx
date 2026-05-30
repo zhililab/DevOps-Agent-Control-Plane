@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
-import type { PilotScenario } from "@/lib/types";
+import type { PilotScenario, PilotScenarioCompletion } from "@/lib/types";
 
 const workflowSteps = [
   {
@@ -111,6 +111,7 @@ const commercialLadders = [
 export function TutorialView() {
   const [activeStepId, setActiveStepId] = useState(workflowSteps[0].id);
   const [pilotDatasets, setPilotDatasets] = useState(fallbackPilotDatasets);
+  const [scenarioStatuses, setScenarioStatuses] = useState<PilotScenarioCompletion[]>([]);
   const activeStep = useMemo(
     () => workflowSteps.find((step) => step.id === activeStepId) ?? workflowSteps[0],
     [activeStepId]
@@ -120,9 +121,24 @@ export function TutorialView() {
     let mounted = true;
     async function loadScenarios() {
       try {
-        const response = await apiClient.listPilotScenarios();
-        if (mounted && Array.isArray(response.items) && response.items.length > 0) {
-          setPilotDatasets(response.items);
+        const [scenarioResult, reportResult] = await Promise.allSettled([
+          apiClient.listPilotScenarios(),
+          apiClient.getPilotReadinessReport(7, "demo-user"),
+        ]);
+        if (
+          mounted &&
+          scenarioResult.status === "fulfilled" &&
+          Array.isArray(scenarioResult.value.items) &&
+          scenarioResult.value.items.length > 0
+        ) {
+          setPilotDatasets(scenarioResult.value.items);
+        }
+        if (
+          mounted &&
+          reportResult.status === "fulfilled" &&
+          Array.isArray(reportResult.value.scenario_statuses)
+        ) {
+          setScenarioStatuses(reportResult.value.scenario_statuses);
         }
       } catch {
         if (mounted) {
@@ -135,6 +151,12 @@ export function TutorialView() {
       mounted = false;
     };
   }, []);
+
+  const completedScenarioCount = scenarioStatuses.filter((item) => item.status === "completed").length;
+  const scenarioStatusById = useMemo(
+    () => new Map(scenarioStatuses.map((item) => [item.id, item])),
+    [scenarioStatuses]
+  );
 
   return (
     <PageCard
@@ -192,6 +214,14 @@ export function TutorialView() {
         ))}
       </section>
 
+      <section className="result-block" aria-label="pilot-progress">
+        <p className="eyebrow">Pilot Progress</p>
+        <h3>{completedScenarioCount}/5 scenario gates completed</h3>
+        <p className="muted">
+          Complete all five buyer scenarios, verify ledger/checkpoint evidence, then use Plans & Usage for the closeout report.
+        </p>
+      </section>
+
       <section className="tutorial-grid tutorial-grid-three" aria-label="pilot-demo-datasets">
         {pilotDatasets.map((item) => (
           <Link className="tutorial-card" href={`/orchestrate?scenario=${item.id}`} key={item.id}>
@@ -199,7 +229,8 @@ export function TutorialView() {
             <h3>{item.name}</h3>
             <p>{item.success_signal}</p>
             <p className="muted">
-              {item.required_tier.toUpperCase()} · {item.expected_gate_behavior}
+              {item.required_tier.toUpperCase()} · {item.expected_gate_behavior} ·{" "}
+              {scenarioStatusById.get(item.id)?.status ?? "missing"}
             </p>
           </Link>
         ))}

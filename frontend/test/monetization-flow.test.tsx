@@ -131,6 +131,31 @@ const pilotReport = {
   audit_time_saved_minutes: 80,
   metadata_completeness: 0.75,
   missing_metadata_runs: 1,
+  scenario_statuses: [
+    {
+      id: "high-risk-generated-pr",
+      name: "High-risk generated PR",
+      status: "completed",
+      expected_gate_behavior: "needs human review",
+      required_tier: "power",
+      completed_runs: 1,
+      evidence_exportable_runs: 1,
+      ledger_valid_runs: 1,
+      checkpointed_runs: 1,
+      approval_metadata_complete: true,
+      latest_orchestration_id: 42,
+    },
+  ],
+  power_upgrade_evidence: {
+    power_required_runs: 1,
+    approval_required_runs: 3,
+    blocked_or_needs_review_runs: 3,
+    evidence_exportable_runs: 4,
+    ledger_valid_runs: 4,
+    estimated_value_usd: 12600,
+    review_audit_time_saved_minutes: 200,
+    recommendation: "Power is the recommended pilot plan because the scenario pack uses approval gates.",
+  },
   success_criteria: [
     "5+ completed release-gate runs",
     "5+ evidence-exportable runs",
@@ -139,6 +164,16 @@ const pilotReport = {
     "80%+ team/requester/approver metadata completeness",
   ],
   recommendations: ["Run the five scenario pack gates before buyer review."],
+};
+
+const pilotCloseout = {
+  window_days: 7,
+  generated_at: "2026-05-22T00:00:00Z",
+  subject: "demo-user",
+  team_subject: "platform-team",
+  status: "needs evidence",
+  markdown: "# Pilot Closeout Report\n\n## Why Power\n- Recommendation: Power is the recommended pilot plan.\n",
+  data: {},
 };
 
 function event(action: string, tier = "pro") {
@@ -182,6 +217,9 @@ describe("monetization flow", () => {
       if (url.includes("/monetization/pilot-report")) {
         return new Response(JSON.stringify(pilotReport), { status: 200 });
       }
+      if (url.includes("/monetization/pilot-closeout")) {
+        return new Response(JSON.stringify(pilotCloseout), { status: 200 });
+      }
       if (url.endsWith("/monetization/checkout/manual")) {
         return new Response(JSON.stringify({ profile, counters, event: event("tier_changed", "power") }), {
           status: 200,
@@ -216,6 +254,11 @@ describe("monetization flow", () => {
     expect(screen.getByText("Needs evidence")).toBeInTheDocument();
     expect(screen.getByText("4 evidence-exportable")).toBeInTheDocument();
     expect(screen.getByText("75%")).toBeInTheDocument();
+    expect(screen.getByText("Scenario Completion")).toBeInTheDocument();
+    expect(screen.getByText("Why Power")).toBeInTheDocument();
+    expect(screen.getByText("Pilot Closeout")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy Report" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download Markdown" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Activate Power" }));
 
@@ -244,6 +287,9 @@ describe("monetization flow", () => {
       }
       if (url.includes("/monetization/pilot-report")) {
         return new Response(JSON.stringify(pilotReport), { status: 200 });
+      }
+      if (url.includes("/monetization/pilot-closeout")) {
+        return new Response(JSON.stringify(pilotCloseout), { status: 200 });
       }
       return new Response(JSON.stringify({}), { status: 200 });
     });
@@ -286,6 +332,9 @@ describe("monetization flow", () => {
       if (url.includes("/monetization/pilot-report")) {
         return new Response(JSON.stringify(pilotReport), { status: 200 });
       }
+      if (url.includes("/monetization/pilot-closeout")) {
+        return new Response(JSON.stringify(pilotCloseout), { status: 200 });
+      }
       return new Response(JSON.stringify({}), { status: 200 });
     });
 
@@ -327,6 +376,9 @@ describe("monetization flow", () => {
       }
       if (url.includes("/monetization/pilot-report")) {
         return new Response(JSON.stringify(pilotReport), { status: 200 });
+      }
+      if (url.includes("/monetization/pilot-closeout")) {
+        return new Response(JSON.stringify(pilotCloseout), { status: 200 });
       }
       if (url.endsWith("/monetization/cancel")) {
         cancelPending = true;

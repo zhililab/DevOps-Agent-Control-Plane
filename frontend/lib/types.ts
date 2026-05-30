@@ -241,6 +241,7 @@ export type WorkflowOrchestrationRecord = {
   status: WorkflowOrchestrationStatus;
   duration_ms: number;
   entry_source: string;
+  pilot_scenario_id?: string | null;
   subscription_tier: SubscriptionTier;
   team_subject: string;
   requested_by: string;
@@ -579,6 +580,43 @@ export type PilotReadinessReport = {
   audit_time_saved_minutes: number;
   metadata_completeness: number;
   missing_metadata_runs: number;
+  scenario_statuses: PilotScenarioCompletion[];
+  power_upgrade_evidence: PilotPowerUpgradeEvidence;
   success_criteria: string[];
   recommendations: string[];
+};
+
+export type PilotScenarioCompletion = {
+  id: string;
+  name: string;
+  status: "missing" | "needs evidence" | "completed";
+  expected_gate_behavior: "approve" | "block" | "needs human review";
+  required_tier: SubscriptionTier;
+  completed_runs: number;
+  evidence_exportable_runs: number;
+  ledger_valid_runs: number;
+  checkpointed_runs: number;
+  approval_metadata_complete: boolean;
+  latest_orchestration_id: number | null;
+};
+
+export type PilotPowerUpgradeEvidence = {
+  power_required_runs: number;
+  approval_required_runs: number;
+  blocked_or_needs_review_runs: number;
+  evidence_exportable_runs: number;
+  ledger_valid_runs: number;
+  estimated_value_usd: number;
+  review_audit_time_saved_minutes: number;
+  recommendation: string;
+};
+
+export type PilotCloseoutReport = {
+  window_days: number;
+  generated_at: string;
+  subject: string | null;
+  team_subject: string | null;
+  status: "ready" | "needs evidence" | "needs approval metadata";
+  markdown: string;
+  data: Record<string, unknown>;
 };

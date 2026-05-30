@@ -49,6 +49,8 @@ The broader personal assistant vision remains, but the current commercial stage 
 - Pilot scenario data is static and auditable in V1; do not add OAuth, private repo pulls, Stripe, login, or RBAC unless explicitly requested.
 - Manual Billing V1 remains the commercial adapter until the pilot package proves buyer value.
 - Evidence bundles and pilot reports must stay redaction-safe and must not include raw entitlement tokens, passwords, secrets, or private credentials.
+- Pilot Closeout is the current buyer-facing finish line: scenario completion, missing evidence, ROI, and Power upgrade evidence must stay consistent across `/tutorial`, `/orchestrations`, `/monetization`, and `/dashboard`.
+- Commercial reporting endpoints must be read-only unless explicitly named as checkout, cancel, reactivate, or usage-recording paths.
 
 ## Task Expectations
 When given a task:
@@ -66,6 +68,7 @@ When given a task:
    - queue lifecycle behavior (`queued/running/succeeded/failed/canceled`) and retry/cancel idempotency
    - pilot scenario behavior (`GET /api/orchestrations/pilot-scenarios`, `/orchestrate?scenario=...`)
    - pilot readiness reporting (`GET /api/monetization/pilot-report`)
+   - pilot closeout reporting (`GET /api/monetization/pilot-closeout`)
    - ROI and evidence export behavior (`GET /api/orchestrations/{id}/evidence`)
 
 ## Do Not
