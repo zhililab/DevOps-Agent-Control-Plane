@@ -516,6 +516,42 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - real browser verification for `/orchestrate` showed `orchestrateTimeouts=0`, workflow templates present, and `rscPrefetchAfterOrchestrate=0`
   - real browser verification for `/orchestrations` showed history and queue loading states cleared with no `Request timed out. Please retry.`
 
+## 2026-05-30 Pilot Closeout Conversion Release Verification
+
+- Implementation commits:
+  - `6d69dc9 feat: add pilot conversion readiness loop`
+  - `51a8270 feat: add pilot closeout conversion report`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Release features included:
+  - `pilot_scenario_id` stored on orchestration run requests and surfaced on run reads/evidence bundles
+  - `GET /api/monetization/pilot-closeout?days=7|30&subject=...&team_subject=...`
+  - scenario completion tracking for the five static pilot scenarios
+  - `/monetization` `Why Power` upgrade evidence from policy, approval, evidence, ledger, checkpoint, and ROI data
+  - `/monetization` copy/download actions for the buyer-facing Pilot Closeout Markdown report
+  - `/tutorial` pilot progress indicator for scenario completion
+  - docs alignment across `PLANS.MD`, `PLANS.html`, `AGENTS.md`, `README.md`, core check, demo runbook, and pilot package
+- Verified on local gates:
+  - focused backend tests passed: `tests/test_orchestrations.py`, `tests/test_monetization_api.py`, `tests/test_orchestration_query_performance.py`
+  - focused frontend tests passed: monetization flow, tutorial flow, orchestration flow, and dashboard monetization KPI tests
+  - frontend production build passed
+  - `make qa-fast` passed with 50 frontend tests plus backend suite and production build
+  - `make qa-visual` passed
+  - `make e2e-orchestration` passed with 3 Chromium flows
+  - `make security-check` passed; npm audit still reports moderate tooling warnings below the configured high-severity gate
+  - `make release-check` passed, including Playwright E2E, security check, and k8s render
+- Verified on remote:
+  - remote smoke checks passed
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `200`
+  - public `/dashboard`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` returned `200`
+  - public `GET /api/orchestrations/pilot-scenarios` returned all five pilot scenarios
+  - public `GET /api/monetization/pilot-report?days=7&subject=demo-user` returned `scenario_statuses` and `power_upgrade_evidence`
+  - public `GET /api/monetization/pilot-closeout?days=7&subject=demo-user` returned redaction-safe Markdown with `Pilot Closeout Report`, `Scenario Completion`, `Why Power`, and `Next Buyer Action`
+  - public `GET /api/monetization/commercial-metrics?days=7&subject=demo-user` returned `plan_usage`, `usage_summary`, `roi_summary`, `top_templates`, and `trend`
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
