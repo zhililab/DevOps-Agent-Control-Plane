@@ -35,10 +35,12 @@ This document records the current product target and the minimum functionality t
 - Confirm `/monetization` keeps the active subscription visible if usage or audit-feed refreshes are slow or partially unavailable.
 - Use `/tutorial` to explain the commercial path from workflow run to replay evidence to plan upgrade.
 - Use `/tutorial` Pilot Dataset cards to load one of five fixed buyer scenarios into `/orchestrate?scenario=<id>`.
+- Confirm `/tutorial` behaves as a guided pilot console: progress count, buyer review status, next scenario CTA, and no one-click run-all path.
 - Confirm `/orchestrate` can load a pilot scenario and populate PR/CI adapter context, daily context, technical input, reflection input, approval state, and recommended template.
 - Confirm the missing-approval scenario returns `409` until approval is explicitly confirmed.
+- Confirm `/orchestrate?scenario=missing-approval` frames the first `409` as an expected policy block and provides a confirm-approval-and-rerun path.
 - Confirm `/monetization` shows `Pilot Readiness`: completed runs, evidence-exportable runs, ledger-valid runs, checkpointed runs, approval-required runs, blocked/needs-review runs, metadata completeness, and estimated pilot value.
-- Confirm `/monetization` shows all five pilot scenario statuses as completed, missing, or needing evidence.
+- Confirm `/monetization` shows Buyer Review Status and all five pilot scenario statuses grouped as completed, missing, or needing evidence.
 - Confirm `/monetization` shows `Why Power` using actual policy/approval/evidence/ROI data, not hard-coded fake values.
 - Confirm `/monetization` can copy/download the redaction-safe Pilot Closeout report.
 - Confirm `/dashboard` shows `Pilot Ready` as a buyer-facing KPI.
@@ -116,6 +118,7 @@ This document records the current product target and the minimum functionality t
 - Orchestration metrics must include Team Trust KPIs: approved runs, checkpointed runs, and failed jobs needing owner.
 - Release-gate ROI evidence should be visible on each orchestration read/history response and in `/orchestrations`; Commercial Signal also aggregates ROI into buyer-facing estimated value, review time saved, blocked risk value, and value by template.
 - Pilot Readiness should reuse bounded 7D/30D windows and existing orchestration, ledger, checkpoint, and ROI data; it must not introduce full-table scans or new billing tables.
+- Pilot Readiness `scenario_completion` should derive progress from existing orchestration request metadata and evidence state; it must not create a persistent scenario table.
 - Pilot Closeout should be a read-only projection over Pilot Readiness plus Commercial Signal data; repeated report reads must not mutate usage counters or trigger backfill churn.
 - Queue history and queue event timeline reads must keep stable newest-first ordering backed by composite indexes.
 - Commercial audit feed reads should use subject-scoped `/api/monetization/events?subject=...` on account pages to avoid global event noise and reduce payload work.

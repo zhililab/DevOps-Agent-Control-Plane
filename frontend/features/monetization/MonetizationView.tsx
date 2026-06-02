@@ -122,6 +122,14 @@ const DEFAULT_PILOT_REPORT: PilotReadinessReport = {
   metadata_completeness: 0,
   missing_metadata_runs: 0,
   scenario_statuses: [],
+  scenario_completion: {
+    total: 5,
+    completed: 0,
+    needs_evidence: 0,
+    missing: 5,
+    next_scenario_id: "high-risk-generated-pr",
+    ready_for_buyer_review: false,
+  },
   power_upgrade_evidence: {
     power_required_runs: 0,
     approval_required_runs: 0,
@@ -198,6 +206,7 @@ function hasPilotReadinessPayload(value: unknown): value is PilotReadinessReport
     typeof report.evidence_exportable_runs === "number" &&
     typeof report.ledger_valid_runs === "number" &&
     typeof report.checkpointed_runs === "number" &&
+    typeof report.scenario_completion === "object" &&
     Array.isArray(report.recommendations)
   );
 }
@@ -239,6 +248,18 @@ export function MonetizationView() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
   const activePlan = useMemo(() => PLANS.find((plan) => plan.tier === profile?.tier), [profile]);
+  const scenarioGroups = useMemo(
+    () => ({
+      completed: pilotReport.scenario_statuses.filter((scenario) => scenario.status === "completed"),
+      needsEvidence: pilotReport.scenario_statuses.filter((scenario) => scenario.status === "needs evidence"),
+      missing: pilotReport.scenario_statuses.filter((scenario) => scenario.status === "missing"),
+    }),
+    [pilotReport.scenario_statuses]
+  );
+  const nextScenario = useMemo(
+    () => pilotReport.scenario_statuses.find((scenario) => scenario.id === pilotReport.scenario_completion.next_scenario_id),
+    [pilotReport.scenario_completion.next_scenario_id, pilotReport.scenario_statuses]
+  );
 
   function applyLifecycleResponse(response: {
     profile: SubscriptionProfile;
@@ -713,6 +734,14 @@ export function MonetizationView() {
         </div>
         <div className="commercial-metric-grid">
           <article className="result-block">
+            <p className="eyebrow">Buyer Review Status</p>
+            <h3>{pilotReport.scenario_completion.ready_for_buyer_review ? "Ready" : "Not ready"}</h3>
+            <p className="muted">
+              {pilotReport.scenario_completion.completed}/{pilotReport.scenario_completion.total} scenarios complete
+              {nextScenario ? ` · next: ${nextScenario.name}` : ""}
+            </p>
+          </article>
+          <article className="result-block">
             <p className="eyebrow">Runs Completed</p>
             <h3>{pilotReport.runs_completed}</h3>
             <p className="muted">{pilotReport.evidence_exportable_runs} evidence-exportable</p>
@@ -766,17 +795,33 @@ export function MonetizationView() {
             <h3>Scenario Completion</h3>
             {pilotReport.scenario_statuses.length > 0 ? (
               <div className="event-feed">
-                {pilotReport.scenario_statuses.map((scenario) => (
-                  <article className="event-row" key={scenario.id}>
-                    <div>
-                      <strong>{scenario.name}</strong>
-                      <p className="muted">
-                        {scenario.required_tier.toUpperCase()} · {scenario.expected_gate_behavior} ·{" "}
-                        {scenario.completed_runs} run(s)
-                      </p>
-                    </div>
-                    <span>{scenario.status}</span>
-                  </article>
+                {[
+                  ["Completed", scenarioGroups.completed],
+                  ["Needs Evidence", scenarioGroups.needsEvidence],
+                  ["Missing", scenarioGroups.missing],
+                ].map(([label, scenarios]) => (
+                  <div key={String(label)}>
+                    <p className="eyebrow">{String(label)}</p>
+                    {(scenarios as typeof pilotReport.scenario_statuses).length > 0 ? (
+                      (scenarios as typeof pilotReport.scenario_statuses).map((scenario) => (
+                        <article className="event-row" key={scenario.id}>
+                          <div>
+                            <strong>
+                              {scenario.name}
+                              {scenario.id === pilotReport.scenario_completion.next_scenario_id ? " · Next" : ""}
+                            </strong>
+                            <p className="muted">
+                              {scenario.required_tier.toUpperCase()} · {scenario.expected_gate_behavior} ·{" "}
+                              {scenario.completed_runs} run(s)
+                            </p>
+                          </div>
+                          <span>{scenario.status}</span>
+                        </article>
+                      ))
+                    ) : (
+                      <p className="muted">None.</p>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (

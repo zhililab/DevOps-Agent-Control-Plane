@@ -9,12 +9,21 @@ describe("tutorial flow", () => {
     expect(screen.getByRole("heading", { name: "Tutorial" })).toBeInTheDocument();
     expect(screen.getByText("PR/CI adapter")).toBeInTheDocument();
     expect(screen.getByText(/Let enterprises connect agents to CI\/CD/i)).toBeInTheDocument();
-    expect(screen.getAllByText("Pilot Dataset").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pilot Dataset/).length).toBeGreaterThan(0);
     expect(screen.getByText("High-risk generated PR")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /High-risk generated PR/i })).toHaveAttribute(
+    expect(screen.getByText("Pilot Control Console")).toBeInTheDocument();
+    expect(screen.getByText("0/5 scenario gates completed")).toBeInTheDocument();
+    expect(screen.getByText(/Buyer review status: Not ready/)).toBeInTheDocument();
+    expect(screen.queryByText(/Run all/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Run Next Scenario" })).toHaveAttribute(
       "href",
       "/orchestrate?scenario=high-risk-generated-pr"
     );
+    expect(screen.getAllByRole("link", { name: "Run Scenario" })[0]).toHaveAttribute(
+      "href",
+      "/orchestrate?scenario=high-risk-generated-pr"
+    );
+    expect(screen.getByText(/first run should block until approval is confirmed/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Verify evidence/ }));
 

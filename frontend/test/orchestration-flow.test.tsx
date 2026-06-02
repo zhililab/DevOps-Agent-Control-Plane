@@ -593,6 +593,159 @@ describe("orchestration workflow", () => {
     window.history.pushState({}, "", "/");
   });
 
+  test("guides missing approval pilot scenario through expected block and rerun", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const powerToken = unsignedEntitlementToken("power");
+    window.localStorage.setItem("entitlement_token", powerToken);
+    window.history.pushState({}, "", "/orchestrate?scenario=missing-approval");
+    let runCalls = 0;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url.endsWith("/orchestrations/entitlement/bootstrap")) {
+        return new Response(JSON.stringify({ detail: "Not found." }), { status: 404 });
+      }
+      if (url.endsWith("/orchestrations/pilot-scenarios")) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: "missing-approval",
+                name: "Missing approval",
+                description: "Power gate blocks a risky release until approval metadata is confirmed.",
+                expected_gate_behavior: "block",
+                required_tier: "power",
+                approval_required: true,
+                approval_confirmed: false,
+                recommended_template_name: "AI-generated PR Release Gate",
+                release_gate_input: {
+                  pr_url: "https://github.com/example/platform/pull/1845",
+                  pr_diff_summary: "Generated PR changes production deploy permissions.",
+                  ci_log_summary: "tests passed; production dry-run skipped until release manager approval",
+                  target_environment: "production",
+                  change_risk: "High-risk production change lacks approval confirmation.",
+                },
+                daily_context: {
+                  tasks: ["Attempt approval-gated release"],
+                  meetings: [],
+                  blockers: ["Approval not confirmed"],
+                  priorities: ["prove approval block"],
+                },
+                technical_input: {
+                  issue_description: "High-risk release must be blocked because approval is not confirmed.",
+                  errors: ["Policy gate: approval not confirmed"],
+                  logs: "tests passed\napproval pending",
+                  code_snippets: ["gh pr view 1845 --json reviews"],
+                },
+                reflection_input: {
+                  completed: ["Policy block captured"],
+                  unfinished: ["Release manager approval"],
+                  blockers: ["Approval confirmation missing"],
+                  mood_or_notes: "Buyer should see the policy gate block before approval.",
+                },
+                success_signal: "Initial run returns 409 until approval is explicitly confirmed.",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/templates")) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 501,
+              name: "AI-generated PR Release Gate",
+              description: "Gate an AI-authored pull request before CI/CD execution.",
+              steps: [
+                { step_name: "Normalize PR Change Request", agent_type: "planner", enabled: true },
+                { step_name: "Evaluate CI And Deployment Risk", agent_type: "analyzer", enabled: true },
+                { step_name: "Decide PR Release Gate", agent_type: "reviewer", enabled: true },
+              ],
+              tags: ["pattern:maker-checker", "tier:power", "risk:high", "approval:required", "tool:ci-cd-release-gate", "work-units:8"],
+              policy: {
+                required_tier: "power",
+                risk_level: "high",
+                approval_required: true,
+                allowed_tool_scopes: ["ci-cd-release-gate"],
+                billable_work_units: 8,
+              },
+              enabled: true,
+              created_at: "2026-05-22T00:00:00Z",
+              updated_at: "2026-05-22T00:00:00Z",
+            },
+          ]),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/orchestrations/run")) {
+        runCalls += 1;
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        if (!body.approval_confirmed) {
+          return new Response(
+            JSON.stringify({
+              detail: {
+                code: "approval_required",
+                message: "Template 'AI-generated PR Release Gate' requires explicit human approval.",
+              },
+            }),
+            { status: 409 }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            id: 901,
+            status: "success",
+            duration_ms: 100,
+            entry_source: "pilot_scenario",
+            pilot_scenario_id: "missing-approval",
+            subscription_tier: "power",
+            team_subject: "platform-team",
+            requested_by: "sre-lead",
+            approval_actor: "release-manager",
+            approval_note: "Pilot scenario: Missing approval.",
+            checkpoint_count: 4,
+            summary: {
+              conclusion: "Release gate completed after approval confirmation.",
+              risks: [],
+              next_actions: ["Review closeout."],
+            },
+            steps: [],
+            created_at: "2026-05-22T00:00:00Z",
+            updated_at: "2026-05-22T00:00:01Z",
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    });
+
+    render(<OrchestratePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Loaded pilot scenario: Missing approval.")).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Expected policy block/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Human Approval Confirmed")).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "Run Orchestration" }));
+    await waitFor(() => {
+      expect(screen.getByText(/expected policy block for the Missing approval pilot scenario/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText("Human Approval Confirmed"));
+    fireEvent.click(screen.getByRole("button", { name: "Run Orchestration" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Run #901/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("link", { name: "Back To Tutorial" })).toHaveAttribute("href", "/tutorial");
+    expect(screen.getByRole("link", { name: "Review Pilot Closeout" })).toHaveAttribute("href", "/monetization");
+    expect(runCalls).toBe(2);
+
+    window.history.pushState({}, "", "/");
+  });
+
   test("recovers workflow template loading after a transient browser timeout", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     let templateCalls = 0;

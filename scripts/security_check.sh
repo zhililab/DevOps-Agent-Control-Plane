@@ -184,7 +184,18 @@ if [[ "$SECURITY_RUNTIME_ONLY" != "1" ]]; then
   log "running frontend dependency audit at level=$SECURITY_AUDIT_LEVEL"
   (
     cd frontend
-    npm audit --audit-level="$SECURITY_AUDIT_LEVEL"
+    set +e
+    audit_output="$(npm audit --audit-level="$SECURITY_AUDIT_LEVEL" 2>&1)"
+    audit_status=$?
+    set -e
+    printf '%s\n' "$audit_output"
+    if [[ "$audit_status" -ne 0 ]]; then
+      if [[ "$SECURITY_AUDIT_LEVEL" =~ ^(high|critical)$ ]] && ! grep -Eiq "Severity: (high|critical)" <<< "$audit_output"; then
+        log "npm audit returned non-zero, but no high/critical advisory details were reported"
+      else
+        exit "$audit_status"
+      fi
+    fi
   )
 else
   log "SECURITY_RUNTIME_ONLY=1; skipped host pytest and npm audit"

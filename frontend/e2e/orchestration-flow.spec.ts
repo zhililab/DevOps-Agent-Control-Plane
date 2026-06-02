@@ -18,7 +18,8 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
 
   await page.goto("/tutorial");
   await expect(page.getByRole("heading", { name: "Tutorial" })).toBeVisible();
-  await page.getByRole("link", { name: /High-risk generated PR/ }).click();
+  const highRiskCard = page.locator(".tutorial-card").filter({ hasText: "High-risk generated PR" });
+  await highRiskCard.getByRole("link", { name: "Run Scenario" }).click();
 
   await expect(page).toHaveURL(/\/orchestrate\?scenario=high-risk-generated-pr/);
   await expect(page.getByRole("heading", { name: "Workflow Orchestrator" })).toBeVisible();
@@ -85,7 +86,25 @@ test("runs orchestration and verifies replay from history", async ({ page }) => 
   await page.goto("/monetization");
   await expect(page.getByText("Commercial Signal")).toBeVisible();
   await expect(page.getByText("Pilot Readiness")).toBeVisible();
+  const pilotReadinessPanel = page.locator(`[aria-label="pilot-readiness"]`);
+  await expect(pilotReadinessPanel.locator("p.eyebrow", { hasText: "Buyer Review Status" })).toBeVisible();
   await expect(page.getByText(/Estimated Pilot Value|Pilot Readiness/).first()).toBeVisible();
+
+  await page.goto("/tutorial");
+  const missingApprovalCard = page.locator(".tutorial-card").filter({ hasText: "Missing approval" });
+  await expect(missingApprovalCard.getByText(/first run should block until approval is confirmed/i)).toBeVisible();
+  await missingApprovalCard.getByRole("link", { name: "Run Scenario" }).click();
+  await expect(page).toHaveURL(/\/orchestrate\?scenario=missing-approval/);
+  await expect(page.getByText("Loaded pilot scenario: Missing approval.")).toBeVisible();
+  await expect(page.getByText(/Expected policy block/)).toBeVisible();
+  await expect(page.getByLabel("Human Approval Confirmed")).not.toBeChecked();
+  await page.getByRole("button", { name: "Run Orchestration" }).click();
+  await expect(page.getByText(/expected policy block for the Missing approval pilot scenario/i)).toBeVisible();
+  await page.getByLabel("Human Approval Confirmed").check();
+  await page.getByRole("button", { name: "Run Orchestration" }).click();
+  await expect(page.getByRole("heading", { name: "Run Replay" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back To Tutorial" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Review Pilot Closeout" })).toBeVisible();
 
   await page.goto("/dashboard");
   await expect(page.getByText("Pilot Ready")).toBeVisible();

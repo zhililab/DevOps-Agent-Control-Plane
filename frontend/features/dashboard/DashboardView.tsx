@@ -133,6 +133,14 @@ const DEFAULT_PILOT_READINESS: PilotReadinessReport = {
   metadata_completeness: 0,
   missing_metadata_runs: 0,
   scenario_statuses: [],
+  scenario_completion: {
+    total: 5,
+    completed: 0,
+    needs_evidence: 0,
+    missing: 5,
+    next_scenario_id: "high-risk-generated-pr",
+    ready_for_buyer_review: false,
+  },
   power_upgrade_evidence: {
     power_required_runs: 0,
     approval_required_runs: 0,

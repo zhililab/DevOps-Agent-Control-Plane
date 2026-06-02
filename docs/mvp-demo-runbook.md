@@ -17,8 +17,10 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 
 2. Open `/tutorial`.
    - Introduce the pilot path: Import PR context -> Run Gate -> Verify Evidence -> See ROI -> Compare Plan.
-   - Choose a Pilot Dataset card: high-risk generated PR, low-risk docs PR, CI flaky release, missing approval, or rollback-sensitive release.
-   - Confirm the link opens `/orchestrate?scenario=<id>`.
+   - Confirm the pilot console shows progress such as `0/5 scenario gates completed`, Buyer Review Status, and the next scenario CTA.
+   - Choose one `Run Scenario` action at a time: high-risk generated PR, low-risk docs PR, CI flaky release, missing approval, or rollback-sensitive release.
+   - Confirm there is no `Run all` action; this pilot is guided scenario-by-scenario to keep evidence intentional.
+   - Confirm the selected link opens `/orchestrate?scenario=<id>`.
 
 3. Open `/orchestrate?scenario=<id>`.
    - Confirm `Pilot Scenario Pack V2` has loaded the selected scenario.
@@ -57,7 +59,8 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Show the `Commercial MVP` cockpit: plan state, `Plan Usage`, and `Commercial Audit Feed`.
    - Show `Commercial Signal`: Value Generated, review time saved, blocked risk value, billable work units, 7D/30D activity, policy blocks, top value templates, lifecycle events, and the window switch.
    - Show `Pilot Readiness`: completed runs, evidence-exportable runs, ledger-valid runs, checkpointed runs, metadata completeness, estimated pilot value, and recommended next action.
-   - Show `Scenario Completion`: each of the five pilot scenarios should be `completed`, `needs evidence`, or `missing`.
+   - Show `Buyer Review Status`: Ready only after all five scenarios have evidence, valid ledger, checkpoints, and buyer metadata.
+   - Show `Scenario Completion`: each of the five pilot scenarios should be grouped as `completed`, `needs evidence`, or `missing`, with the next scenario highlighted.
    - Show `Why Power`: Power-only gates used, risky decisions, audit packets ready, and estimated value should come from real run/ROI/evidence data.
    - Use `Copy Report` or `Download Markdown` from `Pilot Closeout` to produce the buyer-facing trial report.
    - Activate or refresh a Pro/Power plan for a demo account and confirm the audit feed is scoped to that account.
@@ -78,9 +81,9 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/api/monetization/commercial-metrics?days=7` includes subscription summary, usage summary, policy blocks, billable work units, top templates, commercial events, trend, and anomaly hints.
 - `/api/monetization/commercial-metrics?days=7` includes ROI summary with estimated customer value, review/audit time saved, blocked risk value, and work units by template.
 - `/api/orchestrations/pilot-scenarios` returns five static scenario records with release-gate, daily, technical, reflection, expected behavior, tier, approval, and success-signal fields.
-- `/api/monetization/pilot-report?days=7&subject=demo-user` returns Pilot Readiness with evidence/ledger/checkpoint/ROI counts and no sensitive strings.
-- `/api/monetization/pilot-report?days=7&subject=demo-user` returns scenario completion status and Power upgrade evidence.
-- `/api/monetization/pilot-closeout?days=7&subject=demo-user` returns redaction-safe Markdown with pilot status, scenario completion, missing evidence, value generated, Why Power, and next buyer action.
+- `/api/monetization/pilot-report?days=7&subject=demo-user` returns Pilot Readiness with evidence/ledger/checkpoint/ROI counts, `scenario_completion`, and no sensitive strings.
+- `/api/monetization/pilot-report?days=7&subject=demo-user` returns next scenario guidance and Power upgrade evidence.
+- `/api/monetization/pilot-closeout?days=7&subject=demo-user` returns redaction-safe Markdown with Buyer Review Status, scenario completion, missing evidence, value generated, Why Power, and next buyer action.
 - `/api/orchestrations/{id}/evidence` returns a redacted Markdown evidence export for a run.
 - `/api/monetization/entitlement?subject=demo-user` issues a signed token for an active Manual Billing subscription.
 - `/orchestrations` does not show `History Ledger: not checked` for runs that already have ledger events.

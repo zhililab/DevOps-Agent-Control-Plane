@@ -37,6 +37,7 @@ from app.schemas import (
     PilotPowerUpgradeEvidence,
     PilotReadinessReportResponse,
     PilotScenarioCompletionRead,
+    PilotScenarioCompletionSummary,
     MonetizationTier,
     SubscriptionLifecycleResponse,
     SubscriptionProfileRead,
@@ -460,6 +461,13 @@ def get_pilot_readiness_report(
         round(metadata_fields_present / metadata_fields_total, 2) if metadata_fields_total > 0 else 0.0
     )
     completed_scenarios = len([item for item in scenario_statuses if item.status == "completed"])
+    scenario_completion = _build_pilot_scenario_completion_summary(
+        scenario_statuses,
+        evidence_exportable_runs=evidence_exportable_runs,
+        ledger_valid_runs=ledger_valid_runs,
+        checkpointed_runs=checkpointed_runs,
+        metadata_completeness=metadata_completeness,
+    )
     status = _pilot_readiness_status(
         runs_completed=len(completed_records),
         completed_scenarios=completed_scenarios,
@@ -467,6 +475,7 @@ def get_pilot_readiness_report(
         ledger_valid_runs=ledger_valid_runs,
         checkpointed_runs=checkpointed_runs,
         metadata_completeness=metadata_completeness,
+        ready_for_buyer_review=scenario_completion.ready_for_buyer_review,
     )
     power_upgrade_evidence = _build_power_upgrade_evidence(
         approval_required_runs=approval_required_runs,
@@ -495,6 +504,7 @@ def get_pilot_readiness_report(
         metadata_completeness=metadata_completeness,
         missing_metadata_runs=missing_metadata_runs,
         scenario_statuses=scenario_statuses,
+        scenario_completion=scenario_completion,
         power_upgrade_evidence=power_upgrade_evidence,
         success_criteria=[
             "5/5 pilot scenarios completed",
@@ -510,6 +520,7 @@ def get_pilot_readiness_report(
             ledger_valid_runs=ledger_valid_runs,
             checkpointed_runs=checkpointed_runs,
             metadata_completeness=metadata_completeness,
+            scenario_completion=scenario_completion,
         ),
     )
 
@@ -704,17 +715,11 @@ def _pilot_readiness_status(
     ledger_valid_runs: int,
     checkpointed_runs: int,
     metadata_completeness: float,
+    ready_for_buyer_review: bool = False,
 ) -> str:
     if metadata_completeness < 0.8 and runs_completed > 0:
         return "needs approval metadata"
-    if (
-        completed_scenarios >= 5
-        and runs_completed >= 5
-        and evidence_exportable_runs >= 5
-        and ledger_valid_runs >= 5
-        and checkpointed_runs >= 5
-        and metadata_completeness >= 0.8
-    ):
+    if ready_for_buyer_review and completed_scenarios >= 5 and runs_completed >= 5:
         return "ready"
     return "needs evidence"
 
@@ -727,8 +732,13 @@ def _pilot_readiness_recommendations(
     ledger_valid_runs: int,
     checkpointed_runs: int,
     metadata_completeness: float,
+    scenario_completion: PilotScenarioCompletionSummary | None = None,
 ) -> list[str]:
     recommendations: list[str] = []
+    next_scenario_id = scenario_completion.next_scenario_id if scenario_completion else None
+    if next_scenario_id:
+        next_scenario = next((item for item in list_pilot_scenarios().items if item.id == next_scenario_id), None)
+        recommendations.append(f"Run next guided scenario: {next_scenario.name if next_scenario else next_scenario_id}.")
     if completed_scenarios < 5:
         recommendations.append(f"Complete the full five-scenario pilot pack ({completed_scenarios}/5 completed).")
     if runs_completed < 5:
@@ -830,6 +840,42 @@ def _build_pilot_scenario_statuses(
     return statuses
 
 
+def _build_pilot_scenario_completion_summary(
+    scenario_statuses: list[PilotScenarioCompletionRead],
+    *,
+    evidence_exportable_runs: int,
+    ledger_valid_runs: int,
+    checkpointed_runs: int,
+    metadata_completeness: float,
+) -> PilotScenarioCompletionSummary:
+    total = len(scenario_statuses)
+    completed = len([item for item in scenario_statuses if item.status == "completed"])
+    needs_evidence = len([item for item in scenario_statuses if item.status == "needs evidence"])
+    missing = len([item for item in scenario_statuses if item.status == "missing"])
+    next_scenario = next((item for item in scenario_statuses if item.status == "missing"), None)
+    if next_scenario is None:
+        next_scenario = next((item for item in scenario_statuses if item.status == "needs evidence"), None)
+
+    ready_for_buyer_review = (
+        total > 0
+        and completed == total
+        and needs_evidence == 0
+        and missing == 0
+        and evidence_exportable_runs >= total
+        and ledger_valid_runs >= total
+        and checkpointed_runs >= total
+        and metadata_completeness >= 0.8
+    )
+    return PilotScenarioCompletionSummary(
+        total=total,
+        completed=completed,
+        needs_evidence=needs_evidence,
+        missing=missing,
+        next_scenario_id=next_scenario.id if next_scenario else None,
+        ready_for_buyer_review=ready_for_buyer_review,
+    )
+
+
 def _build_power_upgrade_evidence(
     *,
     approval_required_runs: int,
@@ -877,7 +923,8 @@ def _pilot_scenario_id_from_request_json(value: str) -> str | None:
 
 def _build_pilot_closeout_markdown(report: PilotReadinessReportResponse) -> str:
     power = report.power_upgrade_evidence
-    completed = len([item for item in report.scenario_statuses if item.status == "completed"])
+    completion = report.scenario_completion
+    next_scenario = next((item for item in report.scenario_statuses if item.id == completion.next_scenario_id), None)
     lines = [
         "# Pilot Closeout Report",
         "",
@@ -886,11 +933,17 @@ def _build_pilot_closeout_markdown(report: PilotReadinessReportResponse) -> str:
         f"- Window: {report.window_days}D",
         f"- Subject: {report.subject or 'global'}",
         f"- Team: {report.team_subject or 'all teams'}",
-        f"- Completed scenarios: {completed}/5",
+        f"- Completed scenarios: {completion.completed}/{completion.total}",
         f"- Runs completed: {report.runs_completed}",
         f"- Evidence-exportable runs: {report.evidence_exportable_runs}",
         f"- Ledger-valid runs: {report.ledger_valid_runs}",
         f"- Checkpointed runs: {report.checkpointed_runs}",
+        "",
+        "## Buyer Review Status",
+        f"- Buyer review: {'Ready' if completion.ready_for_buyer_review else 'Not ready'}",
+        f"- Next scenario: {next_scenario.name if next_scenario else 'None'}",
+        f"- Needs evidence: {completion.needs_evidence}",
+        f"- Missing scenarios: {completion.missing}",
         "",
         "## Value Generated",
         f"- Estimated value: ${report.estimated_value_usd}",

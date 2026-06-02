@@ -270,6 +270,10 @@ export function OrchestrateView() {
     () => templates.find((template) => String(template.id) === selectedTemplateId) ?? null,
     [selectedTemplateId, templates]
   );
+  const selectedPilotScenario = useMemo(
+    () => pilotScenarios.find((scenario) => scenario.id === selectedPilotScenarioId) ?? null,
+    [pilotScenarios, selectedPilotScenarioId]
+  );
   const activeEntitlementTier = useMemo(() => decodeEntitlementTier(entitlementToken), [entitlementToken]);
   const compatibleTemplate = useMemo(() => {
     if (!activeEntitlementTier) return null;
@@ -622,7 +626,15 @@ export function OrchestrateView() {
         });
       }
     } catch (runError) {
-      setError(runError instanceof Error ? runError.message : "Failed to run orchestration.");
+      const message = runError instanceof Error ? runError.message : "Failed to run orchestration.";
+      if (selectedPilotScenarioId === "missing-approval" && !approvalConfirmed) {
+        setError(
+          `${message} This is the expected policy block for the Missing approval pilot scenario. ` +
+            "Check Human Approval Confirmed, keep the buyer metadata, and rerun to complete the scenario."
+        );
+      } else {
+        setError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -841,21 +853,24 @@ export function OrchestrateView() {
             Apply Scenario
           </button>
         </div>
-        {selectedPilotScenarioId ? (
+        {selectedPilotScenario ? (
           <div className="result-grid">
-            {pilotScenarios
-              .filter((scenario) => scenario.id === selectedPilotScenarioId)
-              .map((scenario) => (
-                <article className="result-block" key={scenario.id}>
-                  <p className="eyebrow">{scenario.required_tier.toUpperCase()} gate</p>
-                  <h4>{scenario.expected_gate_behavior}</h4>
-                  <p>{scenario.success_signal}</p>
-                  <p className="muted">
-                    Approval required={String(scenario.approval_required)} · confirmed=
-                    {String(scenario.approval_confirmed)}
-                  </p>
-                </article>
-              ))}
+            <article className="result-block">
+              <p className="eyebrow">Scenario guidance · {selectedPilotScenario.required_tier.toUpperCase()} gate</p>
+              <h4>{selectedPilotScenario.name}</h4>
+              <p>{selectedPilotScenario.success_signal}</p>
+              <p className="muted">
+                Expected gate: {selectedPilotScenario.expected_gate_behavior} · Approval required:{" "}
+                {selectedPilotScenario.approval_required ? "yes" : "no"} · Default approval confirmed:{" "}
+                {selectedPilotScenario.approval_confirmed ? "yes" : "no"}
+              </p>
+              {selectedPilotScenario.id === "missing-approval" && !approvalConfirmed ? (
+                <p className="status status-warning">
+                  Expected policy block: run once to show the 409 approval gate, then check Human Approval Confirmed
+                  and rerun to complete the scenario.
+                </p>
+              ) : null}
+            </article>
           </div>
         ) : null}
       </section>
@@ -1141,9 +1156,17 @@ export function OrchestrateView() {
       {status ? <p className="status status-success">{status}</p> : null}
       {error ? <p className="status status-error">{error}</p> : null}
       {latest || queueJob ? (
-        <p>
-          <Link href="/orchestrations">View Orchestration History</Link>
-        </p>
+        <div className="button-row">
+          <Link className="nav-link nav-link-active" href="/orchestrations">
+            View Orchestration History
+          </Link>
+          <Link className="nav-link" href="/tutorial">
+            Back To Tutorial
+          </Link>
+          <Link className="nav-link" href="/monetization">
+            Review Pilot Closeout
+          </Link>
+        </div>
       ) : null}
 
       {queueJob ? (

@@ -12,14 +12,14 @@ The long-term vision remains a reusable personal operating system for execution,
 
 ---
 
-# 0. Current Iteration Snapshot (2026-05-30)
+# 0. Current Iteration Snapshot (2026-06-01)
 
 ## Iteration Theme
-- current iteration target: convert the deployed DevOps orchestration MVP into a buyer-closeout Pilot Conversion loop centered on AI-generated PR release control
+- current iteration target: convert the deployed DevOps orchestration MVP into a guided buyer-closeout Pilot Conversion loop centered on AI-generated PR release control
 - product direction: enterprise agent execution trust control layer for CI/CD and incident response, with inspectable replay, queue lifecycle visibility, signed entitlement-aware gates, checkpoint snapshots, and team-ready audit metadata
 - commercial direction: sell governed agent execution that reduces release risk, shortens human review cycles, preserves compliance evidence, and turns blocked risk into ROI proof
 - UI direction: buyer-readable control plane where `/tutorial`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/dashboard` tell one story: choose pilot scenario -> run release gate -> export evidence -> inspect ROI -> decide Power upgrade
-- status: Pilot ROI loop is online; current work adds scenario completion tracking, buyer-facing closeout reporting, and Power upgrade evidence so a trial can end with a clear commercial next action
+- status: Pilot ROI loop is online; current work guides buyers through the five pilot scenarios one at a time, then turns readiness, evidence, ROI, and Power upgrade proof into a clear closeout decision
 
 ## Commercial Core
 The product should be judged by whether it helps an enterprise make or save money:
@@ -228,6 +228,12 @@ The first version can use transparent estimates and operator-provided assumption
   - `GET /api/monetization/pilot-closeout?days=7|30&subject=...&team_subject=...` returns a redaction-safe Markdown buyer report based on existing readiness, ROI, ledger, checkpoint, and scenario data
   - `/monetization` shows scenario completion status for all five pilot scenarios, a `Why Power` upgrade evidence block, and copy/download actions for the closeout report
   - repeated pilot report/closeout calls remain read-only and do not mutate billing-period usage counters
+- added Pilot Guided Closeout V2:
+  - `GET /api/monetization/pilot-report` now returns `scenario_completion` with total/completed/needs-evidence/missing counts, next scenario id, and buyer-review readiness
+  - `GET /api/monetization/pilot-closeout` adds `Buyer Review Status` and the next scenario to run before buyer review
+  - `/tutorial` is now a pilot control console with progress, buyer review status, next scenario CTA, and one `Run Scenario` action per fixed scenario
+  - `/orchestrate?scenario=missing-approval` explains the expected `409` approval block and gives a clear confirm-approval-and-rerun path
+  - `/monetization` groups scenario completion by completed / needs evidence / missing and highlights buyer review status plus the next scenario
 - closed Evidence Export UX:
   - `/orchestrations` evidence export panel now supports `Copy Markdown` and `Download Markdown`
   - downloaded evidence file name is `orchestration-<id>-evidence.md`
@@ -252,7 +258,7 @@ The first version can use transparent estimates and operator-provided assumption
 ## Still Pending / Next Tasks
 
 ### Commercial Proof Required
-- validate Pilot Closeout with live buyer-style demos across all five scenarios
+- validate Guided Pilot Closeout with live buyer-style demos across all five scenarios
 - use Pilot Readiness plus Pilot Closeout as the commercial acceptance score before expanding to payment-provider or real Git provider work
 - collect buyer feedback on the `Why Power` evidence: Power-only gates used, risk decisions, audit packets, and estimated value
 - add Commercial Metrics V3 only after pilot feedback clarifies which value estimates buyers trust most
@@ -1027,8 +1033,9 @@ The current DevOps orchestration MVP is deployable when all of the following are
 
 ## Recommended Next Step
 Build the commercial proof loop in priority order:
-1. run live pilot-style demos against ROI Aggregation V2, Real PR/CI Adapter V1, and Evidence Export V1
-2. use pilot feedback to tune ROI assumptions and value wording before adding a real billing provider
-3. evaluate a real GitHub/GitLab adapter only after the controlled PR/CI evidence packet is accepted
-4. keep `/orchestrate -> /orchestrations`, ledger/checkpoint verification, signed entitlement gates, and server smoke checks green before every release
-5. defer Communication Assistant, Weekly Review, and broad integrations until the release-gate ROI story is strong enough to sell
+1. run the guided five-scenario pilot from `/tutorial`, including the missing-approval block-and-rerun path
+2. use `/monetization` Pilot Closeout to decide whether the buyer is ready for Power review or which scenario/evidence remains missing
+3. tune ROI assumptions and value wording from buyer feedback before adding a real billing provider
+4. evaluate a real GitHub/GitLab adapter only after the controlled PR/CI evidence packet is accepted
+5. keep `/orchestrate -> /orchestrations`, ledger/checkpoint verification, signed entitlement gates, and server smoke checks green before every release
+6. defer Communication Assistant, Weekly Review, and broad integrations until the release-gate ROI story is strong enough to sell

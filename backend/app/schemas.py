@@ -839,6 +839,15 @@ class PilotScenarioCompletionRead(BaseModel):
     latest_orchestration_id: int | None = None
 
 
+class PilotScenarioCompletionSummary(BaseModel):
+    total: int
+    completed: int
+    needs_evidence: int
+    missing: int
+    next_scenario_id: str | None = None
+    ready_for_buyer_review: bool = False
+
+
 class PilotPowerUpgradeEvidence(BaseModel):
     power_required_runs: int = 0
     approval_required_runs: int = 0
@@ -907,6 +916,7 @@ class PilotReadinessReportResponse(BaseModel):
     metadata_completeness: float
     missing_metadata_runs: int
     scenario_statuses: list[PilotScenarioCompletionRead] = Field(default_factory=list)
+    scenario_completion: PilotScenarioCompletionSummary
     power_upgrade_evidence: PilotPowerUpgradeEvidence
     success_criteria: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)

@@ -137,6 +137,14 @@ describe("dashboard monetization kpi", () => {
             metadata_completeness: 0.9,
             missing_metadata_runs: 0,
             scenario_statuses: [],
+            scenario_completion: {
+              total: 5,
+              completed: 5,
+              needs_evidence: 0,
+              missing: 0,
+              next_scenario_id: null,
+              ready_for_buyer_review: true,
+            },
             power_upgrade_evidence: {
               power_required_runs: 5,
               approval_required_runs: 4,

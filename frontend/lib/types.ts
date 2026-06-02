@@ -581,9 +581,19 @@ export type PilotReadinessReport = {
   metadata_completeness: number;
   missing_metadata_runs: number;
   scenario_statuses: PilotScenarioCompletion[];
+  scenario_completion: PilotScenarioCompletionSummary;
   power_upgrade_evidence: PilotPowerUpgradeEvidence;
   success_criteria: string[];
   recommendations: string[];
+};
+
+export type PilotScenarioCompletionSummary = {
+  total: number;
+  completed: number;
+  needs_evidence: number;
+  missing: number;
+  next_scenario_id: string | null;
+  ready_for_buyer_review: boolean;
 };
 
 export type PilotScenarioCompletion = {

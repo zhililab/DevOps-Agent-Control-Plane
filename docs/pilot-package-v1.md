@@ -6,9 +6,10 @@ AI-generated PR -> release gate -> human approval -> execute/block -> ledger/che
 ## Pilot Conversion V2 Additions
 
 - Static scenario API: `GET /api/orchestrations/pilot-scenarios`.
-- Pilot readiness API: `GET /api/monetization/pilot-report?days=7|30&subject=...&team_subject=...`.
-- Pilot closeout API: `GET /api/monetization/pilot-closeout?days=7|30&subject=...&team_subject=...`.
+- Pilot readiness API: `GET /api/monetization/pilot-report?days=7|30&subject=...&team_subject=...`, including `scenario_completion` totals, next scenario id, and buyer-review readiness.
+- Pilot closeout API: `GET /api/monetization/pilot-closeout?days=7|30&subject=...&team_subject=...`, including Buyer Review Status and the next scenario to run.
 - Scenario-driven UI: `/tutorial` links to `/orchestrate?scenario=<id>`, and `/orchestrate` can load the scenario into PR/CI adapter, planner, analyzer, reviewer, approval, and template fields.
+- Guided closeout UI: `/tutorial` shows pilot progress, buyer review status, and one `Run Scenario` action per scenario; no run-all shortcut is used in V2.
 - Evidence closeout: `/orchestrations` supports `Copy Markdown` and `Download Markdown` for each exported bundle.
 - Buyer KPI closeout: `/monetization` shows `Pilot Readiness`, scenario completion, `Why Power`, and `Pilot Closeout`; `/dashboard` shows `Pilot Ready`.
 
@@ -43,7 +44,7 @@ Do not paste raw credentials, tokens, secrets, passwords, or private customer da
 ## Trial Success Metrics
 
 - At least 5 release-gate runs completed with evidence export.
-- All 5 fixed scenarios are marked completed, or missing scenarios are explicitly listed in the closeout report.
+- All 5 fixed scenarios are marked completed before Buyer Review Status becomes `Ready`; missing or needs-evidence scenarios are explicitly listed in the closeout report.
 - At least 5 runs have valid ledger events.
 - At least 5 runs have checkpoint snapshots.
 - At least 1 risky PR is blocked or escalated before execution.
@@ -63,6 +64,8 @@ Manual Billing V1 remains the trial billing model. Stripe or another payment pro
 
 1. Open `/monetization`, activate or refresh Power for `demo-user`.
 2. Open `/tutorial`, choose a Pilot Dataset card.
+   - Use the displayed next scenario first when a guided closeout is in progress.
+   - Do not run the whole scenario pack automatically; buyer evidence should be reviewed after each scenario.
 3. Confirm `/orchestrate?scenario=<id>` loaded the PR/CI adapter packet, team metadata, approval state, and recommended template.
 4. Run the gate with signed Power entitlement. For `missing-approval`, first show the `409` block, then confirm approval and rerun.
 5. Open `/orchestrations`, verify ledger/checkpoints, export evidence, then copy or download Markdown.

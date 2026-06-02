@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
 import { apiClient } from "@/lib/api";
-import type { PilotScenario, PilotScenarioCompletion } from "@/lib/types";
+import type { PilotScenario, PilotScenarioCompletion, PilotScenarioCompletionSummary } from "@/lib/types";
 
 const workflowSteps = [
   {
@@ -108,10 +108,20 @@ const commercialLadders = [
   { tier: "Power", value: "Use approval gates, audit evidence, and higher operational limits." },
 ];
 
+const fallbackScenarioCompletion: PilotScenarioCompletionSummary = {
+  total: 5,
+  completed: 0,
+  needs_evidence: 0,
+  missing: 5,
+  next_scenario_id: "high-risk-generated-pr",
+  ready_for_buyer_review: false,
+};
+
 export function TutorialView() {
   const [activeStepId, setActiveStepId] = useState(workflowSteps[0].id);
   const [pilotDatasets, setPilotDatasets] = useState(fallbackPilotDatasets);
   const [scenarioStatuses, setScenarioStatuses] = useState<PilotScenarioCompletion[]>([]);
+  const [scenarioCompletion, setScenarioCompletion] = useState<PilotScenarioCompletionSummary>(fallbackScenarioCompletion);
   const activeStep = useMemo(
     () => workflowSteps.find((step) => step.id === activeStepId) ?? workflowSteps[0],
     [activeStepId]
@@ -139,6 +149,7 @@ export function TutorialView() {
           Array.isArray(reportResult.value.scenario_statuses)
         ) {
           setScenarioStatuses(reportResult.value.scenario_statuses);
+          setScenarioCompletion(reportResult.value.scenario_completion ?? fallbackScenarioCompletion);
         }
       } catch {
         if (mounted) {
@@ -152,10 +163,13 @@ export function TutorialView() {
     };
   }, []);
 
-  const completedScenarioCount = scenarioStatuses.filter((item) => item.status === "completed").length;
   const scenarioStatusById = useMemo(
     () => new Map(scenarioStatuses.map((item) => [item.id, item])),
     [scenarioStatuses]
+  );
+  const nextScenario = useMemo(
+    () => pilotDatasets.find((item) => item.id === scenarioCompletion.next_scenario_id),
+    [pilotDatasets, scenarioCompletion.next_scenario_id]
   );
 
   return (
@@ -215,25 +229,50 @@ export function TutorialView() {
       </section>
 
       <section className="result-block" aria-label="pilot-progress">
-        <p className="eyebrow">Pilot Progress</p>
-        <h3>{completedScenarioCount}/5 scenario gates completed</h3>
+        <div className="section-heading-row">
+          <div>
+            <p className="eyebrow">Pilot Control Console</p>
+            <h3>
+              {scenarioCompletion.completed}/{scenarioCompletion.total} scenario gates completed
+            </h3>
+            <p className="muted">
+              Buyer review status: {scenarioCompletion.ready_for_buyer_review ? "Ready" : "Not ready"}
+              {nextScenario ? ` · next scenario: ${nextScenario.name}` : ""}
+            </p>
+          </div>
+          {nextScenario ? (
+            <Link className="nav-link nav-link-active" href={`/orchestrate?scenario=${nextScenario.id}`}>
+              Run Next Scenario
+            </Link>
+          ) : (
+            <Link className="nav-link nav-link-active" href="/monetization">
+              Review Closeout
+            </Link>
+          )}
+        </div>
         <p className="muted">
-          Complete all five buyer scenarios, verify ledger/checkpoint evidence, then use Plans & Usage for the closeout report.
+          Run each scenario one at a time, verify ledger/checkpoint evidence, then use Plans & Usage for the closeout report.
         </p>
       </section>
 
       <section className="tutorial-grid tutorial-grid-three" aria-label="pilot-demo-datasets">
-        {pilotDatasets.map((item) => (
-          <Link className="tutorial-card" href={`/orchestrate?scenario=${item.id}`} key={item.id}>
-            <p className="eyebrow">Pilot Dataset</p>
-            <h3>{item.name}</h3>
-            <p>{item.success_signal}</p>
-            <p className="muted">
-              {item.required_tier.toUpperCase()} · {item.expected_gate_behavior} ·{" "}
-              {scenarioStatusById.get(item.id)?.status ?? "missing"}
-            </p>
-          </Link>
-        ))}
+        {pilotDatasets.map((item) => {
+          const status = scenarioStatusById.get(item.id)?.status ?? "missing";
+          return (
+            <article className="tutorial-card" key={item.id}>
+              <p className="eyebrow">Pilot Dataset · {status}</p>
+              <h3>{item.name}</h3>
+              <p>{item.success_signal}</p>
+              <p className="muted">
+                {item.required_tier.toUpperCase()} · {item.expected_gate_behavior}
+                {item.id === "missing-approval" ? " · first run should block until approval is confirmed" : ""}
+              </p>
+              <Link className="nav-link nav-link-active" href={`/orchestrate?scenario=${item.id}`}>
+                Run Scenario
+              </Link>
+            </article>
+          );
+        })}
       </section>
 
       <section className="tutorial-grid tutorial-grid-three tutorial-plan-guide" aria-label="commercial-plan-guide">

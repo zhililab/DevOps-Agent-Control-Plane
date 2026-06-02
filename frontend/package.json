@@ -25,6 +25,10 @@
     "@types/react-dom": "19.0.2",
     "jsdom": "25.0.1",
     "typescript": "5.7.2",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "ws": "8.20.1"
+  },
+  "overrides": {
+    "ws": "8.20.1"
   }
 }

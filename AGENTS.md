@@ -50,6 +50,7 @@ The broader personal assistant vision remains, but the current commercial stage 
 - Manual Billing V1 remains the commercial adapter until the pilot package proves buyer value.
 - Evidence bundles and pilot reports must stay redaction-safe and must not include raw entitlement tokens, passwords, secrets, or private credentials.
 - Pilot Closeout is the current buyer-facing finish line: scenario completion, missing evidence, ROI, and Power upgrade evidence must stay consistent across `/tutorial`, `/orchestrations`, `/monetization`, and `/dashboard`.
+- Guided Pilot Closeout V2 should stay scenario-by-scenario: show next scenario, expected missing-approval block, evidence gaps, and buyer-review readiness without adding run-all demo data generation.
 - Commercial reporting endpoints must be read-only unless explicitly named as checkout, cancel, reactivate, or usage-recording paths.
 
 ## Task Expectations

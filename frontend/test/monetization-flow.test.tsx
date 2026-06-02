@@ -145,7 +145,28 @@ const pilotReport = {
       approval_metadata_complete: true,
       latest_orchestration_id: 42,
     },
+    {
+      id: "missing-approval",
+      name: "Missing approval",
+      status: "missing",
+      expected_gate_behavior: "block",
+      required_tier: "power",
+      completed_runs: 0,
+      evidence_exportable_runs: 0,
+      ledger_valid_runs: 0,
+      checkpointed_runs: 0,
+      approval_metadata_complete: false,
+      latest_orchestration_id: null,
+    },
   ],
+  scenario_completion: {
+    total: 5,
+    completed: 1,
+    needs_evidence: 0,
+    missing: 4,
+    next_scenario_id: "missing-approval",
+    ready_for_buyer_review: false,
+  },
   power_upgrade_evidence: {
     power_required_runs: 1,
     approval_required_runs: 3,
@@ -172,7 +193,8 @@ const pilotCloseout = {
   subject: "demo-user",
   team_subject: "platform-team",
   status: "needs evidence",
-  markdown: "# Pilot Closeout Report\n\n## Why Power\n- Recommendation: Power is the recommended pilot plan.\n",
+  markdown:
+    "# Pilot Closeout Report\n\n## Buyer Review Status\n- Buyer review: Not ready\n- Next scenario: Missing approval\n\n## Why Power\n- Recommendation: Power is the recommended pilot plan.\n",
   data: {},
 };
 
@@ -251,10 +273,16 @@ describe("monetization flow", () => {
     expect(screen.getAllByText("Release Gate And Remote Deploy").length).toBeGreaterThan(0);
     expect(screen.getAllByText("21").length).toBeGreaterThan(0);
     expect(screen.getByText("Pilot Readiness")).toBeInTheDocument();
+    expect(screen.getByText("Buyer Review Status")).toBeInTheDocument();
+    expect(screen.getByText("Not ready")).toBeInTheDocument();
+    expect(screen.getByText(/next: Missing approval/)).toBeInTheDocument();
     expect(screen.getByText("Needs evidence")).toBeInTheDocument();
     expect(screen.getByText("4 evidence-exportable")).toBeInTheDocument();
     expect(screen.getByText("75%")).toBeInTheDocument();
     expect(screen.getByText("Scenario Completion")).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getByText("Missing")).toBeInTheDocument();
+    expect(screen.getByText(/Missing approval · Next/)).toBeInTheDocument();
     expect(screen.getByText("Why Power")).toBeInTheDocument();
     expect(screen.getByText("Pilot Closeout")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy Report" })).toBeInTheDocument();

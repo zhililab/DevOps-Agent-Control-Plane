@@ -60,6 +60,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - Pilot Scenario Pack V2 provides five fixed buyer-demo release scenarios that can be loaded from `/tutorial` or `/orchestrate?scenario=...`.
 - Pilot Readiness Report V1 aggregates completed runs, evidence exportability, ledger/checkpoint coverage, approval metadata completeness, and estimated pilot value.
 - Pilot Closeout Report V1 turns readiness, scenario completion, ROI evidence, ledger/checkpoint integrity, and Power upgrade signals into a redaction-safe buyer report.
+- Pilot Guided Closeout V2 guides the buyer through the five fixed scenarios one at a time, shows the next scenario to run, and marks buyer review as ready only when all scenario evidence, ledger, checkpoint, and metadata checks pass.
 - Knowledge and prompt-template utilities that support reuse around orchestration workflows.
 - Existing daily plan, reflection, technical analysis, task, and profile routes remain available for compatibility and personal workflow support.
 
@@ -133,8 +134,8 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `GET /api/monetization/events`: read newest-first monetization event audit feed, optionally scoped by `subject`
 - `GET /api/monetization/entitlement`: issue a signed orchestration entitlement from an active Manual Billing subject
 - `GET /api/monetization/commercial-metrics`: read Commercial Signal (`days=7|30`, optional `subject`) with billing-period plan usage, window activity, policy blocks, billable work units, ROI summary, top templates, and anomaly hints
-- `GET /api/monetization/pilot-report`: read Pilot Readiness (`days=7|30`, optional `subject` and `team_subject`) for buyer trial acceptance
-- `GET /api/monetization/pilot-closeout`: read a Markdown-ready Pilot Closeout report (`days=7|30`, optional `subject` and `team_subject`) with scenario completion, missing evidence, value generated, and Power upgrade recommendation
+- `GET /api/monetization/pilot-report`: read Pilot Readiness (`days=7|30`, optional `subject` and `team_subject`) for buyer trial acceptance, including `scenario_completion` progress and next scenario guidance
+- `GET /api/monetization/pilot-closeout`: read a Markdown-ready Pilot Closeout report (`days=7|30`, optional `subject` and `team_subject`) with Buyer Review Status, scenario completion, missing evidence, value generated, and Power upgrade recommendation
 - `POST /api/monetization/checkout/manual`: activate or change a manual billing subscription
 - `POST /api/monetization/cancel`: schedule subscription cancellation at period end
 - `POST /api/monetization/reactivate`: clear a pending manual cancellation
@@ -166,11 +167,11 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 The current commercial demo is scenario-driven:
 
 1. Open `/monetization`, activate or refresh a Power plan for `demo-user`.
-2. Open `/tutorial`, choose a Pilot Dataset card such as `High-risk generated PR`.
+2. Open `/tutorial`, review the `0/5 completed` style pilot progress, then choose `Run Scenario` for the next Pilot Dataset card.
 3. `/orchestrate?scenario=<id>` loads PR/CI adapter context, planner/analyzer/reviewer inputs, approval metadata, and the recommended release-gate template.
 4. Run the gate with signed Power entitlement and explicit approval.
 5. Open `/orchestrations`, verify ledger/checkpoints, then use `Export Evidence`, `Copy Markdown`, or `Download Markdown`.
-6. Open `/monetization` to review `Commercial Signal`, `Pilot Readiness`, `Why Power`, and the copy/download Pilot Closeout report.
+6. Open `/monetization` to review `Commercial Signal`, `Pilot Readiness`, `Buyer Review Status`, grouped scenario completion, `Why Power`, and the copy/download Pilot Closeout report.
 7. Open `/dashboard` to confirm buyer KPIs: Estimated Value, Review Time Saved, Blocked Risk Value, and Pilot Ready.
 
 ## 1) Backend

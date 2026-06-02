@@ -164,8 +164,8 @@ def test_monetization_usage_sorts_counters_deterministically_for_subject(client)
         assert response.status_code == 200
         counters = response.json()["counters"]
         assert [(item["metric"], item["period_start"], item["used"]) for item in counters] == [
-            ("queued_runs", "2026-05-01", 2),
-            ("workflow_runs", "2026-05-01", 7),
+            ("queued_runs", period_start.isoformat(), 2),
+            ("workflow_runs", period_start.isoformat(), 7),
             ("workflow_runs", "2026-04-01", 3),
         ]
     finally:
@@ -858,6 +858,14 @@ def test_pilot_readiness_report_aggregates_subject_team_roi_and_integrity(client
     assert payload["review_time_saved_minutes"] > 0
     assert payload["audit_time_saved_minutes"] > 0
     assert payload["metadata_completeness"] == 1.0
+    assert payload["scenario_completion"] == {
+        "total": 5,
+        "completed": 1,
+        "needs_evidence": 0,
+        "missing": 4,
+        "next_scenario_id": "low-risk-docs-pr",
+        "ready_for_buyer_review": False,
+    }
     high_risk_status = next(item for item in payload["scenario_statuses"] if item["id"] == "high-risk-generated-pr")
     assert high_risk_status["status"] == "completed"
     assert high_risk_status["latest_orchestration_id"] == run.json()["id"]
@@ -872,6 +880,9 @@ def test_pilot_readiness_report_aggregates_subject_team_roi_and_integrity(client
     closeout_payload = closeout.json()
     assert closeout_payload["status"] == payload["status"]
     assert "Pilot Closeout Report" in closeout_payload["markdown"]
+    assert "Buyer Review Status" in closeout_payload["markdown"]
+    assert "Buyer review: Not ready" in closeout_payload["markdown"]
+    assert "Next scenario: Low-risk docs PR" in closeout_payload["markdown"]
     assert "High-risk generated PR: completed" in closeout_payload["markdown"]
     assert "Why Power" in closeout_payload["markdown"]
     closeout_serialized = json.dumps(closeout_payload).lower()
@@ -887,6 +898,93 @@ def test_pilot_readiness_report_aggregates_subject_team_roi_and_integrity(client
     team_miss = client.get("/api/monetization/pilot-report?days=7&subject=pilot-buyer&team_subject=other-team")
     assert team_miss.status_code == 200
     assert team_miss.json()["runs_completed"] == 0
+
+
+def test_pilot_scenario_completion_summary_reports_zero_and_full_progress(client) -> None:
+    empty_response = client.get("/api/monetization/pilot-report?days=7&subject=empty-pilot-buyer")
+    assert empty_response.status_code == 200
+    assert empty_response.json()["scenario_completion"] == {
+        "total": 5,
+        "completed": 0,
+        "needs_evidence": 0,
+        "missing": 5,
+        "next_scenario_id": "high-risk-generated-pr",
+        "ready_for_buyer_review": False,
+    }
+
+    checkout = client.post(
+        "/api/monetization/checkout/manual",
+        json={"subject": "complete-pilot-buyer", "target_tier": "power"},
+    )
+    assert checkout.status_code == 200
+    assert client.post("/api/orchestrations/templates/import/builtin").status_code == 200
+    template = next(
+        item for item in client.get("/api/orchestrations/templates").json()
+        if item["name"] == "AI-generated PR Release Gate"
+    )
+    scenarios = client.get("/api/orchestrations/pilot-scenarios").json()["items"]
+
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    old_required = settings.entitlement_required
+    try:
+        settings.entitlement_secret = "complete-pilot-secret"
+        settings.entitlement_required = True
+        power_token = sign_entitlement_token(
+            secret="complete-pilot-secret",
+            tier="power",
+            user_id="complete-pilot-buyer",
+            ttl_seconds=600,
+        )
+        for scenario in scenarios:
+            response = client.post(
+                "/api/orchestrations/run",
+                json={
+                    "entry_source": "pilot_scenario",
+                    "pilot_scenario_id": scenario["id"],
+                    "template_id": template["id"],
+                    "steps": None,
+                    "team_subject": "platform-team",
+                    "requested_by": "sre-lead",
+                    "approval_actor": "release-manager",
+                    "approval_note": f"Buyer approved scenario {scenario['name']}.",
+                    "approval_confirmed": True,
+                    "release_gate_input": scenario["release_gate_input"],
+                    "daily_context": scenario["daily_context"],
+                    "technical_input": scenario["technical_input"],
+                    "reflection_input": scenario["reflection_input"],
+                    "persist_knowledge": False,
+                    "persist_template": False,
+                },
+                headers={"X-Entitlement": power_token},
+            )
+            assert response.status_code == 200
+    finally:
+        settings.entitlement_secret = old_secret
+        settings.entitlement_required = old_required
+
+    report = client.get(
+        "/api/monetization/pilot-report?days=7&subject=complete-pilot-buyer&team_subject=platform-team"
+    )
+    assert report.status_code == 200
+    payload = report.json()
+    assert payload["status"] == "ready"
+    assert payload["scenario_completion"] == {
+        "total": 5,
+        "completed": 5,
+        "needs_evidence": 0,
+        "missing": 0,
+        "next_scenario_id": None,
+        "ready_for_buyer_review": True,
+    }
+    assert {item["status"] for item in payload["scenario_statuses"]} == {"completed"}
+
+    closeout = client.get(
+        "/api/monetization/pilot-closeout?days=7&subject=complete-pilot-buyer&team_subject=platform-team"
+    )
+    assert closeout.status_code == 200
+    assert "Buyer review: Ready" in closeout.json()["markdown"]
+    assert "Next scenario: None" in closeout.json()["markdown"]
 
 
 def test_usage_counter_backfill_is_idempotent_for_current_billing_period(client) -> None:
