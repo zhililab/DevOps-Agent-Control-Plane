@@ -2,6 +2,39 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-06-02 Pilot Guided Closeout V2 Deployment
+
+- Implementation commit: `9eb7019 chore: release deploy 2026-06-02-1602`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- Product value shipped:
+  - Guided Pilot Closeout V2 scenario-by-scenario buyer journey on `/tutorial`
+  - `GET /api/monetization/pilot-report` now includes `scenario_completion`
+  - `GET /api/monetization/pilot-closeout` now includes buyer review status, next scenario, missing scenarios, and readiness summary
+  - `/orchestrate?scenario=...` shows scenario guidance, expected gate behavior, required tier, approval status, success signal, and post-run CTAs
+  - `missing-approval` flow explicitly supports the expected approval block first, then approval confirmation and rerun
+  - `/monetization` shows Buyer Review Status and grouped Scenario Completion under Pilot Readiness
+  - `/dashboard` and docs remain aligned to the commercial Pilot Closeout buyer journey
+  - frontend dependency hardening pins `ws@8.20.1`; high-severity security gate remains enforced while moderate tooling advisories stay visible
+- Verified on local release gate:
+  - `make release-deploy` reran `make release-check`
+  - frontend unit tests passed: 51 tests across 14 files
+  - frontend visual baseline passed: 4 tests
+  - Playwright E2E passed: 3 tests
+  - backend test suite passed during `qa-fast`
+  - `make security-check` passed; npm audit still reports moderate tooling advisories below the configured high-severity release gate
+  - `kubectl kustomize k8s` rendered 275 lines
+- Verified on remote:
+  - remote smoke checks passed for frontend routes, core workflow APIs, orchestration run/history/metrics, queue run/history, monetization observability, Manual Billing lifecycle, entitlement, commercial metrics, knowledge list, and template list
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `{"status":"ok"}`
+  - public `/dashboard`, `/tutorial`, `/orchestrate`, `/orchestrations`, and `/monetization` returned HTTP `200`
+  - public `GET /api/orchestrations/pilot-scenarios` returned the fixed five-scenario pilot pack
+  - public `GET /api/monetization/pilot-report?days=7&subject=demo-user` returned `scenario_completion.total=5`, `completed=0`, `missing=5`, `next_scenario_id=high-risk-generated-pr`, and `ready_for_buyer_review=false`
+  - public `GET /api/monetization/pilot-closeout?days=7&subject=demo-user` returned Markdown with `Buyer Review Status`, `Buyer review: Not ready`, and `Next scenario: High-risk generated PR`
+
 ## 2026-05-24 Pilot ROI Evidence Loop Deployment
 
 - Implementation commit: `ec43c27 feat: add pilot ROI evidence loop`
