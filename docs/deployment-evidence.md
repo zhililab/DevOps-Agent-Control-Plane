@@ -2,6 +2,40 @@
 
 This file records the current MVP deployment evidence for the Docker Compose server path.
 
+## 2026-06-06 Dashboard API Base Fix Deployment
+
+- Implementation commit: `426cc46 chore: release deploy 2026-06-06-1910`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Release path: `make release-deploy` -> remote `make server-deploy`
+- Database reset: `RESET_DB=0`
+- User-facing issue fixed:
+  - `/dashboard` displayed `Some dashboard data is unavailable: plans, reflections, analysis.`
+  - `/dashboard` also displayed `Some dashboard data is unavailable: orchestration metrics, orchestration history, commercial metrics, pilot readiness.`
+  - root cause was the frontend API client defaulting to `http://localhost:8000/api` when `NEXT_PUBLIC_API_BASE` was absent; production browser requests could point at the visitor's local machine instead of the same-origin gateway
+- Release fixes included:
+  - frontend API client now defaults to same-origin `/api`
+  - added `frontend/test/api-client.test.tsx` to assert default requests use `/api/plans/history` and never `localhost:8000`
+- Release incident handled:
+  - first remote deploy attempt reached commit `426cc46` but smoke failed because the server disk was full and PostgreSQL could not write `postmaster.pid`
+  - remote cleanup reclaimed about `38.7GB` by pruning unused Docker images, stopped containers, and build cache; PostgreSQL data volumes were not pruned
+  - server root filesystem recovered from `100%` used to about `46%` used before the successful redeploy
+- Verified on local release gate:
+  - `make qa-fast` passed with frontend tests: 52 tests across 15 files
+  - `make qa-visual` passed: 4 tests
+  - Playwright E2E passed: 3 tests
+  - `make security-check` passed; npm audit still reports moderate tooling advisories below the configured high-severity release gate
+  - `kubectl kustomize k8s` rendered 275 lines
+  - second `make release-deploy` reran `make release-check`, found no staged changes, and deployed the already-pushed commit
+- Verified on remote:
+  - remote smoke checks passed for frontend routes, daily plan, reflection, technical analysis, orchestration run/history/metrics, queue run/history, monetization observability, Manual Billing lifecycle, entitlement, commercial metrics, knowledge list, and template list
+  - remote runtime security checks passed
+  - public `GET http://1.117.63.81/health` returned `{"status":"ok"}`
+  - public `/dashboard` returned HTTP `200`
+  - public `GET /api/plans/history`, `/api/reflections/history`, `/api/analysis/history`, `/api/orchestrations/metrics?days=7`, `/api/monetization/commercial-metrics?days=7`, and `/api/monetization/pilot-report?days=7` returned HTTP `200`
+  - headless browser verification loaded `/dashboard` and confirmed `has-dashboard-error=false`, `has-localhost-request=false`
+  - observed dashboard API requests use same-origin URLs such as `http://1.117.63.81/api/plans/history`, `http://1.117.63.81/api/orchestrations/metrics?days=7`, and `http://1.117.63.81/api/monetization/pilot-report?days=7`
+
 ## 2026-06-02 Pilot Guided Closeout V2 Deployment
 
 - Implementation commit: `9eb7019 chore: release deploy 2026-06-02-1602`
