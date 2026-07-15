@@ -126,6 +126,7 @@ This document records the current product target and the minimum functionality t
 - LLM API keys must remain environment-only; provider status, invocation records, errors, evaluation results, and request hashes must not expose raw credentials.
 - Production evaluation runs, feedback, and Pilot measurement writes must require `X-Evaluation-Access`; the access secret must be independent from the provider API key and remain environment-only.
 - Ordinary orchestration runs must not invoke the optional LLM provider unless `use_llm_provider=true` is explicitly submitted.
+- Release gates must clear production Provider credentials from local test subprocesses so E2E cannot consume real model quota.
 - Provider output remains advisory evidence. A provider timeout, malformed response, or disagreement must not replace the deterministic policy-gate decision.
 
 ## Query Performance Baseline

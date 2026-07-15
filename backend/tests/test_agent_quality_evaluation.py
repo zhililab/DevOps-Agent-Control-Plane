@@ -154,6 +154,28 @@ def test_production_evaluation_mutations_require_dedicated_write_access(client) 
         settings.evaluation_write_secret = old_write_secret
 
 
+def test_local_evaluation_remains_runnable_when_deploy_secret_is_loaded(client) -> None:
+    settings = get_settings()
+    old_environment = settings.environment
+    old_write_secret = settings.evaluation_write_secret
+    try:
+        settings.environment = "local"
+        settings.evaluation_write_secret = "loaded-by-release-script"
+
+        status = client.get("/api/evaluations/provider-status")
+        assert status.status_code == 200
+        assert status.json()["write_protected"] is False
+
+        response = client.post(
+            "/api/evaluations/runs",
+            json={"mode": "deterministic", "case_ids": ["docs-only-pass"]},
+        )
+        assert response.status_code == 200
+    finally:
+        settings.environment = old_environment
+        settings.evaluation_write_secret = old_write_secret
+
+
 def test_orchestration_model_observation_is_explicit_opt_in(client, monkeypatch) -> None:
     _enable_fake_provider(monkeypatch)
     payload = {

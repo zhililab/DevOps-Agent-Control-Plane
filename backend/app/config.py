@@ -79,7 +79,7 @@ class Settings(BaseSettings):
 
     @property
     def effective_evaluation_write_protected(self) -> bool:
-        return self.is_production or bool(self.evaluation_write_secret.strip())
+        return self.is_production
 
     @property
     def effective_cors_allowed_origins(self) -> list[str]:

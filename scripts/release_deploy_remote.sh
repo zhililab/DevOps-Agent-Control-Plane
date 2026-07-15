@@ -52,7 +52,14 @@ else
 fi
 
 log "running local gate: $CHECK_CMD"
-eval "$CHECK_CMD"
+(
+  # Production credentials must not change local test behavior or trigger live provider calls.
+  unset APP_LLM_ENABLED APP_LLM_PROVIDER APP_LLM_BASE_URL APP_LLM_API_KEY APP_LLM_MODEL
+  unset APP_LLM_PROMPT_VERSION APP_LLM_TIMEOUT_SECONDS
+  unset APP_LLM_INPUT_COST_PER_MILLION_USD APP_LLM_OUTPUT_COST_PER_MILLION_USD
+  unset APP_EVALUATION_WRITE_SECRET
+  eval "$CHECK_CMD"
+)
 
 log "staging local changes"
 git add -A
