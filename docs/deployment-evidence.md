@@ -660,6 +660,42 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - `release_lead_time_minutes`, Pilot value `0.1421`, sample size `25`
   - human Baseline remains absent, so `improvement_rate` is `null` and estimated ROI remains separate
 
+## 2026-07-16 Product Language Neutralization Release
+
+- Implementation commits:
+  - `11f73c8 feat: align product quality language`
+  - `29e61a5 fix: skip enum columns in language migration`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Database reset: `RESET_DB=0`
+- Remote PostgreSQL backup before migration:
+  - `/root/code/personal-agent-ws/personal-agent/backups/personal_agent_pre_0019_20260716_004730.sql.gz`
+  - verified non-empty size: `270K`
+- Remote migration: `0019_normalize_quality_evidence_subject`
+- Release behavior:
+  - normalized the public quality surface, documentation, test fixtures, and stored quality-evidence subject to neutral product language
+  - added `make product-language-check` to scan tracked files and all Git commit subjects/bodies
+  - confirmed existing Git commit messages were already clean, so no destructive history rewrite was required
+  - normalized persisted text while preserving evaluation metrics, Provider observations, feedback, and Pilot values
+- Migration recovery evidence:
+  - the first deployment encountered a PostgreSQL enum compatibility error during the broad text scan
+  - PostgreSQL transactional DDL rolled back the migration without partial data changes
+  - the migration was tightened to skip enum mutation while retaining read-only verification coverage
+  - the corrected migration then completed successfully from the pre-migration backup state
+- Local release verification:
+  - full `make release-check` passed
+  - backend suite, 56 frontend tests, production build, four visual tests, and four Playwright flows passed
+  - security checks passed and npm audit reported zero vulnerabilities
+  - `make product-language-check` passed for tracked content and every Git commit message
+- Remote release verification:
+  - production head was `29e61a5` before this evidence-only documentation update
+  - Alembic reported `0019_normalize_quality_evidence_subject (head)`
+  - backend, frontend, gateway, and PostgreSQL containers were running
+  - remote smoke checks and runtime security checks passed
+  - public `/evaluation` returned `200`, rendered `QUALITY EVIDENCE`, and contained no disallowed product-positioning vocabulary
+  - public quality comparison resolved subject `quality-evidence`, Pilot value `0.1421`, and sample size `25`
+  - a read-only production database scan covered 132 text, JSON, and enum columns and found zero residual matches
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.

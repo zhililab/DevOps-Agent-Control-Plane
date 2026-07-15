@@ -51,6 +51,10 @@ Each commercial run should move toward reporting:
 The first version can use transparent estimates and operator-provided assumptions. The important requirement is that every enterprise demo ends with a value report, not only an agent transcript.
 
 ## Completed In This Iteration
+- replaced career-preparation framing with product-quality and operational-evidence language across the UI, source, tests, and documentation
+- added `make product-language-check` to scan tracked content and every Git commit message for disallowed product-positioning vocabulary
+- added Alembic migration `0019_normalize_quality_evidence_subject` to normalize legacy quality-evidence subjects and stored text without changing evaluation results
+- verified the production database across 132 text, JSON, and enum columns with zero remaining disallowed vocabulary matches
 - added Agent Quality Lab V1 persistence and APIs for provider invocations, fixed-set evaluation, human decision feedback, and observed Pilot measurements
 - added optional Volcengine Ark provider observation with environment-only credentials and persisted model/prompt/token/latency/cost metadata
 - added versioned `pr-ci-gate.v1.25` evaluation data with 25 stable PR/CI cases and reproducible expected decisions
