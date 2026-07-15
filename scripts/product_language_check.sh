@@ -4,7 +4,13 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ASCII_TERM="inter""view"
-UNICODE_TERM=$'\u9762\u8bd5'
+# UTF-8 bytes keep the term stable even when the host locale is missing or invalid.
+UNICODE_TERM=$'\xe9\x9d\xa2\xe8\xaf\x95'
+
+if [[ -z "$ASCII_TERM" || -z "$UNICODE_TERM" ]]; then
+  printf '%s\n' "[product-language-check] invalid empty search term"
+  exit 2
+fi
 
 cd "$ROOT_DIR"
 

@@ -691,6 +691,7 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - production head was `29e61a5` before this evidence-only documentation update
   - Alembic reported `0019_normalize_quality_evidence_subject (head)`
   - backend, frontend, gateway, and PostgreSQL containers were running
+  - the product-language guard uses locale-independent UTF-8 bytes and rejects empty search terms so it behaves consistently on the CentOS host
   - remote smoke checks and runtime security checks passed
   - public `/evaluation` returned `200`, rendered `QUALITY EVIDENCE`, and contained no disallowed product-positioning vocabulary
   - public quality comparison resolved subject `quality-evidence`, Pilot value `0.1421`, and sample size `25`
