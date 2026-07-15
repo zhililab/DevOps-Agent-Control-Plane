@@ -16,6 +16,7 @@ describe("app nav", () => {
     expect(screen.getByText("Learn")).toBeInTheDocument();
     expect(screen.getByText("Assets")).toBeInTheDocument();
     expect(screen.getByText("Personal Loops")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Quality Lab" })).toHaveAttribute("href", "/evaluation");
     expect(screen.getByRole("link", { name: "Plans & Usage" })).toHaveClass("nav-link-active");
   });
 });

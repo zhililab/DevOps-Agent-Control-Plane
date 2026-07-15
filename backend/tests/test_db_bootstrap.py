@@ -64,4 +64,4 @@ def test_startup_migration_does_not_stamp_when_version_exists() -> None:
 
 
 def test_startup_migration_reads_current_alembic_head() -> None:
-    assert get_current_head(get_alembic_config()) == "0017_add_ai_pr_release_gate_template"
+    assert get_current_head(get_alembic_config()) == "0018_add_llm_evaluation_feedback"

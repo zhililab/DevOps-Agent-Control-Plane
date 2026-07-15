@@ -1,0 +1,205 @@
+{
+  "dataset_version": "pr-ci-gate.v1.25",
+  "items": [
+    {
+      "id": "docs-only-pass",
+      "name": "Documentation-only change with passing CI",
+      "category": "low-risk",
+      "expected_decision": "approve",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/101", "pr_diff_summary": "Updates README wording only.", "ci_log_summary": "All documentation and link checks passed.", "target_environment": "documentation", "change_risk": "No runtime behavior change."},
+      "rationale": "Documentation-only change has passing evidence and no runtime impact."
+    },
+    {
+      "id": "unit-test-pass",
+      "name": "Unit test additions",
+      "category": "low-risk",
+      "expected_decision": "approve",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/102", "pr_diff_summary": "Adds unit tests without application code changes.", "ci_log_summary": "Unit and lint checks passed.", "target_environment": "test", "change_risk": "Test-only change."},
+      "rationale": "Test-only change is supported by passing CI."
+    },
+    {
+      "id": "comment-cleanup",
+      "name": "Comment cleanup",
+      "category": "low-risk",
+      "expected_decision": "approve",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/103", "pr_diff_summary": "Clarifies comments and removes stale TODO text.", "ci_log_summary": "All checks passed.", "target_environment": "source", "change_risk": "No executable code changed."},
+      "rationale": "Non-executable change has complete passing evidence."
+    },
+    {
+      "id": "style-pass",
+      "name": "Formatting-only update",
+      "category": "low-risk",
+      "expected_decision": "approve",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/104", "pr_diff_summary": "Applies formatter to one module with no semantic diff.", "ci_log_summary": "Formatter, type, and unit checks passed.", "target_environment": "staging", "change_risk": "No semantic code change."},
+      "rationale": "Formatting-only change is low risk and verified."
+    },
+    {
+      "id": "feature-flag-off",
+      "name": "Feature behind disabled flag",
+      "category": "low-risk",
+      "expected_decision": "approve",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/105", "pr_diff_summary": "Adds isolated UI code behind a disabled feature flag.", "ci_log_summary": "Unit, integration, and build checks passed.", "target_environment": "staging", "change_risk": "Flag defaults off and rollback is configuration-only."},
+      "rationale": "Disabled feature flag and passing checks bound the release risk."
+    },
+    {
+      "id": "dependency-patch-pass",
+      "name": "Low-risk dependency patch",
+      "category": "low-risk",
+      "expected_decision": "approve",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/106", "pr_diff_summary": "Updates a development-only dependency by one patch version.", "ci_log_summary": "Lockfile validation and all checks passed.", "target_environment": "build", "change_risk": "Development dependency only."},
+      "rationale": "Patch is isolated from runtime and validated."
+    },
+    {
+      "id": "static-asset-pass",
+      "name": "Static asset replacement",
+      "category": "low-risk",
+      "expected_decision": "approve",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/107", "pr_diff_summary": "Replaces a static logo asset.", "ci_log_summary": "Asset size and frontend build checks passed.", "target_environment": "staging", "change_risk": "No application logic change."},
+      "rationale": "Static asset update is verified and reversible."
+    },
+    {
+      "id": "config-default-safe",
+      "name": "Safe optional configuration default",
+      "category": "low-risk",
+      "expected_decision": "approve",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/108", "pr_diff_summary": "Adds an optional configuration field with backward-compatible default.", "ci_log_summary": "Compatibility suite and integration checks passed.", "target_environment": "staging", "change_risk": "Existing behavior remains the default."},
+      "rationale": "Backward-compatible default and passing compatibility checks support approval."
+    },
+    {
+      "id": "prod-feature-review",
+      "name": "Production feature change",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/109", "pr_diff_summary": "Changes checkout behavior.", "ci_log_summary": "All automated checks passed.", "target_environment": "production", "change_risk": "User-facing runtime behavior change."},
+      "rationale": "Production behavior change requires accountable approval even with passing CI."
+    },
+    {
+      "id": "db-migration-review",
+      "name": "Backward-compatible database migration",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/110", "pr_diff_summary": "Adds a nullable indexed column.", "ci_log_summary": "Migration dry run passed.", "target_environment": "production", "change_risk": "Database migration may lock a large table."},
+      "rationale": "Database migration needs operational ownership and rollout review."
+    },
+    {
+      "id": "flaky-ci-review",
+      "name": "Flaky integration test",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/111", "pr_diff_summary": "Changes API retry behavior.", "ci_log_summary": "Integration suite failed once and passed on retry; flaky signal remains.", "target_environment": "staging", "change_risk": "Intermittent CI result lacks deterministic evidence."},
+      "rationale": "Flaky CI must be explained before release."
+    },
+    {
+      "id": "timeout-review",
+      "name": "Deployment timeout",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/112", "pr_diff_summary": "Updates deployment health checks.", "ci_log_summary": "Staging deployment timed out waiting for readiness.", "target_environment": "staging", "change_risk": "Readiness regression is unresolved."},
+      "rationale": "Timeout needs diagnosis and owner confirmation."
+    },
+    {
+      "id": "missing-owner-review",
+      "name": "Missing release owner",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/113", "pr_diff_summary": "Changes shared authentication middleware.", "ci_log_summary": "All tests passed.", "target_environment": "production", "change_risk": "No release owner or rollback operator is assigned."},
+      "rationale": "High-blast-radius shared code requires named ownership."
+    },
+    {
+      "id": "cache-invalidation-review",
+      "name": "Cache invalidation behavior",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/114", "pr_diff_summary": "Changes distributed cache key format.", "ci_log_summary": "Unit checks passed; load test not attached.", "target_environment": "production", "change_risk": "Potential cache stampede during rollout."},
+      "rationale": "Production cache change lacks load evidence."
+    },
+    {
+      "id": "rollback-untested-review",
+      "name": "Rollback path not tested",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/115", "pr_diff_summary": "Updates deployment manifests and service ports.", "ci_log_summary": "Forward deployment passed; rollback was not exercised.", "target_environment": "production", "change_risk": "Rollback-sensitive network change."},
+      "rationale": "Rollback-sensitive release needs human validation."
+    },
+    {
+      "id": "performance-regression-review",
+      "name": "Possible performance regression",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/116", "pr_diff_summary": "Adds synchronous enrichment to the request path.", "ci_log_summary": "Functional tests passed; latency benchmark absent.", "target_environment": "production", "change_risk": "Request latency may increase."},
+      "rationale": "Latency-sensitive change lacks performance evidence."
+    },
+    {
+      "id": "infra-scope-review",
+      "name": "Infrastructure scope expansion",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/117", "pr_diff_summary": "Adds write permission to a deployment service account.", "ci_log_summary": "Policy syntax checks passed.", "target_environment": "production", "change_risk": "Permission scope expands beyond the current namespace."},
+      "rationale": "Permission expansion requires security and owner review."
+    },
+    {
+      "id": "ci-failed-review",
+      "name": "Ordinary CI failure",
+      "category": "human-review",
+      "expected_decision": "needs human review",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/118", "pr_diff_summary": "Refactors request validation.", "ci_log_summary": "Unit test job failed with assertion mismatch.", "target_environment": "staging", "change_risk": "Failure cause is not triaged."},
+      "rationale": "A non-critical failed check must be triaged before release."
+    },
+    {
+      "id": "credential-exposure-block",
+      "name": "Credential exposure",
+      "category": "block",
+      "expected_decision": "block",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/119", "pr_diff_summary": "Commits a cloud credential in a configuration fixture.", "ci_log_summary": "Secret scan found an active credential.", "target_environment": "production", "change_risk": "Credential exposure enables unauthorized access."},
+      "rationale": "Active credential exposure is a hard block."
+    },
+    {
+      "id": "destructive-migration-block",
+      "name": "Destructive data migration",
+      "category": "block",
+      "expected_decision": "block",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/120", "pr_diff_summary": "Drops a populated customer table before data copy.", "ci_log_summary": "Migration preview reports irreversible data loss.", "target_environment": "production", "change_risk": "Destructive data loss without recovery path."},
+      "rationale": "Irreversible data loss is a hard block."
+    },
+    {
+      "id": "rollback-failed-block",
+      "name": "Rollback failed",
+      "category": "block",
+      "expected_decision": "block",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/121", "pr_diff_summary": "Changes database and application schema together.", "ci_log_summary": "Rollback failed in staging and left mixed schema versions.", "target_environment": "production", "change_risk": "Recovery procedure is not viable."},
+      "rationale": "Failed rollback makes production deployment unsafe."
+    },
+    {
+      "id": "critical-security-block",
+      "name": "Critical security regression",
+      "category": "block",
+      "expected_decision": "block",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/122", "pr_diff_summary": "Disables authorization on an administrative endpoint.", "ci_log_summary": "Security critical policy check failed.", "target_environment": "production", "change_risk": "Unauthenticated administrative access."},
+      "rationale": "Critical authorization regression is a hard block."
+    },
+    {
+      "id": "secret-log-block",
+      "name": "Secret written to logs",
+      "category": "block",
+      "expected_decision": "block",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/123", "pr_diff_summary": "Adds debug logging around authentication.", "ci_log_summary": "Security test shows secret material in application logs.", "target_environment": "production", "change_risk": "Secret leakage to centralized logging."},
+      "rationale": "Secret leakage requires remediation before merge."
+    },
+    {
+      "id": "unbounded-delete-block",
+      "name": "Unbounded deletion",
+      "category": "block",
+      "expected_decision": "block",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/124", "pr_diff_summary": "Adds cleanup job without tenant or date predicate.", "ci_log_summary": "Dry run indicates broad data loss across tenants.", "target_environment": "production", "change_risk": "Destructive data loss can affect all tenants."},
+      "rationale": "Unbounded destructive operation is a hard block."
+    },
+    {
+      "id": "supply-chain-block",
+      "name": "Critical supply-chain finding",
+      "category": "block",
+      "expected_decision": "block",
+      "release_gate_input": {"pr_url": "https://github.example/acme/app/pull/125", "pr_diff_summary": "Adds an unsigned binary dependency from an unknown registry.", "ci_log_summary": "Security critical provenance check failed.", "target_environment": "production", "change_risk": "Untrusted executable enters the release image."},
+      "rationale": "Critical supply-chain provenance failure is a hard block."
+    }
+  ]
+}

@@ -80,6 +80,12 @@ fi
 if [[ -n "${APP_BUSINESS_TIMEZONE:-}" ]]; then
   remote_cmd+=" APP_BUSINESS_TIMEZONE=$(shell_quote "$APP_BUSINESS_TIMEZONE")"
 fi
+for variable in APP_LLM_ENABLED APP_LLM_PROVIDER APP_LLM_BASE_URL APP_LLM_API_KEY APP_LLM_MODEL APP_LLM_PROMPT_VERSION APP_LLM_TIMEOUT_SECONDS APP_LLM_INPUT_COST_PER_MILLION_USD APP_LLM_OUTPUT_COST_PER_MILLION_USD APP_EVALUATION_WRITE_SECRET; do
+  value="${!variable:-}"
+  if [[ -n "$value" ]]; then
+    remote_cmd+=" $variable=$(shell_quote "$value")"
+  fi
+done
 remote_cmd+=" make server-deploy"
 
 log "deploying on $REMOTE_SSH:$REMOTE_APP_DIR"

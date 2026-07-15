@@ -8,6 +8,11 @@ data:
   APP_ENVIRONMENT: production
   APP_DEBUG: "false"
   APP_API_PREFIX: /api
+  APP_LLM_ENABLED: "false"
+  APP_LLM_PROVIDER: volcengine_ark_coding_plan
+  APP_LLM_BASE_URL: https://ark.cn-beijing.volces.com/api/coding/v3
+  APP_LLM_PROMPT_VERSION: pr-ci-gate.v1
+  APP_EVALUATION_WRITE_SECRET: ""
 ---
 apiVersion: v1
 kind: Secret

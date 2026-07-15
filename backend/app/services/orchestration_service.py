@@ -73,6 +73,8 @@ from app.services.workflow_checkpoints import (
     to_checkpoint_read,
 )
 from app.time_utils import utcnow_naive
+from app.config import get_settings
+from app.services.llm_provider import invoke_release_gate_model
 
 logger = logging.getLogger(__name__)
 
@@ -302,8 +304,34 @@ def run_orchestration(
         step_records.append(step_record)
         previous_audits.append(audit)
 
-    finished = _utcnow()
     summary = _compose_summary(previous_audits)
+    settings = get_settings()
+    if settings.llm_enabled and payload.use_llm_provider and payload.release_gate_input is not None:
+        model_observation = invoke_release_gate_model(
+            db,
+            payload.release_gate_input,
+            orchestration_id=record.id,
+            settings=settings,
+        )
+        log_agent_action(
+            db,
+            task_type="llm_release_gate_observation",
+            input_summary=json.dumps(
+                {
+                    "orchestration_id": record.id,
+                    "invocation_id": model_observation.invocation_id,
+                }
+            ),
+            output_summary=json.dumps(
+                {
+                    "status": model_observation.status,
+                    "decision": model_observation.decision,
+                    "confidence": model_observation.confidence,
+                }
+            ),
+            status=model_observation.status,
+        )
+    finished = _utcnow()
     status = "partial_success" if has_failure else "success"
     record.status = status
     record.duration_ms = max(0, int((finished - started).total_seconds() * 1000))

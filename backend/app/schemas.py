@@ -542,6 +542,7 @@ class WorkflowOrchestrationRunRequest(BaseModel):
     persist_knowledge: bool = True
     persist_template: bool = False
     approval_confirmed: bool = False
+    use_llm_provider: bool = False
 
     @model_validator(mode="after")
     def ensure_template_or_steps(self) -> "WorkflowOrchestrationRunRequest":
@@ -938,6 +939,187 @@ class PilotCloseoutReportResponse(BaseModel):
     status: Literal["ready", "needs evidence", "needs approval metadata"]
     markdown: str
     data: dict[str, Any] = Field(default_factory=dict)
+
+
+ReleaseGateDecision = Literal["approve", "block", "needs human review"]
+
+
+class LlmProviderStatusResponse(BaseModel):
+    enabled: bool
+    configured: bool
+    provider: str
+    model: str
+    prompt_version: str
+    base_url_host: str
+    write_protected: bool
+    deterministic_gate_remains_authoritative: bool = True
+
+
+class LlmInvocationRead(BaseModel):
+    id: int
+    orchestration_id: int | None = None
+    evaluation_run_id: int | None = None
+    evaluation_case_id: str = ""
+    provider: str
+    model: str
+    prompt_version: str
+    request_sha256: str
+    status: str
+    decision: str
+    confidence: float
+    rationale: str
+    risks: list[str] = Field(default_factory=list)
+    input_tokens: int
+    output_tokens: int
+    latency_ms: int
+    estimated_cost_usd: float
+    error_message: str
+    created_at: datetime
+
+
+class LlmInvocationListResponse(BaseModel):
+    items: list[LlmInvocationRead]
+
+
+class EvaluationCaseRead(BaseModel):
+    id: str
+    name: str
+    category: str
+    expected_decision: ReleaseGateDecision
+    release_gate_input: ReleaseGatePrCiInput
+    rationale: str
+
+
+class EvaluationCaseListResponse(BaseModel):
+    dataset_version: str
+    items: list[EvaluationCaseRead]
+
+
+class EvaluationRunRequest(BaseModel):
+    mode: Literal["deterministic", "live"] = "deterministic"
+    case_ids: list[str] = Field(default_factory=list, max_length=30)
+
+
+class EvaluationCaseResultRead(BaseModel):
+    id: int
+    case_id: str
+    expected_decision: ReleaseGateDecision
+    actual_decision: ReleaseGateDecision
+    is_correct: bool
+    confidence: float
+    rationale: str
+    latency_ms: int
+
+
+class EvaluationRunRead(BaseModel):
+    id: int
+    dataset_version: str
+    provider: str
+    model: str
+    prompt_version: str
+    mode: Literal["deterministic", "live"]
+    status: str
+    case_count: int
+    correct_count: int
+    false_positive_count: int
+    false_negative_count: int
+    accuracy: float
+    average_latency_ms: int
+    input_tokens: int
+    output_tokens: int
+    estimated_cost_usd: float
+    created_at: datetime
+    completed_at: datetime | None = None
+    results: list[EvaluationCaseResultRead] = Field(default_factory=list)
+
+
+class DecisionFeedbackCreate(BaseModel):
+    evaluation_case_result_id: int | None = None
+    orchestration_id: int | None = None
+    verdict: Literal["accepted", "rejected", "corrected"]
+    corrected_decision: ReleaseGateDecision | None = None
+    actor: str = Field(default="reviewer", min_length=1, max_length=120)
+    note: str = Field(default="", max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_feedback_target_and_correction(self) -> "DecisionFeedbackCreate":
+        if self.evaluation_case_result_id is None and self.orchestration_id is None:
+            raise ValueError("Provide evaluation_case_result_id or orchestration_id.")
+        if self.verdict == "corrected" and self.corrected_decision is None:
+            raise ValueError("corrected_decision is required when verdict is corrected.")
+        return self
+
+
+class DecisionFeedbackRead(BaseModel):
+    id: int
+    evaluation_case_result_id: int | None = None
+    orchestration_id: int | None = None
+    verdict: str
+    corrected_decision: str
+    actor: str
+    note: str
+    created_at: datetime
+
+
+class DecisionFeedbackSummaryResponse(BaseModel):
+    total: int
+    accepted: int
+    rejected: int
+    corrected: int
+    acceptance_rate: float
+    correction_rate: float
+    reviewed_accuracy: float
+    false_positive_rate: float
+    false_negative_rate: float
+    recent: list[DecisionFeedbackRead] = Field(default_factory=list)
+
+
+class PilotMeasurementCreate(BaseModel):
+    subject: str = Field(default="demo-user", max_length=120)
+    team_subject: str = Field(default="demo-team", max_length=120)
+    metric: Literal["review_minutes", "audit_minutes", "release_lead_time_minutes", "incidents", "rollback_minutes"]
+    phase: Literal["baseline", "pilot"]
+    value: float = Field(ge=0)
+    unit: Literal["minutes", "count"]
+    sample_size: int = Field(default=1, ge=1, le=10000)
+    source: str = Field(default="observed", max_length=64)
+    notes: str = Field(default="", max_length=2000)
+    measured_at: datetime | None = None
+
+
+class PilotMeasurementRead(BaseModel):
+    id: int
+    subject: str
+    team_subject: str
+    metric: str
+    phase: str
+    value: float
+    unit: str
+    sample_size: int
+    source: str
+    notes: str
+    measured_at: datetime
+    created_at: datetime
+
+
+class PilotMetricComparison(BaseModel):
+    metric: str
+    unit: str
+    baseline_value: float | None = None
+    pilot_value: float | None = None
+    absolute_change: float | None = None
+    improvement_rate: float | None = None
+    baseline_sample_size: int = 0
+    pilot_sample_size: int = 0
+
+
+class PilotComparisonResponse(BaseModel):
+    subject: str | None = None
+    team_subject: str | None = None
+    source: Literal["measured", "not_configured"]
+    metrics: list[PilotMetricComparison] = Field(default_factory=list)
+    measured_value_summary: str
+    estimated_roi_remains_separate: bool = True
 
 
 class ManualCheckoutRequest(BaseModel):

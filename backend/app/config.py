@@ -40,6 +40,28 @@ class Settings(BaseSettings):
         default=3600 * 24 * 30,
         validation_alias="APP_PUBLIC_ENTITLEMENT_BOOTSTRAP_TTL_SECONDS",
     )
+    llm_enabled: bool = Field(default=False, validation_alias="APP_LLM_ENABLED")
+    llm_provider: str = Field(default="volcengine_ark_coding_plan", validation_alias="APP_LLM_PROVIDER")
+    llm_base_url: str = Field(
+        default="https://ark.cn-beijing.volces.com/api/coding/v3",
+        validation_alias="APP_LLM_BASE_URL",
+    )
+    llm_api_key: str = Field(default="", validation_alias="APP_LLM_API_KEY")
+    llm_model: str = Field(default="", validation_alias="APP_LLM_MODEL")
+    llm_prompt_version: str = Field(default="pr-ci-gate.v1", validation_alias="APP_LLM_PROMPT_VERSION")
+    llm_timeout_seconds: float = Field(default=30.0, validation_alias="APP_LLM_TIMEOUT_SECONDS")
+    llm_input_cost_per_million_usd: float = Field(
+        default=0.0,
+        validation_alias="APP_LLM_INPUT_COST_PER_MILLION_USD",
+    )
+    llm_output_cost_per_million_usd: float = Field(
+        default=0.0,
+        validation_alias="APP_LLM_OUTPUT_COST_PER_MILLION_USD",
+    )
+    evaluation_write_secret: str = Field(
+        default="",
+        validation_alias="APP_EVALUATION_WRITE_SECRET",
+    )
 
     @property
     def is_production(self) -> bool:
@@ -54,6 +76,10 @@ class Settings(BaseSettings):
         if self.is_production:
             return False
         return self.allow_legacy_subscription_tier_fallback
+
+    @property
+    def effective_evaluation_write_protected(self) -> bool:
+        return self.is_production or bool(self.evaluation_write_secret.strip())
 
     @property
     def effective_cors_allowed_origins(self) -> list[str]:

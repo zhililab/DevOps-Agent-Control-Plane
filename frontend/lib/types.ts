@@ -630,3 +630,132 @@ export type PilotCloseoutReport = {
   markdown: string;
   data: Record<string, unknown>;
 };
+
+export type ReleaseGateDecision = "approve" | "block" | "needs human review";
+
+export type LlmProviderStatus = {
+  enabled: boolean;
+  configured: boolean;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  base_url_host: string;
+  write_protected: boolean;
+  deterministic_gate_remains_authoritative: boolean;
+};
+
+export type LlmInvocation = {
+  id: number;
+  orchestration_id: number | null;
+  evaluation_run_id: number | null;
+  evaluation_case_id: string;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  request_sha256: string;
+  status: string;
+  decision: string;
+  confidence: number;
+  rationale: string;
+  risks: string[];
+  input_tokens: number;
+  output_tokens: number;
+  latency_ms: number;
+  estimated_cost_usd: number;
+  error_message: string;
+  created_at: string;
+};
+
+export type EvaluationCase = {
+  id: string;
+  name: string;
+  category: string;
+  expected_decision: ReleaseGateDecision;
+  release_gate_input: ReleaseGatePrCiInput;
+  rationale: string;
+};
+
+export type EvaluationCaseList = {
+  dataset_version: string;
+  items: EvaluationCase[];
+};
+
+export type EvaluationCaseResult = {
+  id: number;
+  case_id: string;
+  expected_decision: ReleaseGateDecision;
+  actual_decision: ReleaseGateDecision;
+  is_correct: boolean;
+  confidence: number;
+  rationale: string;
+  latency_ms: number;
+};
+
+export type EvaluationRun = {
+  id: number;
+  dataset_version: string;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  mode: "deterministic" | "live";
+  status: string;
+  case_count: number;
+  correct_count: number;
+  false_positive_count: number;
+  false_negative_count: number;
+  accuracy: number;
+  average_latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  estimated_cost_usd: number;
+  created_at: string;
+  completed_at: string | null;
+  results: EvaluationCaseResult[];
+};
+
+export type DecisionFeedbackSummary = {
+  total: number;
+  accepted: number;
+  rejected: number;
+  corrected: number;
+  acceptance_rate: number;
+  correction_rate: number;
+  reviewed_accuracy: number;
+  false_positive_rate: number;
+  false_negative_rate: number;
+  recent: Array<{
+    id: number;
+    evaluation_case_result_id: number | null;
+    orchestration_id: number | null;
+    verdict: string;
+    corrected_decision: string;
+    actor: string;
+    note: string;
+    created_at: string;
+  }>;
+};
+
+export type PilotMeasurementMetric =
+  | "review_minutes"
+  | "audit_minutes"
+  | "release_lead_time_minutes"
+  | "incidents"
+  | "rollback_minutes";
+
+export type PilotComparison = {
+  subject: string | null;
+  team_subject: string | null;
+  source: "measured" | "not_configured";
+  metrics: Array<{
+    metric: string;
+    unit: string;
+    baseline_value: number | null;
+    pilot_value: number | null;
+    absolute_change: number | null;
+    improvement_rate: number | null;
+    baseline_sample_size: number;
+    pilot_sample_size: number;
+  }>;
+  measured_value_summary: string;
+  estimated_roi_remains_separate: boolean;
+};

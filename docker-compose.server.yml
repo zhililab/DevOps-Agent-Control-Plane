@@ -31,6 +31,16 @@ services:
       APP_ENTITLEMENT_SECRET: ${APP_ENTITLEMENT_SECRET:-change-me-entitlement-secret}
       APP_ENABLE_PUBLIC_ENTITLEMENT_BOOTSTRAP: "true"
       APP_PUBLIC_ENTITLEMENT_BOOTSTRAP_TTL_SECONDS: "2592000"
+      APP_LLM_ENABLED: ${APP_LLM_ENABLED:-false}
+      APP_LLM_PROVIDER: ${APP_LLM_PROVIDER:-volcengine_ark_coding_plan}
+      APP_LLM_BASE_URL: ${APP_LLM_BASE_URL:-https://ark.cn-beijing.volces.com/api/coding/v3}
+      APP_LLM_API_KEY: ${APP_LLM_API_KEY:-}
+      APP_LLM_MODEL: ${APP_LLM_MODEL:-}
+      APP_LLM_PROMPT_VERSION: ${APP_LLM_PROMPT_VERSION:-pr-ci-gate.v1}
+      APP_LLM_TIMEOUT_SECONDS: ${APP_LLM_TIMEOUT_SECONDS:-30}
+      APP_LLM_INPUT_COST_PER_MILLION_USD: ${APP_LLM_INPUT_COST_PER_MILLION_USD:-0}
+      APP_LLM_OUTPUT_COST_PER_MILLION_USD: ${APP_LLM_OUTPUT_COST_PER_MILLION_USD:-0}
+      APP_EVALUATION_WRITE_SECRET: ${APP_EVALUATION_WRITE_SECRET:-}
       DATABASE_URL: postgresql+psycopg://postgres:${DB_PASSWORD_URLENC:-change-me}@postgres:5432/personal_agent
     command: ["/bin/sh", "-c", "python -m app.db_migration && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     ports:

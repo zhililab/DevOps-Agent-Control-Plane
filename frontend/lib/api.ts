@@ -5,13 +5,21 @@ import type {
   DailyReflectionHistoryResponse,
   DailyReflectionInput,
   DailyReflectionRecord,
+  DecisionFeedbackSummary,
   EntitlementBootstrap,
+  EvaluationCaseList,
+  EvaluationRun,
   HistoryIntegrityResponse,
   CommercialMetricsResponse,
   PilotCloseoutReport,
+  PilotComparison,
+  PilotMeasurementMetric,
   PilotReadinessReport,
   PilotScenarioListResponse,
   ReleaseGatePrCiInput,
+  ReleaseGateDecision,
+  LlmInvocation,
+  LlmProviderStatus,
   MonetizationObservability,
   MonetizationEvent,
   NoteEntry,
@@ -505,6 +513,82 @@ export const apiClient = {
     return request<PilotCloseoutReport>(`/monetization/pilot-closeout?${search.toString()}`, {
       retries: 2,
     });
+  },
+
+  getLlmProviderStatus() {
+    return request<LlmProviderStatus>("/evaluations/provider-status");
+  },
+
+  listEvaluationCases() {
+    return request<EvaluationCaseList>("/evaluations/cases");
+  },
+
+  runEvaluation(mode: "deterministic" | "live", caseIds: string[] = [], writeAccess = "") {
+    const headers: Record<string, string> = {};
+    if (writeAccess.trim()) headers["X-Evaluation-Access"] = writeAccess.trim();
+    return request<EvaluationRun>("/evaluations/runs", {
+      method: "POST",
+      headers,
+      timeoutMs: mode === "live" ? 120_000 : LONG_API_TIMEOUT_MS,
+      body: JSON.stringify({ mode, case_ids: caseIds }),
+    });
+  },
+
+  getLatestEvaluationRun() {
+    return request<EvaluationRun | null>("/evaluations/runs/latest");
+  },
+
+  listLlmInvocations(limit = 20) {
+    return request<{ items: LlmInvocation[] }>(`/evaluations/invocations?limit=${limit}`);
+  },
+
+  createDecisionFeedback(payload: {
+    evaluation_case_result_id?: number;
+    orchestration_id?: number;
+    verdict: "accepted" | "rejected" | "corrected";
+    corrected_decision?: ReleaseGateDecision;
+    actor: string;
+    note?: string;
+  }, writeAccess = "") {
+    const headers: Record<string, string> = {};
+    if (writeAccess.trim()) headers["X-Evaluation-Access"] = writeAccess.trim();
+    return request("/evaluations/feedback", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getDecisionFeedbackSummary() {
+    return request<DecisionFeedbackSummary>("/evaluations/feedback-summary");
+  },
+
+  createPilotMeasurement(payload: {
+    subject: string;
+    team_subject: string;
+    metric: PilotMeasurementMetric;
+    phase: "baseline" | "pilot";
+    value: number;
+    unit: "minutes" | "count";
+    sample_size: number;
+    source: string;
+    notes?: string;
+  }, writeAccess = "") {
+    const headers: Record<string, string> = {};
+    if (writeAccess.trim()) headers["X-Evaluation-Access"] = writeAccess.trim();
+    return request("/evaluations/pilot-measurements", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getPilotComparison(subject?: string, teamSubject?: string) {
+    const search = new URLSearchParams();
+    if (subject?.trim()) search.set("subject", subject.trim());
+    if (teamSubject?.trim()) search.set("team_subject", teamSubject.trim());
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return request<PilotComparison>(`/evaluations/pilot-comparison${suffix}`);
   },
 
   startManualCheckout(payload: { subject: string; target_tier: SubscriptionTier }) {

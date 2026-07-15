@@ -112,6 +112,18 @@ assert_runtime_security() {
     return 1
   fi
 
+  local evaluation_write_status
+  evaluation_write_status="$(curl --connect-timeout 3 --max-time 10 -sS -X POST "$base/api/evaluations/runs" \
+    -H "Content-Type: application/json" \
+    -d '{"mode":"deterministic","case_ids":["docs-only-pass"]}' \
+    -o /tmp/personal-agent-security-body.txt \
+    -w "%{http_code}" || true)"
+  if [[ "$evaluation_write_status" != "401" ]]; then
+    log "unexpected anonymous evaluation-write status: $evaluation_write_status"
+    cat /tmp/personal-agent-security-body.txt || true
+    return 1
+  fi
+
   if [[ -z "$SECURITY_ENTITLEMENT_SECRET" ]]; then
     fail "SECURITY_ENTITLEMENT_SECRET or APP_ENTITLEMENT_SECRET is required for runtime tier-boundary checks"
   fi
@@ -169,6 +181,8 @@ assert_file_contains "deploy/nginx/default.conf" "client_body_timeout"
 assert_file_contains "deploy/nginx/default.conf" "proxy_read_timeout"
 assert_file_contains "deploy/nginx/default.conf" "gzip on"
 assert_file_contains "frontend/next.config.ts" "poweredByHeader: false"
+assert_file_contains "docker-compose.server.yml" "APP_EVALUATION_WRITE_SECRET"
+assert_file_contains "backend/app/services/evaluation_access.py" "hmac.compare_digest"
 
 if [[ "$SECURITY_RUNTIME_ONLY" != "1" ]]; then
   log "running backend security tests"

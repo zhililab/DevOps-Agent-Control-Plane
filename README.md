@@ -61,6 +61,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - Pilot Readiness Report V1 aggregates completed runs, evidence exportability, ledger/checkpoint coverage, approval metadata completeness, and estimated pilot value.
 - Pilot Closeout Report V1 turns readiness, scenario completion, ROI evidence, ledger/checkpoint integrity, and Power upgrade signals into a redaction-safe buyer report.
 - Pilot Guided Closeout V2 guides the buyer through the five fixed scenarios one at a time, shows the next scenario to run, and marks buyer review as ready only when all scenario evidence, ledger, checkpoint, and metadata checks pass.
+- Agent Quality Lab V1 adds an optional real Volcengine Ark model observation layer, versioned prompt/model/token/latency/cost records, a fixed 25-case PR/CI evaluation set, append-only human feedback, and measured Baseline/Pilot evidence.
 - Knowledge and prompt-template utilities that support reuse around orchestration workflows.
 - Existing daily plan, reflection, technical analysis, task, and profile routes remain available for compatibility and personal workflow support.
 
@@ -83,6 +84,11 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `SubscriptionProfile`
 - `UsageCounter`
 - `MonetizationEvent`
+- `LlmInvocation`
+- `EvaluationRun`
+- `EvaluationCaseResult`
+- `DecisionFeedback`
+- `PilotMeasurement`
 
 ### APIs
 - `POST /api/profile`: create profile
@@ -128,6 +134,31 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `GET /api/orchestrations/templates/init/json`: get built-in orchestration workflow templates
 - `POST /api/orchestrations/templates/import/builtin`: import or refresh built-in orchestration workflow templates
 - `POST /api/orchestrations/templates/import`: import orchestration workflow templates
+- `GET /api/evaluations/provider-status`: inspect provider readiness without exposing credentials
+- `GET /api/evaluations/cases`: list the versioned 25-case PR/CI evaluation set
+- `POST /api/evaluations/runs`: run deterministic or explicitly configured live-model evaluation (production write access required)
+- `GET /api/evaluations/runs/latest`: inspect the latest quality metrics and case results
+- `GET /api/evaluations/invocations`: inspect model, prompt version, tokens, latency, cost, and status
+- `POST /api/evaluations/feedback`: append accept/reject/correct human feedback (production write access required)
+- `GET /api/evaluations/feedback-summary`: calculate acceptance, correction, reviewed accuracy, and error rates
+- `POST /api/evaluations/pilot-measurements`: record observed Baseline/Pilot measurements (production write access required)
+- `GET /api/evaluations/pilot-comparison`: compare measured Baseline and Pilot values separately from estimated ROI
+
+### Optional Real LLM Provider
+
+The deterministic release policy remains the execution authority. The provider is an advisory observation layer used for evaluation and interview evidence.
+
+```bash
+APP_LLM_ENABLED=true
+APP_LLM_PROVIDER=volcengine_ark_coding_plan
+APP_LLM_BASE_URL=https://ark.cn-beijing.volces.com/api/coding/v3
+APP_LLM_API_KEY=<rotated-secret>
+APP_LLM_MODEL=doubao-seed-2.0-code
+APP_LLM_PROMPT_VERSION=pr-ci-gate.v1
+APP_EVALUATION_WRITE_SECRET=<independent-random-secret>
+```
+
+Use the Coding Plan OpenAI-compatible endpoint for the subscription-backed evaluation path. Do not commit keys, and rotate any key exposed in screenshots, logs, or chat. Production evaluation mutations require `X-Evaluation-Access`; this independent write secret must never be the provider API key. Input/output token prices are configurable so `estimated_cost_usd` can reflect the selected model; subscription plans can leave marginal token prices at zero while retaining token and latency evidence. The measured 2026-07-15 provider run is recorded in `docs/agent-quality-evidence.md`.
 - `GET /api/observability/monetization`: monetization observability aggregation (`days=7|30`)
 - `GET /api/monetization/profile`: read subscription profile by `subject`
 - `GET /api/monetization/usage`: read usage counters by `subject`
@@ -156,6 +187,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 - `/orchestrations`
 - `/monetization`
 - `/tutorial`
+- `/evaluation`
 - `/knowledge`
 - `/templates`
 - `/history`
@@ -173,6 +205,7 @@ The current commercial demo is scenario-driven:
 5. Open `/orchestrations`, verify ledger/checkpoints, then use `Export Evidence`, `Copy Markdown`, or `Download Markdown`.
 6. Open `/monetization` to review `Commercial Signal`, `Pilot Readiness`, `Buyer Review Status`, grouped scenario completion, `Why Power`, and the copy/download Pilot Closeout report.
 7. Open `/dashboard` to confirm buyer KPIs: Estimated Value, Review Time Saved, Blocked Risk Value, and Pilot Ready.
+8. For interview evidence, open `/evaluation` to run the fixed PR/CI benchmark, review human feedback metrics, inspect model-call telemetry, and compare observed Baseline/Pilot measurements.
 
 ## 1) Backend
 

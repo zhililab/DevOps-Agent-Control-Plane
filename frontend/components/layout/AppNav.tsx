@@ -10,6 +10,7 @@ const navGroups = [
       { href: "/dashboard", label: "Control Dashboard" },
       { href: "/orchestrate", label: "Run Workflow" },
       { href: "/orchestrations", label: "Run History" },
+      { href: "/evaluation", label: "Quality Lab" },
     ],
   },
   {

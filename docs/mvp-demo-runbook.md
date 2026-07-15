@@ -71,6 +71,17 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Show `Pilot Ready`, `Estimated Value`, `Review Time Saved`, and `Blocked Risk Value`.
    - Explain that these counters are the current bridge from governed agent execution to pricing, packaging, and ROI.
 
+## Interview Quality Evidence
+
+1. Open `/evaluation` and show that provider status reports only provider/model/prompt readiness, never the API key.
+2. Run the deterministic 25-case benchmark to establish a reproducible rules baseline.
+3. With a rotated Ark key and explicit model configured, run the same fixed cases in live mode and compare expected versus model decisions.
+4. Show persisted token, latency, estimated cost, and prompt/model version evidence.
+5. Add accept/reject/correct reviewer feedback, then show reviewed accuracy and false-positive/false-negative rates.
+6. Record actual Baseline/Pilot observations and keep them separate from estimated ROI in the buyer closeout.
+
+Current measured evidence is recorded in `docs/agent-quality-evidence.md`: the 2026-07-15 Coding Plan run completed 25 cases with 96% decision accuracy and zero unsafe approvals. The measured Pilot latency is real; human-review Baseline and time-saved claims remain pending.
+
 ## Acceptance Checks
 
 - `/health` returns `{"status":"ok"}`.
@@ -93,6 +104,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 - `/orchestrate` blocks a Pro entitlement before submitting a Power-only template and offers a Pro-compatible template path.
 - `/orchestrate` can run `AI-generated PR Release Gate` with Power entitlement and human approval, producing decision/evidence/risk/next action output.
 - `/orchestrations` shows requester/approver, policy gate, queue timeline, checkpoint hash, billable work units, blocked risk, and ROI Evidence for the release-gate run.
+- `/evaluation` loads the 25-case dataset and exposes provider telemetry without exposing credentials.
 - Smoke/system records may exist from release checks, but personal history pages hide smoke data by default.
 
 ## Demo Boundaries

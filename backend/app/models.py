@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, Float, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -365,3 +365,113 @@ class HistoryEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     integrity_status: Mapped[str] = mapped_column(String(32), default="valid", index=True)
     integrity_error: Mapped[str] = mapped_column(Text, default="")
+
+
+class LlmInvocation(Base):
+    __tablename__ = "llm_invocations"
+    __table_args__ = (
+        Index("ix_llm_invocations_orchestration_created_id", "orchestration_id", "created_at", "id"),
+        Index("ix_llm_invocations_evaluation_created_id", "evaluation_run_id", "created_at", "id"),
+        Index("ix_llm_invocations_provider_model_created_id", "provider", "model", "created_at", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    orchestration_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    evaluation_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    evaluation_case_id: Mapped[str] = mapped_column(String(80), default="", index=True)
+    provider: Mapped[str] = mapped_column(String(64), index=True)
+    model: Mapped[str] = mapped_column(String(160), index=True)
+    prompt_version: Mapped[str] = mapped_column(String(80), index=True)
+    request_sha256: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="success", index=True)
+    decision: Mapped[str] = mapped_column(String(32), default="")
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    risks_json: Mapped[str] = mapped_column(Text, default="[]")
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    estimated_cost_microusd: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class EvaluationRun(Base):
+    __tablename__ = "evaluation_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    dataset_version: Mapped[str] = mapped_column(String(80), index=True)
+    provider: Mapped[str] = mapped_column(String(64), index=True)
+    model: Mapped[str] = mapped_column(String(160), index=True)
+    prompt_version: Mapped[str] = mapped_column(String(80), index=True)
+    mode: Mapped[str] = mapped_column(String(32), default="deterministic", index=True)
+    status: Mapped[str] = mapped_column(String(32), default="running", index=True)
+    case_count: Mapped[int] = mapped_column(Integer, default=0)
+    correct_count: Mapped[int] = mapped_column(Integer, default=0)
+    false_positive_count: Mapped[int] = mapped_column(Integer, default=0)
+    false_negative_count: Mapped[int] = mapped_column(Integer, default=0)
+    accuracy: Mapped[float] = mapped_column(Float, default=0.0)
+    average_latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    estimated_cost_microusd: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class EvaluationCaseResult(Base):
+    __tablename__ = "evaluation_case_results"
+    __table_args__ = (
+        UniqueConstraint("evaluation_run_id", "case_id", name="uq_evaluation_case_results_run_case"),
+        Index("ix_evaluation_case_results_run_id_id", "evaluation_run_id", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    evaluation_run_id: Mapped[int] = mapped_column(Integer, index=True)
+    invocation_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    case_id: Mapped[str] = mapped_column(String(80), index=True)
+    expected_decision: Mapped[str] = mapped_column(String(32), index=True)
+    actual_decision: Mapped[str] = mapped_column(String(32), index=True)
+    is_correct: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class DecisionFeedback(Base):
+    __tablename__ = "decision_feedback"
+    __table_args__ = (
+        Index("ix_decision_feedback_case_created_id", "evaluation_case_result_id", "created_at", "id"),
+        Index("ix_decision_feedback_orchestration_created_id", "orchestration_id", "created_at", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    evaluation_case_result_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    orchestration_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    verdict: Mapped[str] = mapped_column(String(32), index=True)
+    corrected_decision: Mapped[str] = mapped_column(String(32), default="")
+    actor: Mapped[str] = mapped_column(String(120), default="reviewer")
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class PilotMeasurement(Base):
+    __tablename__ = "pilot_measurements"
+    __table_args__ = (
+        Index("ix_pilot_measurements_subject_metric_phase", "subject", "metric", "phase", "measured_at", "id"),
+        Index("ix_pilot_measurements_team_metric_phase", "team_subject", "metric", "phase", "measured_at", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    subject: Mapped[str] = mapped_column(String(120), default="", index=True)
+    team_subject: Mapped[str] = mapped_column(String(120), default="", index=True)
+    metric: Mapped[str] = mapped_column(String(80), index=True)
+    phase: Mapped[str] = mapped_column(String(16), index=True)
+    value: Mapped[float] = mapped_column(Float)
+    unit: Mapped[str] = mapped_column(String(32))
+    sample_size: Mapped[int] = mapped_column(Integer, default=1)
+    source: Mapped[str] = mapped_column(String(64), default="observed")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    measured_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)

@@ -120,6 +120,7 @@ main() {
   assert_route_ok "/orchestrations"
   assert_route_ok "/monetization"
   assert_route_ok "/tutorial"
+  assert_route_ok "/evaluation"
   assert_route_ok "/knowledge"
   assert_route_ok "/templates"
 
@@ -213,6 +214,19 @@ main() {
   assert_api_get_json_contains \
     "${API_BASE}/monetization/entitlement?subject=smoke-check" \
     '"tier":"pro"'
+
+  log "checking agent quality lab read-only APIs"
+  assert_api_get_json_contains \
+    "${API_BASE}/evaluations/provider-status" \
+    '"deterministic_gate_remains_authoritative":true'
+
+  assert_api_get_json_contains \
+    "${API_BASE}/evaluations/provider-status" \
+    '"write_protected":'
+
+  assert_api_get_json_contains \
+    "${API_BASE}/evaluations/cases" \
+    '"dataset_version":"pr-ci-gate.v1.25"'
 
   log "checking knowledge/template list response shape"
   assert_api_get_is_array "${API_BASE}/knowledge"

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import (
+    evaluations,
     knowledge,
     monetization,
     observability,
@@ -76,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(orchestrations.router, prefix=settings.api_prefix)
     app.include_router(observability.router, prefix=settings.api_prefix)
     app.include_router(monetization.router, prefix=settings.api_prefix)
+    app.include_router(evaluations.router, prefix=settings.api_prefix)
 
     @app.get("/health", tags=["health"])
     def health_check() -> dict[str, str]:

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
 import DashboardPage from "@/app/dashboard/page";
+import EvaluationPage from "@/app/evaluation/page";
 import HistoryPage from "@/app/history/page";
 import KnowledgePage from "@/app/knowledge/page";
 import MonetizationPage from "@/app/monetization/page";
@@ -17,6 +18,11 @@ describe("core pages", () => {
   test("renders dashboard", () => {
     render(<DashboardPage />);
     expect(screen.getByRole("heading", { name: "Control Dashboard" })).toBeInTheDocument();
+  });
+
+  test("renders agent quality lab", () => {
+    render(<EvaluationPage />);
+    expect(screen.getByRole("heading", { name: "Agent Quality Lab" })).toBeInTheDocument();
   });
 
   test("renders profile", () => {

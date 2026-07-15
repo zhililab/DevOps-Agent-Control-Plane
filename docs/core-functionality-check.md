@@ -6,7 +6,8 @@ This document records the current product target and the minimum functionality t
 
 - Current release target: deterministic DevOps personal/small-team workflow orchestration MVP.
 - Commercial wedge: enterprise agent execution trust control layer for trusted, replayable, checkpointed, policy-gated CI/CD and incident-response workflows.
-- Primary surfaces: `/orchestrate`, `/orchestrations`, `/dashboard`, `/monetization`, and `/tutorial`.
+- Primary buyer surfaces: `/orchestrate`, `/orchestrations`, `/dashboard`, `/monetization`, and `/tutorial`.
+- Interview quality-proof surface: `/evaluation`.
 - Release path: Docker Compose server deployment through `make release-deploy`.
 - Public entrypoint: `http://1.117.63.81`.
 - Canonical health route: `/health`.
@@ -44,6 +45,11 @@ This document records the current product target and the minimum functionality t
 - Confirm `/monetization` shows `Why Power` using actual policy/approval/evidence/ROI data, not hard-coded fake values.
 - Confirm `/monetization` can copy/download the redaction-safe Pilot Closeout report.
 - Confirm `/dashboard` shows `Pilot Ready` as a buyer-facing KPI.
+- Open `/evaluation` and confirm provider readiness never exposes credentials.
+- Run the versioned 25-case PR/CI set in deterministic mode, then compare expected and actual decisions with accuracy, false-positive, and false-negative counts.
+- When a rotated provider key and model are configured, run the same fixed set in live mode and inspect model, prompt version, token, latency, and estimated-cost records.
+- Append accept/reject/correct human feedback and confirm feedback metrics are calculated from persisted review records.
+- Record observed Baseline and Pilot measurements and confirm they remain visibly separate from directional ROI assumptions.
 - Generate and persist daily plans, daily reflections, and technical analysis records.
 - Review daily history with accurate `Asia/Shanghai` business dates while preserving UTC audit timestamps.
 - Browse reusable knowledge entries, prompt templates, and workflow templates.
@@ -85,6 +91,15 @@ This document records the current product target and the minimum functionality t
 - `POST /api/monetization/checkout/manual`
 - `POST /api/monetization/cancel`
 - `POST /api/monetization/reactivate`
+- `GET /api/evaluations/provider-status`
+- `GET /api/evaluations/cases`
+- `POST /api/evaluations/runs`
+- `GET /api/evaluations/runs/latest`
+- `GET /api/evaluations/invocations`
+- `POST /api/evaluations/feedback`
+- `GET /api/evaluations/feedback-summary`
+- `POST /api/evaluations/pilot-measurements`
+- `GET /api/evaluations/pilot-comparison`
 
 ## Security And Robustness Baseline
 
@@ -108,6 +123,10 @@ This document records the current product target and the minimum functionality t
 - Daily plan/reflection/analysis history must hide `record_source=smoke_check|system` by default and expose it only through `include_system=true`.
 - Read-only history endpoints must not create new agent run log records.
 - Manual billing UI refreshes profile, usage counters, and commercial audit feed independently; partial failures must not overwrite a successful lifecycle response.
+- LLM API keys must remain environment-only; provider status, invocation records, errors, evaluation results, and request hashes must not expose raw credentials.
+- Production evaluation runs, feedback, and Pilot measurement writes must require `X-Evaluation-Access`; the access secret must be independent from the provider API key and remain environment-only.
+- Ordinary orchestration runs must not invoke the optional LLM provider unless `use_llm_provider=true` is explicitly submitted.
+- Provider output remains advisory evidence. A provider timeout, malformed response, or disagreement must not replace the deterministic policy-gate decision.
 
 ## Query Performance Baseline
 
@@ -125,6 +144,7 @@ This document records the current product target and the minimum functionality t
 - Commercial Signal reads should use `/api/monetization/commercial-metrics` with bounded `days=7|30`; subject-scoped account pages should pass `subject`, while dashboard uses the global view. Billing-period Plan Usage comes from `usage_counters`; 7D/30D activity comes from usage audit logs; ROI summary comes from run-level release-gate evidence.
 - `/orchestrate` should warn before submit when the current signed entitlement tier is lower than the selected template policy tier, and should offer a compatible template path for Pro users.
 - Global route transition and header preview animations should avoid continuous idle work and respect `prefers-reduced-motion`.
+- Evaluation case and invocation reads must use bounded result sets with stable newest-first ordering; fixed-set execution must never run implicitly from dashboard or smoke reads.
 
 ## Non-Blocking Product Modules
 

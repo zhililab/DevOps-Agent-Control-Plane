@@ -26,6 +26,11 @@ CORE_TABLES = (
     "usage_counters",
     "monetization_events",
     "history_events",
+    "llm_invocations",
+    "evaluation_runs",
+    "evaluation_case_results",
+    "decision_feedback",
+    "pilot_measurements",
 )
 
 

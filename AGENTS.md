@@ -52,6 +52,12 @@ The broader personal assistant vision remains, but the current commercial stage 
 - Pilot Closeout is the current buyer-facing finish line: scenario completion, missing evidence, ROI, and Power upgrade evidence must stay consistent across `/tutorial`, `/orchestrations`, `/monetization`, and `/dashboard`.
 - Guided Pilot Closeout V2 should stay scenario-by-scenario: show next scenario, expected missing-approval block, evidence gaps, and buyer-review readiness without adding run-all demo data generation.
 - Commercial reporting endpoints must be read-only unless explicitly named as checkout, cancel, reactivate, or usage-recording paths.
+- Keep deterministic policy authoritative when LLM observations disagree or fail; model output is advisory evidence in V1.
+- Any real-provider change must persist model, prompt version, token counts, latency, and estimated cost without storing API keys or raw credentials.
+- Quality claims must use the versioned PR/CI evaluation set and human feedback metrics; never present deterministic demo output as measured model accuracy.
+- Keep measured Baseline/Pilot observations explicitly separate from directional ROI assumptions.
+- Protect production evaluation, feedback, and Pilot observation writes with the dedicated `X-Evaluation-Access` gate; never reuse or expose the provider API key as a browser credential.
+- Keep optional LLM observation explicit opt-in so normal orchestration traffic cannot silently consume provider quota.
 
 ## Task Expectations
 When given a task:
@@ -71,6 +77,8 @@ When given a task:
    - pilot readiness reporting (`GET /api/monetization/pilot-report`)
    - pilot closeout reporting (`GET /api/monetization/pilot-closeout`)
    - ROI and evidence export behavior (`GET /api/orchestrations/{id}/evidence`)
+   - provider observability and fixed-set evaluation (`GET /api/evaluations/provider-status`, `POST /api/evaluations/runs`)
+   - feedback and measured Pilot comparison (`GET /api/evaluations/feedback-summary`, `GET /api/evaluations/pilot-comparison`)
 
 ## Do Not
 - do not introduce unrelated refactors
