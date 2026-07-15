@@ -158,7 +158,7 @@ APP_LLM_PROMPT_VERSION=pr-ci-gate.v1
 APP_EVALUATION_WRITE_SECRET=<independent-random-secret>
 ```
 
-Use the Coding Plan OpenAI-compatible endpoint for the subscription-backed evaluation path. Do not commit keys, and rotate any key exposed in screenshots, logs, or chat. Production evaluation mutations require `X-Evaluation-Access`; this independent write secret must never be the provider API key. Input/output token prices are configurable so `estimated_cost_usd` can reflect the selected model; subscription plans can leave marginal token prices at zero while retaining token and latency evidence. The measured 2026-07-15 provider run is recorded in `docs/agent-quality-evidence.md`.
+Use the Coding Plan OpenAI-compatible endpoint for the subscription-backed evaluation path. Do not commit keys, and rotate any key exposed in screenshots, logs, or chat. Production evaluation mutations require `X-Evaluation-Access`; this independent write secret must never be the provider API key. Input/output token prices are configurable so `estimated_cost_usd` can reflect the selected model; subscription plans can leave marginal token prices at zero while retaining token and latency evidence. Local pre-release and 2026-07-16 production Provider results are recorded separately in `docs/agent-quality-evidence.md`.
 - `GET /api/observability/monetization`: monetization observability aggregation (`days=7|30`)
 - `GET /api/monetization/profile`: read subscription profile by `subject`
 - `GET /api/monetization/usage`: read usage counters by `subject`

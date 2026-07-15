@@ -619,6 +619,47 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - public `GET /api/monetization/pilot-closeout?days=7&subject=demo-user` returned redaction-safe Markdown with `Pilot Closeout Report`, `Scenario Completion`, `Why Power`, and `Next Buyer Action`
   - public `GET /api/monetization/commercial-metrics?days=7&subject=demo-user` returned `plan_usage`, `usage_summary`, `roi_summary`, `top_templates`, and `trend`
 
+## 2026-07-16 Agent Quality Lab Production Evidence
+
+- Implementation commits:
+  - `75ac255 feat: add real provider quality evidence`
+  - `28b1ad9 fix: isolate provider credentials from release tests`
+  - `434acd8 fix: renew expired manual subscriptions`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Database reset: `RESET_DB=0`
+- Remote PostgreSQL backup before migration:
+  - `/root/code/personal-agent-ws/personal-agent/backups/personal_agent_pre_0018_20260715_234932.sql.gz`
+  - verified non-empty size: `240K`
+- Remote migration: `0018_add_llm_evaluation_feedback`
+- Release behavior:
+  - added Agent Quality Lab persistence, fixed evaluation dataset, feedback, and Pilot measurements
+  - kept deterministic release policy authoritative and real-provider observations explicit opt-in
+  - protected production evaluation mutations with independent `X-Evaluation-Access`
+  - prevented release/E2E subprocesses from consuming production Provider quota
+  - renewed expired Manual Billing periods without deleting historical usage or audit data
+- Local release verification:
+  - full `make release-check` passed, including backend tests, 56 frontend tests, production build, visual tests, four Playwright flows, security checks, npm audit with zero vulnerabilities, and k8s render
+- Remote release verification:
+  - remote head was `434acd8`
+  - backend, frontend, gateway, and PostgreSQL containers were running
+  - public `/health`, `/dashboard`, `/evaluation`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/tutorial` returned `200`
+  - Provider status reported enabled/configured, model `doubao-seed-2.0-code`, prompt `pr-ci-gate.v1`, and write protection without returning credentials
+  - anonymous `POST /api/evaluations/runs` returned `401`
+  - production runtime `scripts/security_check.sh` passed
+  - remote smoke checks passed after the expired-subscription renewal regression was fixed
+- Production real-provider evaluation:
+  - run `#1`, dataset `pr-ci-gate.v1.25`, status `completed`
+  - `25 / 25` Provider calls succeeded and `25 / 25` expected decisions matched
+  - accuracy `100%`, false positives `0`, false negatives `0`
+  - input tokens `5,844`, output tokens `5,703`, average latency `8,527ms`
+  - marginal token cost reported `$0.00` under the subscription-backed zero-token-price configuration; subscription purchase cost is not represented as zero
+  - the initial synchronous HTTP request returned Nginx `504` after the gateway timeout, but the persisted backend run continued to completion; no duplicate evaluation was submitted
+- Production Pilot observation:
+  - subject `interview-evidence`, team `platform-team`
+  - `release_lead_time_minutes`, Pilot value `0.1421`, sample size `25`
+  - human Baseline remains absent, so `improvement_rate` is `null` and estimated ROI remains separate
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.

@@ -12,14 +12,14 @@ The long-term vision remains a reusable personal operating system for execution,
 
 ---
 
-# 0. Current Iteration Snapshot (2026-07-15)
+# 0. Current Iteration Snapshot (2026-07-16)
 
 ## Iteration Theme
 - current iteration target: make the DevOps Agent Control Plane interview-defensible with real-model observability, reproducible PR/CI evaluation, human feedback, and measured Pilot evidence
 - product direction: enterprise agent execution trust control layer for CI/CD and incident response, with inspectable replay, queue lifecycle visibility, signed entitlement-aware gates, checkpoint snapshots, and team-ready audit metadata
 - commercial direction: sell governed agent execution that reduces release risk, shortens human review cycles, preserves compliance evidence, and turns blocked risk into ROI proof
 - UI direction: buyer-readable control plane where `/tutorial`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/dashboard` tell one story: choose pilot scenario -> run release gate -> export evidence -> inspect ROI -> decide Power upgrade
-- status: the Pilot ROI loop remains online; Agent Quality Lab V1 adds an optional real provider, a fixed 25-case evaluation set, append-only human feedback, and observed Baseline/Pilot comparison while deterministic policy remains authoritative
+- status: Agent Quality Lab V1 is deployed with a production 25-case Provider evaluation and one measured Pilot observation; deterministic policy remains authoritative and a timed human-review Baseline is still required before claiming time savings
 
 ## Agent Quality Lab V1
 - optional OpenAI-compatible Volcengine Ark provider integration using environment-only credentials
@@ -56,8 +56,10 @@ The first version can use transparent estimates and operator-provided assumption
 - added versioned `pr-ci-gate.v1.25` evaluation data with 25 stable PR/CI cases and reproducible expected decisions
 - added `/evaluation` for provider readiness, deterministic/live evaluation, per-case review feedback, invocation telemetry, and Baseline/Pilot comparison
 - kept deterministic release policy authoritative when the optional model is disabled, fails, or disagrees
-- rotated the screenshot-exposed provider credential and completed a real `pr-ci-gate.v1.25` run with `doubao-seed-2.0-code`: 24/25 matching decisions, 96% accuracy, zero unsafe approvals, 5,844 input tokens, 5,759 output tokens, and 5,875ms average provider latency
-- recorded the measured Pilot model-decision latency separately from ROI assumptions; a timed human-review Baseline remains required before claiming review-time savings
+- rotated the screenshot-exposed provider credential and deployed the replacement as an environment-only production secret
+- completed production `pr-ci-gate.v1.25` run `#1` with `doubao-seed-2.0-code`: 25/25 matching decisions, 100% accuracy, zero false positives/negatives, 5,844 input tokens, 5,703 output tokens, and 8,527ms average Provider latency
+- recorded the production measured Pilot model-decision latency as `0.1421 minutes` per case separately from ROI assumptions; a timed human-review Baseline remains required before claiming review-time savings
+- deployed Alembic migration `0018_add_llm_evaluation_feedback` with `RESET_DB=0` after capturing a non-empty PostgreSQL backup
 - added production-only write protection for evaluation runs, human feedback, and Pilot observations, while keeping read-only evidence public and ordinary orchestration model calls explicit opt-in
 - fixed Manual Billing renewal so expired active profiles receive a new period and can issue entitlement without resetting historical data
 - added route-level cinematic transition layer
@@ -278,6 +280,7 @@ The first version can use transparent estimates and operator-provided assumption
 ### Commercial Proof Required
 - have a human reviewer label the fixed-set results with accept/reject/correct feedback and retain measured accuracy/error-rate evidence
 - collect a timed human-review Baseline and compare it with the recorded real-provider Pilot observation before replacing any directional ROI assumption in buyer material
+- move long live evaluation runs to an asynchronous submit-and-poll contract so gateway response timeouts do not surface as false failures while persisted work continues
 - validate Guided Pilot Closeout with live buyer-style demos across all five scenarios
 - use Pilot Readiness plus Pilot Closeout as the commercial acceptance score before expanding to payment-provider or real Git provider work
 - collect buyer feedback on the `Why Power` evidence: Power-only gates used, risk decisions, audit packets, and estimated value

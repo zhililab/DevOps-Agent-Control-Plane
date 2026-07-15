@@ -41,10 +41,10 @@ hr { border:0; border-top:1px solid rgba(255,255,255,.1); margin:26px 0; }
   <div class="hero">
     <p>DEVOPS AGENT CONTROL PLANE</p>
     <h1>Plans</h1>
-    <p>Agent quality and guided pilot commercial MVP plan generated from PLANS.MD on 2026-07-15.</p>
+    <p>Agent quality and guided pilot commercial MVP plan generated from PLANS.MD on 2026-07-16.</p>
   </div>
   <nav>
-    <a href="#0-current-iteration-snapshot-2026-07-15">Current Snapshot</a>
+    <a href="#0-current-iteration-snapshot-2026-07-16">Current Snapshot</a>
     <a href="#commercial-core">Commercial Core</a>
     <a href="#still-pending-next-tasks">Next Tasks</a>
     <a href="#12-definition-of-done-for-current-devops-orchestration-mvp">Definition of Done</a>
@@ -63,14 +63,14 @@ hr { border:0; border-top:1px solid rgba(255,255,255,.1); margin:26px 0; }
 <p>The current commercial product is the <strong>DevOps Agent Control Plane</strong>: deterministic, replayable, policy-gated multi-agent execution with human approval, signed entitlement, queue lifecycle visibility, checkpoint snapshots, ledger evidence, and ROI proof for each governed run.</p>
 <p>The long-term vision remains a reusable personal operating system for execution, reflection, and repeatable workflows. During this commercial phase, that broader vision is intentionally secondary to one saleable proof: enterprises can let coding agents approach release and incident workflows while preserving control, auditability, and measurable business value.</p>
 <hr />
-<h1 id="0-current-iteration-snapshot-2026-07-15">0. Current Iteration Snapshot (2026-07-15)</h1>
+<h1 id="0-current-iteration-snapshot-2026-07-16">0. Current Iteration Snapshot (2026-07-16)</h1>
 <h2 id="iteration-theme">Iteration Theme</h2>
 <ul>
 <li>current iteration target: make the DevOps Agent Control Plane interview-defensible with real-model observability, reproducible PR/CI evaluation, human feedback, and measured Pilot evidence</li>
 <li>product direction: enterprise agent execution trust control layer for CI/CD and incident response, with inspectable replay, queue lifecycle visibility, signed entitlement-aware gates, checkpoint snapshots, and team-ready audit metadata</li>
 <li>commercial direction: sell governed agent execution that reduces release risk, shortens human review cycles, preserves compliance evidence, and turns blocked risk into ROI proof</li>
 <li>UI direction: buyer-readable control plane where <code>/tutorial</code>, <code>/orchestrate</code>, <code>/orchestrations</code>, <code>/monetization</code>, and <code>/dashboard</code> tell one story: choose pilot scenario -&gt; run release gate -&gt; export evidence -&gt; inspect ROI -&gt; decide Power upgrade</li>
-<li>status: the Pilot ROI loop remains online; Agent Quality Lab V1 adds an optional real provider, a fixed 25-case evaluation set, append-only human feedback, and observed Baseline/Pilot comparison while deterministic policy remains authoritative</li>
+<li>status: Agent Quality Lab V1 is deployed with a production 25-case Provider evaluation and one measured Pilot observation; deterministic policy remains authoritative and a timed human-review Baseline is still required before claiming time savings</li>
 </ul>
 <h2 id="agent-quality-lab-v1">Agent Quality Lab V1</h2>
 <ul>
@@ -108,8 +108,10 @@ hr { border:0; border-top:1px solid rgba(255,255,255,.1); margin:26px 0; }
 <li>added versioned <code>pr-ci-gate.v1.25</code> evaluation data with 25 stable PR/CI cases and reproducible expected decisions</li>
 <li>added <code>/evaluation</code> for provider readiness, deterministic/live evaluation, per-case review feedback, invocation telemetry, and Baseline/Pilot comparison</li>
 <li>kept deterministic release policy authoritative when the optional model is disabled, fails, or disagrees</li>
-<li>rotated the screenshot-exposed provider credential and completed a real <code>pr-ci-gate.v1.25</code> run with <code>doubao-seed-2.0-code</code>: 24/25 matching decisions, 96% accuracy, zero unsafe approvals, 5,844 input tokens, 5,759 output tokens, and 5,875ms average provider latency</li>
-<li>recorded the measured Pilot model-decision latency separately from ROI assumptions; a timed human-review Baseline remains required before claiming review-time savings</li>
+<li>rotated the screenshot-exposed provider credential and deployed the replacement as an environment-only production secret</li>
+<li>completed production <code>pr-ci-gate.v1.25</code> run <code>#1</code> with <code>doubao-seed-2.0-code</code>: 25/25 matching decisions, 100% accuracy, zero false positives/negatives, 5,844 input tokens, 5,703 output tokens, and 8,527ms average Provider latency</li>
+<li>recorded the production measured Pilot model-decision latency as <code>0.1421 minutes</code> per case separately from ROI assumptions; a timed human-review Baseline remains required before claiming review-time savings</li>
+<li>deployed Alembic migration <code>0018_add_llm_evaluation_feedback</code> with <code>RESET_DB=0</code> after capturing a non-empty PostgreSQL backup</li>
 <li>added production-only write protection for evaluation runs, human feedback, and Pilot observations, while keeping read-only evidence public and ordinary orchestration model calls explicit opt-in</li>
 <li>fixed Manual Billing renewal so expired active profiles receive a new period and can issue entitlement without resetting historical data</li>
 <li>added route-level cinematic transition layer</li>
@@ -330,6 +332,7 @@ hr { border:0; border-top:1px solid rgba(255,255,255,.1); margin:26px 0; }
 <ul>
 <li>have a human reviewer label the fixed-set results with accept/reject/correct feedback and retain measured accuracy/error-rate evidence</li>
 <li>collect a timed human-review Baseline and compare it with the recorded real-provider Pilot observation before replacing any directional ROI assumption in buyer material</li>
+<li>move long live evaluation runs to an asynchronous submit-and-poll contract so gateway response timeouts do not surface as false failures while persisted work continues</li>
 <li>validate Guided Pilot Closeout with live buyer-style demos across all five scenarios</li>
 <li>use Pilot Readiness plus Pilot Closeout as the commercial acceptance score before expanding to payment-provider or real Git provider work</li>
 <li>collect buyer feedback on the <code>Why Power</code> evidence: Power-only gates used, risk decisions, audit packets, and estimated value</li>
