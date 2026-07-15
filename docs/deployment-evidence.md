@@ -656,7 +656,7 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - marginal token cost reported `$0.00` under the subscription-backed zero-token-price configuration; subscription purchase cost is not represented as zero
   - the initial synchronous HTTP request returned Nginx `504` after the gateway timeout, but the persisted backend run continued to completion; no duplicate evaluation was submitted
 - Production Pilot observation:
-  - subject `interview-evidence`, team `platform-team`
+  - subject `quality-evidence`, team `platform-team`
   - `release_lead_time_minutes`, Pilot value `0.1421`, sample size `25`
   - human Baseline remains absent, so `improvement_rate` is `null` and estimated ROI remains separate
 

@@ -1,4 +1,4 @@
-.PHONY: test test-watch test-until-pass qa-fast qa-visual qa-all e2e-orchestration security-check smoke-check release-check release-deploy server-bootstrap server-deploy server-down server-restart server-status server-logs kind-deploy k3d-deploy dev-up dev-down dev-restart dev-status dev-logs templates-import-json templates-import-sql entitlement-token k8s-render k8s-dry-run k8s-apply k8s-verify
+.PHONY: test test-watch test-until-pass qa-fast qa-visual qa-all e2e-orchestration product-language-check security-check smoke-check release-check release-deploy server-bootstrap server-deploy server-down server-restart server-status server-logs kind-deploy k3d-deploy dev-up dev-down dev-restart dev-status dev-logs templates-import-json templates-import-sql entitlement-token k8s-render k8s-dry-run k8s-apply k8s-verify
 
 test:
 	./scripts/test_cycle.sh
@@ -31,14 +31,17 @@ qa-all: qa-fast qa-visual
 e2e-orchestration:
 	cd frontend && npm run test:e2e
 
+product-language-check:
+	./scripts/product_language_check.sh
+
 security-check:
 	./scripts/security_check.sh
 
 smoke-check:
 	./scripts/smoke_check.sh
 
-release-check: qa-all e2e-orchestration security-check k8s-render
-	@echo "[release-check] qa-all, orchestration e2e, security-check, and k8s render passed"
+release-check: qa-all e2e-orchestration product-language-check security-check k8s-render
+	@echo "[release-check] qa-all, orchestration e2e, product language, security, and k8s render passed"
 
 release-deploy:
 	./scripts/release_deploy_remote.sh

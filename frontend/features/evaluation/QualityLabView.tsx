@@ -57,7 +57,7 @@ export function QualityLabView() {
   const [status, setStatus] = useState("Loading quality evidence...");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [actor, setActor] = useState("interview-reviewer");
+  const [actor, setActor] = useState("quality-reviewer");
   const [corrections, setCorrections] = useState<Record<number, ReleaseGateDecision>>({});
   const [subject, setSubject] = useState("demo-user");
   const [teamSubject, setTeamSubject] = useState("demo-team");
@@ -178,7 +178,7 @@ export function QualityLabView() {
     >
       <section className="quality-hero" aria-label="quality-operating-model">
         <div>
-          <p className="eyebrow">INTERVIEW EVIDENCE</p>
+          <p className="eyebrow">QUALITY EVIDENCE</p>
           <h3>Prove the Agent decision, not just the workflow.</h3>
           <p className="muted">
             Deterministic policy remains authoritative. The model recommendation is measured, versioned, and reviewable.

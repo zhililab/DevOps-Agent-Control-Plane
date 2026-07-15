@@ -310,7 +310,7 @@ def test_measured_pilot_comparison_keeps_baseline_and_pilot_separate_from_estima
     baseline = client.post(
         "/api/evaluations/pilot-measurements",
         json={
-            "subject": "interview-user",
+            "subject": "quality-user",
             "team_subject": "platform-team",
             "metric": "review_minutes",
             "phase": "baseline",
@@ -323,7 +323,7 @@ def test_measured_pilot_comparison_keeps_baseline_and_pilot_separate_from_estima
     pilot = client.post(
         "/api/evaluations/pilot-measurements",
         json={
-            "subject": "interview-user",
+            "subject": "quality-user",
             "team_subject": "platform-team",
             "metric": "review_minutes",
             "phase": "pilot",
@@ -337,7 +337,7 @@ def test_measured_pilot_comparison_keeps_baseline_and_pilot_separate_from_estima
     assert pilot.status_code == 200
 
     comparison = client.get(
-        "/api/evaluations/pilot-comparison?subject=interview-user&team_subject=platform-team"
+        "/api/evaluations/pilot-comparison?subject=quality-user&team_subject=platform-team"
     ).json()
     assert comparison["source"] == "measured"
     assert comparison["estimated_roi_remains_separate"] is True

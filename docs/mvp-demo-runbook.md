@@ -71,7 +71,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
    - Show `Pilot Ready`, `Estimated Value`, `Review Time Saved`, and `Blocked Risk Value`.
    - Explain that these counters are the current bridge from governed agent execution to pricing, packaging, and ROI.
 
-## Interview Quality Evidence
+## Agent Quality Evidence
 
 1. Open `/evaluation` and show that provider status reports only provider/model/prompt readiness, never the API key.
 2. Run the deterministic 25-case benchmark to establish a reproducible rules baseline.
@@ -80,7 +80,7 @@ This runbook keeps the DevOps orchestration MVP demo short, repeatable, and focu
 5. Add accept/reject/correct reviewer feedback, then show reviewed accuracy and false-positive/false-negative rates.
 6. Record actual Baseline/Pilot observations and keep them separate from estimated ROI in the buyer closeout.
 
-Current measured evidence is recorded in `docs/agent-quality-evidence.md`: the 2026-07-15 Coding Plan run completed 25 cases with 96% decision accuracy and zero unsafe approvals. The measured Pilot latency is real; human-review Baseline and time-saved claims remain pending.
+Current measured evidence is recorded in `docs/agent-quality-evidence.md`: the 2026-07-16 production Coding Plan run completed 25 cases with 100% decision accuracy and zero unsafe approvals. The measured Pilot latency is real; human-review Baseline and time-saved claims remain pending.
 
 ## Acceptance Checks
 

@@ -114,6 +114,7 @@ describe("quality lab", () => {
     render(<EvaluationPage />);
 
     expect(await screen.findByRole("heading", { name: "Agent Quality Lab" })).toBeInTheDocument();
+    expect(screen.getByText("QUALITY EVIDENCE")).toBeInTheDocument();
     expect(await screen.findByText("doubao-test-model · pr-ci-gate.v1")).toBeInTheDocument();
     expect(screen.getByText("pr-ci-gate.v1.25 · 1 versioned cases")).toBeInTheDocument();
 

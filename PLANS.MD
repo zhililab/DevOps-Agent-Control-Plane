@@ -15,7 +15,7 @@ The long-term vision remains a reusable personal operating system for execution,
 # 0. Current Iteration Snapshot (2026-07-16)
 
 ## Iteration Theme
-- current iteration target: make the DevOps Agent Control Plane interview-defensible with real-model observability, reproducible PR/CI evaluation, human feedback, and measured Pilot evidence
+- current iteration target: make the DevOps Agent Control Plane operationally defensible with real-model observability, reproducible PR/CI evaluation, human feedback, and measured Pilot evidence
 - product direction: enterprise agent execution trust control layer for CI/CD and incident response, with inspectable replay, queue lifecycle visibility, signed entitlement-aware gates, checkpoint snapshots, and team-ready audit metadata
 - commercial direction: sell governed agent execution that reduces release risk, shortens human review cycles, preserves compliance evidence, and turns blocked risk into ROI proof
 - UI direction: buyer-readable control plane where `/tutorial`, `/orchestrate`, `/orchestrations`, `/monetization`, and `/dashboard` tell one story: choose pilot scenario -> run release gate -> export evidence -> inspect ROI -> decide Power upgrade

@@ -146,7 +146,7 @@ Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo 
 
 ### Optional Real LLM Provider
 
-The deterministic release policy remains the execution authority. The provider is an advisory observation layer used for evaluation and interview evidence.
+The deterministic release policy remains the execution authority. The provider is an advisory observation layer used for evaluation and operational evidence.
 
 ```bash
 APP_LLM_ENABLED=true
@@ -205,7 +205,7 @@ The current commercial demo is scenario-driven:
 5. Open `/orchestrations`, verify ledger/checkpoints, then use `Export Evidence`, `Copy Markdown`, or `Download Markdown`.
 6. Open `/monetization` to review `Commercial Signal`, `Pilot Readiness`, `Buyer Review Status`, grouped scenario completion, `Why Power`, and the copy/download Pilot Closeout report.
 7. Open `/dashboard` to confirm buyer KPIs: Estimated Value, Review Time Saved, Blocked Risk Value, and Pilot Ready.
-8. For interview evidence, open `/evaluation` to run the fixed PR/CI benchmark, review human feedback metrics, inspect model-call telemetry, and compare observed Baseline/Pilot measurements.
+8. For quality evidence, open `/evaluation` to run the fixed PR/CI benchmark, review human feedback metrics, inspect model-call telemetry, and compare observed Baseline/Pilot measurements.
 
 ## 1) Backend
 

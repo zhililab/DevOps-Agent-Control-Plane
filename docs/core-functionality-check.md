@@ -7,7 +7,7 @@ This document records the current product target and the minimum functionality t
 - Current release target: deterministic DevOps personal/small-team workflow orchestration MVP.
 - Commercial wedge: enterprise agent execution trust control layer for trusted, replayable, checkpointed, policy-gated CI/CD and incident-response workflows.
 - Primary buyer surfaces: `/orchestrate`, `/orchestrations`, `/dashboard`, `/monetization`, and `/tutorial`.
-- Interview quality-proof surface: `/evaluation`.
+- Agent quality-proof surface: `/evaluation`.
 - Release path: Docker Compose server deployment through `make release-deploy`.
 - Public entrypoint: `http://1.117.63.81`.
 - Canonical health route: `/health`.
