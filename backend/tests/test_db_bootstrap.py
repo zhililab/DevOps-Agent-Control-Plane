@@ -1,4 +1,8 @@
+import importlib.util
+from pathlib import Path
+
 from alembic import command
+import sqlalchemy as sa
 from sqlalchemy import create_engine, text
 
 from app.config import get_settings
@@ -67,6 +71,23 @@ def test_startup_migration_does_not_stamp_when_version_exists() -> None:
 
 def test_startup_migration_reads_current_alembic_head() -> None:
     assert get_current_head(get_alembic_config()) == "0019_normalize_quality_evidence_subject"
+
+
+def test_quality_subject_migration_skips_database_enum_columns() -> None:
+    migration_path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "0019_normalize_quality_evidence_subject.py"
+    )
+    spec = importlib.util.spec_from_file_location("quality_language_migration", migration_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert module._is_replaceable_text(sa.String()) is True
+    assert module._is_replaceable_text(sa.Text()) is True
+    assert module._is_replaceable_text(sa.Enum("queued", "completed", name="taskstatus")) is False
 
 
 def test_quality_subject_migration_normalizes_legacy_pilot_identity(tmp_path, monkeypatch, request) -> None:

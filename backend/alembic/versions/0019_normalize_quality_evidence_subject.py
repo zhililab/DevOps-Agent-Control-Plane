@@ -16,6 +16,10 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _is_replaceable_text(column_type: sa.types.TypeEngine) -> bool:
+    return isinstance(column_type, sa.String) and not isinstance(column_type, sa.Enum)
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     metadata = sa.MetaData()
@@ -29,7 +33,7 @@ def upgrade() -> None:
     for table_name in sa.inspect(bind).get_table_names():
         table = sa.Table(table_name, metadata, autoload_with=bind)
         for column in table.columns:
-            if not isinstance(column.type, sa.String):
+            if not _is_replaceable_text(column.type):
                 continue
             for old_value, new_value in replacements:
                 bind.execute(
