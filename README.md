@@ -331,6 +331,7 @@ Effective auth behavior:
 - Free tier capability guard denies multi-step orchestration runs with `403`.
 - The `/orchestrate` frontend uses signed entitlement tokens and no longer emits `X-Subscription-Tier`; the legacy header remains an explicit non-production API fallback only.
 - Manual Billing V1 subjects can now load signed entitlement tokens from `/api/monetization/entitlement?subject=...`, so an activated Pro/Power account can directly run compatible orchestration templates from `/orchestrate`.
+- Re-checking out an expired Manual Billing profile renews its 30-day subscription period without deleting historical usage or audit events.
 
 Observability and quota contract notes:
 

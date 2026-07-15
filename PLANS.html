@@ -111,6 +111,7 @@ hr { border:0; border-top:1px solid rgba(255,255,255,.1); margin:26px 0; }
 <li>rotated the screenshot-exposed provider credential and completed a real <code>pr-ci-gate.v1.25</code> run with <code>doubao-seed-2.0-code</code>: 24/25 matching decisions, 96% accuracy, zero unsafe approvals, 5,844 input tokens, 5,759 output tokens, and 5,875ms average provider latency</li>
 <li>recorded the measured Pilot model-decision latency separately from ROI assumptions; a timed human-review Baseline remains required before claiming review-time savings</li>
 <li>added production-only write protection for evaluation runs, human feedback, and Pilot observations, while keeping read-only evidence public and ordinary orchestration model calls explicit opt-in</li>
+<li>fixed Manual Billing renewal so expired active profiles receive a new period and can issue entitlement without resetting historical data</li>
 <li>added route-level cinematic transition layer</li>
 <li>upgraded dashboard with a knowledge-graph visualization card</li>
 <li>switched core UI palette to dark + violet accent style</li>

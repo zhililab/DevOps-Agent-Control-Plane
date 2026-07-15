@@ -123,6 +123,7 @@ This document records the current product target and the minimum functionality t
 - Daily plan/reflection/analysis history must hide `record_source=smoke_check|system` by default and expose it only through `include_system=true`.
 - Read-only history endpoints must not create new agent run log records.
 - Manual billing UI refreshes profile, usage counters, and commercial audit feed independently; partial failures must not overwrite a successful lifecycle response.
+- Manual checkout must renew an expired active profile before entitlement issuance while preserving historical counters and audit records.
 - LLM API keys must remain environment-only; provider status, invocation records, errors, evaluation results, and request hashes must not expose raw credentials.
 - Production evaluation runs, feedback, and Pilot measurement writes must require `X-Evaluation-Access`; the access secret must be independent from the provider API key and remain environment-only.
 - Ordinary orchestration runs must not invoke the optional LLM provider unless `use_llm_provider=true` is explicitly submitted.

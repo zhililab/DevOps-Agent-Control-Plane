@@ -330,6 +330,52 @@ def test_manual_checkout_creates_active_profile_counters_and_event(client) -> No
     assert profile_response.json()["profile"]["tier"] == "pro"
 
 
+def test_manual_checkout_renews_expired_active_profile_and_restores_entitlement(client) -> None:
+    settings = get_settings()
+    old_secret = settings.entitlement_secret
+    _ = client
+    db_generator = app.dependency_overrides[get_db]()
+    db = next(db_generator)
+    now = _now()
+    try:
+        settings.entitlement_secret = "renewal-entitlement-secret"
+        db.add(
+            SubscriptionProfile(
+                subject="expired-renewal-user",
+                tier=SubscriptionTier.pro,
+                status=SubscriptionStatus.active,
+                billing_provider="manual",
+                current_period_start=now - timedelta(days=60),
+                current_period_end=now - timedelta(days=30),
+                cancel_at_period_end=False,
+                entitlements_json=json.dumps({"workflow_runs": 300, "queued_runs": 300}),
+                created_at=now - timedelta(days=60),
+                updated_at=now - timedelta(days=30),
+            )
+        )
+        db.commit()
+
+        checkout = client.post(
+            "/api/monetization/checkout/manual",
+            json={"subject": "expired-renewal-user", "target_tier": "pro"},
+        )
+
+        assert checkout.status_code == 200
+        payload = checkout.json()
+        assert payload["event"]["event"]["action"] == "subscription_renewed"
+        renewed_start = datetime.fromisoformat(payload["profile"]["current_period_start"].replace("Z", "+00:00"))
+        renewed_end = datetime.fromisoformat(payload["profile"]["current_period_end"].replace("Z", "+00:00"))
+        assert renewed_start > (now - timedelta(minutes=1)).replace(tzinfo=timezone.utc)
+        assert renewed_end > (now + timedelta(days=29)).replace(tzinfo=timezone.utc)
+
+        entitlement = client.get("/api/monetization/entitlement?subject=expired-renewal-user")
+        assert entitlement.status_code == 200
+        assert entitlement.json()["tier"] == "pro"
+    finally:
+        settings.entitlement_secret = old_secret
+        db_generator.close()
+
+
 def test_active_manual_subscription_issues_signed_entitlement_and_scopes_metrics(client) -> None:
     settings = get_settings()
     old_secret = settings.entitlement_secret

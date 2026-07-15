@@ -555,7 +555,17 @@ def start_manual_checkout(
     now = utcnow_naive()
     profile = _get_latest_profile_model(db, subject=subject)
     previous_tier = profile.tier.value if profile is not None else None
-    action = "checkout_completed" if profile is None else "tier_changed"
+    period_expired = bool(
+        profile is not None
+        and profile.current_period_end is not None
+        and profile.current_period_end <= now
+    )
+    if profile is None:
+        action = "checkout_completed"
+    elif period_expired:
+        action = "subscription_renewed"
+    else:
+        action = "tier_changed"
 
     if profile is None:
         profile = SubscriptionProfile(
@@ -577,8 +587,12 @@ def start_manual_checkout(
         profile.status = SubscriptionStatus.active
         profile.billing_provider = billing_provider
         profile.cancel_at_period_end = False
-        profile.current_period_start = profile.current_period_start or now
-        profile.current_period_end = profile.current_period_end or (now + timedelta(days=30))
+        if period_expired:
+            profile.current_period_start = now
+            profile.current_period_end = now + timedelta(days=30)
+        else:
+            profile.current_period_start = profile.current_period_start or now
+            profile.current_period_end = profile.current_period_end or (now + timedelta(days=30))
         profile.updated_at = now
 
     entitlements = _entitlements_for_tier(target_tier)
