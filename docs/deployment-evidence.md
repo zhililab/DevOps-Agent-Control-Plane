@@ -697,6 +697,30 @@ This file records the current MVP deployment evidence for the Docker Compose ser
   - public quality comparison resolved subject `quality-evidence`, Pilot value `0.1421`, and sample size `25`
   - a read-only production database scan covered 132 text, JSON, and enum columns and found zero residual matches
 
+## 2026-07-16 Quality Feedback Save UX Fix
+
+- Implementation commit: `0ee8d14 chore: release deploy 2026-07-16-2333`
+- Server: `http://1.117.63.81`
+- Health: `http://1.117.63.81/health`
+- Database reset: `RESET_DB=0`
+- Root cause:
+  - production correctly reported `write_protected=true`
+  - Accept, Reject, Correct, evaluation-run, and measurement actions were native disabled controls while the access key was empty
+  - disabled controls emitted no click event, request, or user-facing explanation, so the protected action appeared broken
+- Fix behavior:
+  - protected controls remain clickable while idle and perform an in-page access check before any request
+  - a missing key focuses the Access key field and explains which protected action requires it
+  - the access key remains page-memory only and is not written to local storage, URLs, logs, or the database
+  - successful feedback refreshes the summary and renders `Saved: accepted`, `Saved: rejected`, or `Saved: corrected` on the reviewed case
+- Local release verification:
+  - focused Quality Lab test passed with the required red/green regression cycle
+  - `make qa-fast` passed with 57 frontend tests, the backend suite, and the production build
+  - full `make release-check` passed, including four visual tests, four Playwright flows, product-language guard, security checks, zero npm vulnerabilities, and k8s render
+- Remote release verification:
+  - remote smoke checks and runtime security checks passed
+  - a read-only production browser check confirmed the Accept button is enabled, clicking without a key displays `Enter Quality Write Access to save review evidence.`, focus moves to the Access key field, and no feedback POST is emitted
+  - no synthetic production feedback was appended during verification
+
 ## Operational Notes
 
 - The current release path is the Docker Compose server path, not k3d/k8s.
