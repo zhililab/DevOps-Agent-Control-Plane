@@ -110,6 +110,32 @@ beforeEach(() => {
 });
 
 describe("quality lab", () => {
+  test("explains protected feedback actions instead of silently disabling them", async () => {
+    mocks.getLlmProviderStatus.mockResolvedValueOnce({
+      enabled: true,
+      configured: true,
+      provider: "volcengine_ark",
+      model: "doubao-test-model",
+      prompt_version: "pr-ci-gate.v1",
+      base_url_host: "ark.cn-beijing.volces.com",
+      write_protected: true,
+      deterministic_gate_remains_authoritative: true,
+    });
+    mocks.getLatestEvaluationRun.mockResolvedValueOnce(run);
+
+    render(<EvaluationPage />);
+
+    const accessInput = await screen.findByLabelText("Access key");
+    const acceptButton = await screen.findByRole("button", { name: "Accept" });
+    expect(acceptButton).toBeEnabled();
+
+    fireEvent.click(acceptButton);
+
+    expect(await screen.findByText("Enter Quality Write Access to save review evidence.")).toBeInTheDocument();
+    expect(accessInput).toHaveFocus();
+    expect(mocks.createDecisionFeedback).not.toHaveBeenCalled();
+  });
+
   test("runs fixed evaluation and records explicit human feedback", async () => {
     render(<EvaluationPage />);
 
@@ -133,7 +159,18 @@ describe("quality lab", () => {
       reviewed_accuracy: 1,
       false_positive_rate: 0,
       false_negative_rate: 0,
-      recent: [],
+      recent: [
+        {
+          id: 1,
+          evaluation_case_result_id: 10,
+          orchestration_id: null,
+          verdict: "accepted",
+          corrected_decision: "",
+          actor: "quality-reviewer",
+          note: "",
+          created_at: "2026-07-16T00:00:00Z",
+        },
+      ],
     });
     fireEvent.click(screen.getByRole("button", { name: "Accept" }));
     await waitFor(() => expect(mocks.createDecisionFeedback).toHaveBeenCalledWith(
@@ -144,6 +181,7 @@ describe("quality lab", () => {
       ""
     ));
     expect(await screen.findByText("1 accepted")).toBeInTheDocument();
+    expect(screen.getByText("Saved: accepted")).toBeInTheDocument();
   });
 
   test("records observed baseline measurement separately from estimated ROI", async () => {
@@ -198,10 +236,9 @@ describe("quality lab", () => {
 
     const accessInput = await screen.findByLabelText("Access key");
     const rulesButton = screen.getByRole("button", { name: "Run Rules Baseline" });
-    expect(rulesButton).toBeDisabled();
+    expect(rulesButton).toBeEnabled();
 
     fireEvent.change(accessInput, { target: { value: "quality-write-secret" } });
-    expect(rulesButton).toBeEnabled();
     fireEvent.click(rulesButton);
 
     await waitFor(() => expect(mocks.runEvaluation).toHaveBeenCalledWith(

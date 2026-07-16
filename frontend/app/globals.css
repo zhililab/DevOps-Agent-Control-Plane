@@ -1361,6 +1361,16 @@ button:focus-visible {
   font-size: 0.8rem;
 }
 
+.quality-feedback-saved {
+  grid-column: 1 / -1;
+  color: #8ce8c3;
+  font-weight: 700;
+}
+
+.quality-write-access-hint {
+  margin: 8px 0 0;
+}
+
 .quality-actor {
   width: min(320px, 40%);
 }

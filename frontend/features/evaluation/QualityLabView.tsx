@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PageCard } from "@/components/ui/PageCard";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -66,6 +66,14 @@ export function QualityLabView() {
   const [measurementValue, setMeasurementValue] = useState("30");
   const [sampleSize, setSampleSize] = useState("1");
   const [writeAccess, setWriteAccess] = useState("");
+  const writeAccessInputRef = useRef<HTMLInputElement>(null);
+
+  function requireWriteAccess(message: string): boolean {
+    if (!provider?.write_protected || writeAccess.trim()) return true;
+    setError(message);
+    writeAccessInputRef.current?.focus();
+    return false;
+  }
 
   async function loadQualityEvidence() {
     const results = await Promise.allSettled([
@@ -104,6 +112,7 @@ export function QualityLabView() {
   );
 
   async function runEvaluation(mode: "deterministic" | "live") {
+    if (!requireWriteAccess("Enter Quality Write Access to run protected evaluations.")) return;
     setBusy(true);
     setError("");
     setStatus(`Running ${mode} evaluation across ${cases?.items.length ?? 25} fixed cases...`);
@@ -124,6 +133,7 @@ export function QualityLabView() {
     resultId: number,
     verdict: "accepted" | "rejected" | "corrected"
   ) {
+    if (!requireWriteAccess("Enter Quality Write Access to save review evidence.")) return;
     setBusy(true);
     setError("");
     try {
@@ -143,6 +153,7 @@ export function QualityLabView() {
   }
 
   async function saveMeasurement() {
+    if (!requireWriteAccess("Enter Quality Write Access to save measured evidence.")) return;
     const value = Number(measurementValue);
     const samples = Number(sampleSize);
     if (!Number.isFinite(value) || value < 0 || !Number.isInteger(samples) || samples < 1) {
@@ -201,12 +212,21 @@ export function QualityLabView() {
           <label className="quality-actor">
             Access key
             <input
+              ref={writeAccessInputRef}
               type="password"
               autoComplete="off"
               value={writeAccess}
-              onChange={(event) => setWriteAccess(event.target.value)}
+              onChange={(event) => {
+                setWriteAccess(event.target.value);
+                if (error.startsWith("Enter Quality Write Access")) setError("");
+              }}
             />
           </label>
+          <p className="muted quality-write-access-hint">
+            {writeAccess.trim()
+              ? "Access key entered for this page session. Protected actions will include it without storing it."
+              : "Enter the access key before running evaluations, saving reviews, or recording observations."}
+          </p>
         </section>
       ) : null}
 
@@ -218,8 +238,8 @@ export function QualityLabView() {
             <p className="muted">{cases?.dataset_version ?? "pr-ci-gate.v1"} · {cases?.items.length ?? 25} versioned cases</p>
           </div>
           <div className="button-row">
-            <button disabled={busy || Boolean(provider?.write_protected && !writeAccess.trim())} onClick={() => void runEvaluation("deterministic")}>Run Rules Baseline</button>
-            <button disabled={busy || !provider?.configured || Boolean(provider?.write_protected && !writeAccess.trim())} onClick={() => void runEvaluation("live")}>Run Live Model</button>
+            <button disabled={busy} onClick={() => void runEvaluation("deterministic")}>Run Rules Baseline</button>
+            <button disabled={busy || !provider?.configured} onClick={() => void runEvaluation("live")}>Run Live Model</button>
           </div>
         </div>
 
@@ -240,8 +260,8 @@ export function QualityLabView() {
                 </div>
                 <span className={result.is_correct ? "quality-pass" : "quality-fail"}>{result.is_correct ? "match" : "mismatch"}</span>
                 <div className="quality-feedback-actions">
-                  <button disabled={busy || Boolean(provider?.write_protected && !writeAccess.trim())} onClick={() => void submitFeedback(result.id, "accepted")}>Accept</button>
-                  <button disabled={busy || Boolean(provider?.write_protected && !writeAccess.trim())} onClick={() => void submitFeedback(result.id, "rejected")}>Reject</button>
+                  <button disabled={busy} onClick={() => void submitFeedback(result.id, "accepted")}>Accept</button>
+                  <button disabled={busy} onClick={() => void submitFeedback(result.id, "rejected")}>Reject</button>
                   <select
                     aria-label={`Correct decision for ${result.case_id}`}
                     value={corrections[result.id] ?? "needs human review"}
@@ -251,7 +271,12 @@ export function QualityLabView() {
                     <option value="needs human review">needs human review</option>
                     <option value="block">block</option>
                   </select>
-                  <button disabled={busy || Boolean(provider?.write_protected && !writeAccess.trim())} onClick={() => void submitFeedback(result.id, "corrected")}>Correct</button>
+                  <button disabled={busy} onClick={() => void submitFeedback(result.id, "corrected")}>Correct</button>
+                  {feedback.recent.find((item) => item.evaluation_case_result_id === result.id) ? (
+                    <small className="quality-feedback-saved">
+                      Saved: {feedback.recent.find((item) => item.evaluation_case_result_id === result.id)?.verdict}
+                    </small>
+                  ) : null}
                 </div>
               </article>
             ))}
@@ -283,7 +308,7 @@ export function QualityLabView() {
           <label>Phase<select value={phase} onChange={(event) => setPhase(event.target.value as "baseline" | "pilot")}><option value="baseline">Baseline</option><option value="pilot">Pilot</option></select></label>
           <label>Observed value<input type="number" min="0" value={measurementValue} onChange={(event) => setMeasurementValue(event.target.value)} /></label>
           <label>Sample size<input type="number" min="1" value={sampleSize} onChange={(event) => setSampleSize(event.target.value)} /></label>
-          <button disabled={busy || Boolean(provider?.write_protected && !writeAccess.trim())} onClick={() => void saveMeasurement()}>Save Observation</button>
+          <button disabled={busy} onClick={() => void saveMeasurement()}>Save Observation</button>
         </div>
         <div className="quality-comparison-grid">
           {comparison.metrics.length ? comparison.metrics.map((item) => (
