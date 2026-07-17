@@ -1,8 +1,10 @@
+<p align="center">
+  <img src="docs/assets/devops-agent-control-plane-hero.png" alt="DevOps Agent Control Plane - trusted AI release governance for PR and CI" width="1200" />
+</p>
+
 # DevOps Agent Control Plane MVP
 
 Current product: a deployable DevOps Agent Control Plane. It focuses on deterministic multi-agent execution, replayable workflow history, checkpointed state snapshots, queue lifecycle controls, entitlement-aware tier boundaries, Manual Billing V1, and buyer-facing tutorial onboarding. Commercially, this is framed as trusted workflow execution before broad assistant breadth.
-
-Long-term vision: a personal AI operating system for work, reflection, knowledge, planning, and communication. The current release keeps that vision grounded in a narrow, auditable orchestration surface that can be deployed and verified by one maintainer.
 
 Monorepo-style app with:
 - `frontend/`: Next.js + TypeScript UI

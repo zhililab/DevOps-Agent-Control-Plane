@@ -9,6 +9,7 @@ node_modules/
 .next/
 test-results/
 output/
+outputs/
 
 # Local data
 *.db
