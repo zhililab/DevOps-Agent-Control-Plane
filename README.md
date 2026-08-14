@@ -13,6 +13,12 @@ Monorepo-style app with:
 
 Documentation map: `docs/README.md`. Current commercial strategy, tutorial demo path, and orchestration pattern registry notes: `docs/agent-orchestration-commercial-strategy.md`.
 
+## Licensing
+
+This repository is licensed under the GNU Affero General Public License, version 3 or later (`AGPL-3.0-or-later`). You may use, modify, and distribute it, including for commercial purposes, when you comply with the AGPL terms. In particular, modified versions offered to users over a network must provide those users the corresponding source under the AGPL.
+
+A separate commercial license is available for organizations that need to use the software without the AGPL's reciprocal obligations, such as embedding it in a proprietary offering or keeping deployment modifications closed. See `COMMERCIAL-LICENSE.md`. A commercial exception is granted only through a separately signed agreement with the copyright holder; this repository does not grant one by default.
+
 ## Project Structure
 
 ```text

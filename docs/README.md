@@ -7,6 +7,8 @@ This directory keeps project documents that explain how the personal agent is de
 - `../README.md`: project overview, local startup, APIs, tests, and deployment commands.
 - `../specs.md`: product vision, MVP scope, functional requirements, data model, and acceptance criteria.
 - `../AGENTS.md`: working rules for coding agents in this repository.
+- `../LICENSE`: GNU Affero General Public License, version 3 or later.
+- `../COMMERCIAL-LICENSE.md`: commercial exception path and contribution-rights note.
 
 ## Product And Architecture
 
